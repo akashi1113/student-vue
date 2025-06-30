@@ -8,18 +8,18 @@ import ScoreManage from '../views/score_manage/ScoreManage.vue'
 import LearningEvaluation from '../views/learning_evaluation/LearningEvaluation.vue'
 
 // 来自index.ts的组件
-import Dashboard from '@/views/Dashboard.vue'
+// import Dashboard from '@/views/Dashboard.vue'
 import NoteView from '@/views/NoteView.vue'
-import ExperimentListView from '@/views/ExperimentListView.vue'
-import ExperimentSimulationView from '@/views/ExperimentSimulationView.vue'
-import ReportView from '@/views/ReportView.vue'
-import ReportGenerator from '@/views/ReportGenerator.vue'
+import ExperimentListView from '@/views/experiment/ExperimentListView.vue'
+// import ExperimentSimulationView from '@/views/experiment/'
+import ReportView from '@/views/experiment/ReportView.vue'
+// import ReportGenerator from '@/views/experiment/'
 
 // 动态导入组件
 const Login = () => import('../views/UserLogin.vue')
 const Register = () => import('../views/UserRegister.vue')
-const ExperimentDetailView = () => import('@/views/ExperimentDetailView.vue')
-const ExperimentBookingView = () => import('@/views/ExperimentBookingView.vue')
+const ExperimentDetailView = () => import('@/views/experiment/ExperimentDetailView.vue')
+const ExperimentBookingView = () => import('@/views/experiment/ExperimentBookingView.vue')
 
 // 来自index.js的认证检查
 function isAuthenticated() {
@@ -236,13 +236,13 @@ const routes = [
     props: true,
     meta: { title: '实验项目库' }
   },
-  {
-    path: '/experiment/simulation',
-    name: 'ExperimentSimulation',
-    component: ExperimentSimulationView,
-    props: true,
-    meta: { title: '实验操作' }
-  },
+  // {
+  //   path: '/experiment/simulation',
+  //   name: 'ExperimentSimulation',
+  //   component: ExperimentSimulationView,
+  //   props: true,
+  //   meta: { title: '实验操作' }
+  // },
   {
     path: '/experiment/:id',
     name: 'ExperimentDetail',
