@@ -83,6 +83,7 @@ const routes = [
       requiresAuth: true
     }
   },
+
   // 考试系统路由
   {
     path: '/exams',
@@ -123,6 +124,75 @@ const routes = [
       requiresAuth: true
     }
   },
+
+  // ============================== 考试预约系统路由 ==============================
+
+  // 学生端考试预约路由
+  {
+    path: '/exam-booking/available',
+    name: 'AvailableExams',
+    component: () => import('@/views/exam/AvailableExams.vue'),
+    meta: {
+      title: '可预约考试',
+      requiresAuth: true,
+      roles: ['STUDENT']
+    }
+  },
+  {
+    path: '/exam-booking/my-bookings',
+    name: 'MyBookings',
+    component: () => import('@/views/exam/MyBookings.vue'),
+    meta: {
+      title: '我的预约',
+      requiresAuth: true,
+      roles: ['STUDENT']
+    }
+  },
+  {
+    path: '/exam-booking/notifications',
+    name: 'ExamNotifications',
+    component: () => import('@/views/exam/Notifications.vue'),
+    meta: {
+      title: '考试通知',
+      requiresAuth: true,
+      roles: ['STUDENT']
+    }
+  },
+  {
+    path: '/exam-booking/details/:bookingId',
+    name: 'BookingDetails',
+    component: () => import('@/views/exam/BookingDetails.vue'),
+    props: true,
+    meta: {
+      title: '预约详情',
+      requiresAuth: true,
+      roles: ['STUDENT']
+    }
+  },
+
+  // 教师/管理员端考试预约管理路由
+  {
+    path: '/exam-booking/time-slot-management',
+    name: 'TimeSlotManagement',
+    component: () => import('@/views/exam/TimeSlotManagement.vue'),
+    meta: {
+      title: '时间段管理',
+      requiresAuth: true,
+      roles: ['TEACHER', 'ADMIN']
+    }
+  },
+  {
+    path: '/exam-booking/booking-management',
+    name: 'BookingManagement',
+    component: () => import('@/views/exam/BookingManagement.vue'),
+    meta: {
+      title: '预约管理',
+      requiresAuth: true,
+      roles: ['TEACHER', 'ADMIN']
+    }
+  },
+
+  // ============================== 原有路由继续 ==============================
 
   // 作业系统路由
   {
@@ -226,15 +296,21 @@ const routes = [
     path: '/notes',
     name: 'Notes',
     component: NoteView,
-    meta: { title: '学习笔记' }
+    meta: {
+      title: '学习笔记',
+      requiresAuth: true
+    }
   },
- 
+
   {
     path: '/experimentList',
     name: 'ExperimentList',
     component: ExperimentListView,
     props: true,
-    meta: { title: '实验项目库' }
+    meta: {
+      title: '实验项目库',
+      requiresAuth: true
+    }
   },
   // {
   //   path: '/experiment/simulation',
@@ -248,27 +324,37 @@ const routes = [
     name: 'ExperimentDetail',
     component: ExperimentDetailView,
     props: true,
-    meta: { title: '实验详情' }
+    meta: {
+      title: '实验详情',
+      requiresAuth: true
+    }
   },
   {
     path: '/booking/:id',
     name: 'ExperimentBooking',
     component: ExperimentBookingView,
-    props: true
+    props: true,
+    meta: {
+      title: '预约实验',
+      requiresAuth: true
+    }
   },
   {
     path: '/report',
     name: 'Report',
     component: ReportView,
     props: true,
-    meta: { title: '实验报告' }
-  },
-  {
-    path: '/reports/generate/:recordId',
-    name: 'ReportGenerator',
-    component: ReportGenerator,
-    props: true
+    meta: {
+      title: '实验报告',
+      requiresAuth: true
+    }
   }
+  // {
+  //   path: '/reports/generate/:recordId',
+  //   name: 'ReportGenerator',
+  //   component: ReportGenerator,
+  //   props: true
+  // }
 ]
 
 const router = createRouter({
@@ -276,16 +362,47 @@ const router = createRouter({
   routes
 })
 
+// 获取用户角色的辅助函数
+function getUserRole() {
+  const userInfo = localStorage.getItem('userInfo')
+  if (userInfo) {
+    try {
+      const user = JSON.parse(userInfo)
+      return user.role || user.userType || 'STUDENT' // 根据你的用户数据结构调整
+    } catch (e) {
+      return 'STUDENT'
+    }
+  }
+  return null
+}
+
+// 检查用户权限的辅助函数
+function hasPermission(requiredRoles, userRole) {
+  if (!requiredRoles || requiredRoles.length === 0) {
+    return true
+  }
+  return requiredRoles.includes(userRole)
+}
+
 // 合并路由守卫逻辑
 router.beforeEach((to, from, next) => {
   // 来自index.js的标题设置
   if (to.meta.title) {
     document.title = `${to.meta.title} - 智能化在线教学支持服务平台`
   }
-  
+
   // 来自index.js的认证检查
   if (to.meta.requiresAuth) {
     if (isAuthenticated()) {
+      // 检查角色权限
+      if (to.meta.roles) {
+        const userRole = getUserRole()
+        if (!hasPermission(to.meta.roles, userRole)) {
+          ElMessage.error('您没有权限访问此页面')
+          next('/')
+          return
+        }
+      }
       next()
     } else {
       ElMessage.warning('请先登录')

@@ -1,0 +1,393 @@
+<template>
+  <div class="booking-management">
+    <div class="page-header">
+      <h1>预约管理</h1>
+      <div class="header-actions">
+        <el-select
+            v-model="filters.status"
+            placeholder="预约状态"
+            clearable
+            style="width: 150px; margin-right: 16px;"
+            @change="loadBookings"
+        >
+          <el-option label="已预约" value="BOOKED" />
+          <el-option label="已确认" value="CONFIRMED" />
+          <el-option label="已取消" value="CANCELLED" />
+          <el-option label="已完成" value="COMPLETED" />
+        </el-select>
+
+        <el-date-picker
+            v-model="filters.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+            @change="loadBookings"
+            style="margin-right: 16px;"
+        />
+
+        <el-button @click="loadBookings" :loading="loading">
+          <el-icon><Refresh /></el-icon>
+          刷新
+        </el-button>
+      </div>
+    </div>
+
+    <div class="stats-cards">
+      <el-row :gutter="16">
+        <el-col :span="6">
+          <el-card class="stats-card">
+            <div class="stats-content">
+              <div class="stats-number">{{ stats.totalBookings }}</div>
+              <div class="stats-label">总预约数</div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card class="stats-card">
+            <div class="stats-content">
+              <div class="stats-number">{{ stats.confirmedBookings }}</div>
+              <div class="stats-label">已确认</div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card class="stats-card">
+            <div class="stats-content">
+              <div class="stats-number">{{ stats.cancelledBookings }}</div>
+              <div class="stats-label">已取消</div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card class="stats-card">
+            <div class="stats-content">
+              <div class="stats-number">{{ stats.completedBookings }}</div>
+              <div class="stats-label">已完成</div>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+    </div>
+
+    <div class="bookings-table" v-loading="loading">
+      <el-table :data="bookings" border>
+        <el-table-column prop="bookingNumber" label="预约号" width="150" />
+        <el-table-column prop="studentName" label="学生姓名" width="100" />
+        <el-table-column prop="examTitle" label="考试名称" width="150" />
+        <el-table-column prop="slotDate" label="考试日期" width="120">
+          <template #default="{ row }">
+            {{ formatDate(row.slotDate) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="考试时间" width="140">
+          <template #default="{ row }">
+            {{ formatTime(row.startTime) }} - {{ formatTime(row.endTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="examLocation" label="考试地点" width="120" />
+        <el-table-column prop="contactPhone" label="联系电话" width="120" />
+        <el-table-column prop="bookingStatus" label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getStatusTagType(row.bookingStatus)">
+              {{ getStatusText(row.bookingStatus) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="bookingTime" label="预约时间" width="150">
+          <template #default="{ row }">
+            {{ formatDateTime(row.bookingTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" @click="viewDetails(row)">详情</el-button>
+            <el-button
+                v-if="row.bookingStatus === 'BOOKED'"
+                size="small"
+                type="success"
+                @click="confirmBooking(row)"
+            >
+              确认
+            </el-button>
+            <el-button
+                v-if="['BOOKED', 'CONFIRMED'].includes(row.bookingStatus)"
+                size="small"
+                type="danger"
+                @click="cancelBooking(row)"
+            >
+              取消
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination">
+        <el-pagination
+            v-model:current-page="pagination.currentPage"
+            v-model:page-size="pagination.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="loadBookings"
+            @current-change="loadBookings"
+        />
+      </div>
+    </div>
+
+    <!-- 取消预约对话框 -->
+    <el-dialog
+        v-model="cancelDialogVisible"
+        title="取消预约"
+        width="400px"
+    >
+      <el-form :model="cancelForm" label-width="80px">
+        <el-form-item label="取消原因">
+          <el-input
+              v-model="cancelForm.reason"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入取消原因"
+          />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cancelDialogVisible = false">取消</el-button>
+          <el-button type="danger" @click="submitCancel" :loading="cancelling">
+            确认取消
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Refresh } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { formatDate, formatTime, formatDateTime, getStatusText } from '@/utils/dateUtils'
+
+const router = useRouter()
+
+// 响应式数据
+const loading = ref(false)
+const cancelling = ref(false)
+const bookings = ref([])
+const cancelDialogVisible = ref(false)
+const selectedBooking = ref(null)
+
+// 筛选条件
+const filters = reactive({
+  status: '',
+  dateRange: null
+})
+
+// 统计数据
+const stats = reactive({
+  totalBookings: 0,
+  confirmedBookings: 0,
+  cancelledBookings: 0,
+  completedBookings: 0
+})
+
+// 分页数据
+const pagination = reactive({
+  currentPage: 1,
+  pageSize: 20,
+  total: 0
+})
+
+// 取消表单
+const cancelForm = reactive({
+  reason: ''
+})
+
+// 生命周期
+onMounted(() => {
+  loadBookings()
+  loadStats()
+})
+
+// 方法
+const loadBookings = async () => {
+  loading.value = true
+  try {
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 500))
+
+    bookings.value = [
+      {
+        bookingId: 1,
+        bookingNumber: 'BK20240115001',
+        studentName: '张三',
+        examTitle: '高等数学期末考试',
+        slotDate: '2024-01-15',
+        startTime: '09:00',
+        endTime: '11:00',
+        examLocation: '教学楼A101',
+        contactPhone: '13812345678',
+        bookingStatus: 'BOOKED',
+        bookingTime: '2024-01-10 10:30:00'
+      },
+      {
+        bookingId: 2,
+        bookingNumber: 'BK20240115002',
+        studentName: '李四',
+        examTitle: '英语四级模拟考试',
+        slotDate: '2024-01-16',
+        startTime: '14:00',
+        endTime: '16:00',
+        examLocation: '在线考试系统',
+        contactPhone: '13987654321',
+        bookingStatus: 'CONFIRMED',
+        bookingTime: '2024-01-11 15:20:00'
+      }
+    ]
+
+    pagination.total = bookings.value.length
+  } catch (error) {
+    ElMessage.error('加载预约列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadStats = async () => {
+  try {
+    // 模拟API调用
+    Object.assign(stats, {
+      totalBookings: 156,
+      confirmedBookings: 89,
+      cancelledBookings: 12,
+      completedBookings: 45
+    })
+  } catch (error) {
+    console.error('加载统计数据失败:', error)
+  }
+}
+
+const viewDetails = (booking) => {
+  router.push({
+    name: 'BookingDetails',
+    params: { bookingId: booking.bookingId }
+  })
+}
+
+const confirmBooking = async (booking) => {
+  try {
+    await ElMessageBox.confirm(
+        `确定要确认学生 ${booking.studentName} 的预约吗？`,
+        '确认预约',
+        { type: 'warning' }
+    )
+
+    // 模拟API调用
+    booking.bookingStatus = 'CONFIRMED'
+    ElMessage.success('预约确认成功')
+    loadStats()
+  } catch (error) {
+    // 用户取消操作
+  }
+}
+
+const cancelBooking = (booking) => {
+  selectedBooking.value = booking
+  cancelForm.reason = ''
+  cancelDialogVisible.value = true
+}
+
+const submitCancel = async () => {
+  if (!cancelForm.reason.trim()) {
+    ElMessage.warning('请输入取消原因')
+    return
+  }
+
+  cancelling.value = true
+  try {
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    selectedBooking.value.bookingStatus = 'CANCELLED'
+    ElMessage.success('预约取消成功')
+    cancelDialogVisible.value = false
+    loadStats()
+  } catch (error) {
+    ElMessage.error('取消预约失败')
+  } finally {
+    cancelling.value = false
+  }
+}
+
+const getStatusTagType = (status) => {
+  const typeMap = {
+    'BOOKED': 'warning',
+    'CONFIRMED': 'success',
+    'CANCELLED': 'danger',
+    'COMPLETED': 'info'
+  }
+  return typeMap[status] || 'info'
+}
+</script>
+
+<style scoped>
+.booking-management {
+  padding: 20px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.page-header h1 {
+  margin: 0;
+  color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.stats-cards {
+  margin-bottom: 20px;
+}
+
+.stats-card {
+  text-align: center;
+}
+
+.stats-content {
+  padding: 10px;
+}
+
+.stats-number {
+  font-size: 24px;
+  font-weight: bold;
+  color: #409eff;
+  margin-bottom: 8px;
+}
+
+.stats-label {
+  font-size: 14px;
+  color: #606266;
+}
+
+.bookings-table {
+  background: white;
+  border-radius: 8px;
+}
+
+.pagination {
+  margin-top: 20px;
+  text-align: right;
+}
+</style>
