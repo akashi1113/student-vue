@@ -72,6 +72,144 @@ const routes = [
       title: '学习评估',
       requiresAuth: true
     }
+  },
+  // 考试系统路由
+  {
+    path: '/exams',
+    name: 'ExamList',
+    component: () => import('@/views/exam/ExamList.vue'),
+    meta: {
+      title: '考试列表',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/exams/:examId',
+    name: 'ExamDetail',
+    component: () => import('@/views/exam/ExamDetail.vue'),
+    props: true,
+    meta: {
+      title: '考试详情',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/exams/:examId/take',
+    name: 'ExamTaking',
+    component: () => import('@/views/exam/ExamTaking.vue'),
+    props: true,
+    meta: {
+      title: '参加考试',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/exams/:examId/result',
+    name: 'ExamResult',
+    component: () => import('@/views/exam/ExamResult.vue'),
+    props: true,
+    meta: {
+      title: '考试结果',
+      requiresAuth: true
+    }
+  },
+
+  // 作业系统路由
+  {
+    path: '/homework',
+    name: 'HomeworkList',
+    component: () => import('@/views/homework/HomeworkList.vue'),
+    meta: {
+      title: '作业列表',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/homework/create',
+    name: 'HomeworkCreate',
+    component: () => import('@/views/homework/HomeworkCreate.vue'),
+    meta: {
+      title: '创建作业',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/homework/:homeworkId',
+    name: 'HomeworkDetail',
+    component: () => import('@/views/homework/HomeworkDetail.vue'),
+    props: true,
+    meta: {
+      title: '作业详情',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/homework/:homeworkId/submit',
+    name: 'HomeworkSubmit',
+    component: () => import('@/views/homework/HomeworkSubmit.vue'),
+    props: true,
+    meta: {
+      title: '提交作业',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/homework/:homeworkId/submissions',
+    name: 'HomeworkSubmissions',
+    component: () => import('@/views/homework/HomeworkSubmissions.vue'),
+    props: true,
+    meta: {
+      title: '作业提交情况',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/homework/submission/:submissionId/grade',
+    name: 'HomeworkGrade',
+    component: () => import('@/views/homework/HomeworkGrade.vue'),
+    props: true,
+    meta: {
+      title: '作业评分',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/homework/my-submissions',
+    name: 'MySubmissions',
+    component: () => import('@/views/homework/MySubmissions.vue'),
+    meta: {
+      title: '我的提交',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/homework/:homeworkId/submission/student/:userId',
+    name: 'StudentSubmissionDetail',
+    component: () => import('@/views/homework/StudentSubmissionDetail.vue'),
+    props: true,
+    meta: {
+      title: '学生提交详情',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/courses',
+    name: 'CourseList',
+    component: () => import('@/views/course/CourseList.vue'),
+    meta: {
+      title: '课程列表',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/courses/:courseId/homework',
+    name: 'CourseHomework',
+    component: () => import('@/views/homework/CourseHomework.vue'),
+    props: true,
+    meta: {
+      title: '课程作业',
+      requiresAuth: true
+    }
   }
 ]
 
