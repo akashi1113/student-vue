@@ -1,24 +1,34 @@
-// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
-// 现有组件
+// 来自index.js的组件
 import KnowledgeList from '../views/KnowledgeList.vue'
 import KnowledgeDetail from '../views/KnowledgeDetail.vue'
 import ScoreManage from '../views/score_manage/ScoreManage.vue'
 import LearningEvaluation from '../views/learning_evaluation/LearningEvaluation.vue'
 
-// 新增的登录注册组件
+// 来自index.ts的组件
+import Dashboard from '@/views/Dashboard.vue'
+import NoteView from '@/views/NoteView.vue'
+import ExperimentListView from '@/views/ExperimentListView.vue'
+import ExperimentSimulationView from '@/views/ExperimentSimulationView.vue'
+import ReportView from '@/views/ReportView.vue'
+import ReportGenerator from '@/views/ReportGenerator.vue'
+
+// 动态导入组件
 const Login = () => import('../views/UserLogin.vue')
 const Register = () => import('../views/UserRegister.vue')
+const ExperimentDetailView = () => import('@/views/ExperimentDetailView.vue')
+const ExperimentBookingView = () => import('@/views/ExperimentBookingView.vue')
 
-// 检查用户是否已登录
+// 来自index.js的认证检查
 function isAuthenticated() {
   const userInfo = localStorage.getItem('userInfo')
   return !!userInfo
 }
 
 const routes = [
+  // 来自index.js的路由
   {
     path: '/login',
     name: 'UserLogin',
@@ -210,6 +220,54 @@ const routes = [
       title: '课程作业',
       requiresAuth: true
     }
+  },
+
+  {
+    path: '/notes',
+    name: 'Notes',
+    component: NoteView,
+    meta: { title: '学习笔记' }
+  },
+ 
+  {
+    path: '/experimentList',
+    name: 'ExperimentList',
+    component: ExperimentListView,
+    props: true,
+    meta: { title: '实验项目库' }
+  },
+  {
+    path: '/experiment/simulation',
+    name: 'ExperimentSimulation',
+    component: ExperimentSimulationView,
+    props: true,
+    meta: { title: '实验操作' }
+  },
+  {
+    path: '/experiment/:id',
+    name: 'ExperimentDetail',
+    component: ExperimentDetailView,
+    props: true,
+    meta: { title: '实验详情' }
+  },
+  {
+    path: '/booking/:id',
+    name: 'ExperimentBooking',
+    component: ExperimentBookingView,
+    props: true
+  },
+  {
+    path: '/report',
+    name: 'Report',
+    component: ReportView,
+    props: true,
+    meta: { title: '实验报告' }
+  },
+  {
+    path: '/reports/generate/:recordId',
+    name: 'ReportGenerator',
+    component: ReportGenerator,
+    props: true
   }
 ]
 
@@ -218,14 +276,14 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫
+// 合并路由守卫逻辑
 router.beforeEach((to, from, next) => {
-  // 设置页面标题
+  // 来自index.js的标题设置
   if (to.meta.title) {
     document.title = `${to.meta.title} - 智能化在线教学支持服务平台`
   }
   
-  // 检查是否需要登录
+  // 来自index.js的认证检查
   if (to.meta.requiresAuth) {
     if (isAuthenticated()) {
       next()
@@ -233,11 +291,11 @@ router.beforeEach((to, from, next) => {
       ElMessage.warning('请先登录')
       next({
         path: '/login',
-        query: { redirect: to.fullPath } // 保存用户想要访问的页面
+        query: { redirect: to.fullPath }
       })
     }
   } else {
-    // 如果已登录用户访问登录或注册页面，重定向到首页
+    // 来自index.js的重定向逻辑
     if ((to.path === '/login' || to.path === '/register') && isAuthenticated()) {
       next('/')
     } else {

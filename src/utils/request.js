@@ -1,12 +1,33 @@
 // src/utils/request.js
-// 简单的HTTP请求工具
-// 这里使用fetch API，你也可以使用axios等库
+import axios from 'axios';
 import { ElMessage } from 'element-plus'
 import router from '../router'
 
+// 两种请求方式并存，可以通过不同导出名使用
 const BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8081'
 
-export default function request(options) {
+// ==================== Axios 实例 ====================
+const axiosInstance = axios.create({
+  baseURL: '/api',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// 请求拦截器：强制清理头字段
+axiosInstance.interceptors.request.use(config => {
+  config.headers = {
+    // 只保留这两个基础头，其他全部丢弃
+    'Content-Type': 'application/json',
+    ...(config.headers.Authorization ? { 
+      'Authorization': config.headers.Authorization 
+    } : {})
+  };
+  return config;
+});
+
+// ==================== Fetch 封装 ====================
+function fetchRequest(options) {
   const { url, method = 'GET', data, params } = options
   
   // 构建完整URL
@@ -113,4 +134,10 @@ export default function request(options) {
       }
       throw error
     })
+}
+
+// 导出两种请求方式
+export {
+  axiosInstance as axiosRequest,
+  fetchRequest as default
 }
