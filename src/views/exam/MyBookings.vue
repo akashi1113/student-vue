@@ -208,10 +208,10 @@ export default {
       checkingIn: false,
       selectedStatus: null,
       stats: {
-        totalBookings: 0,
-        activeBookings: 0,
-        completedBookings: 0,
-        cancelledBookings: 0
+        total_bookings: 0,
+        active_bookings: 0,
+        completed_bookings: 0,
+        cancelled_bookings: 0
       },
       cancelDialogVisible: false,
       checkInDialogVisible: false,

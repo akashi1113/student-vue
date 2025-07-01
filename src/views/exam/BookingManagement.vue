@@ -167,7 +167,7 @@
 </template>
 
 <script>
-import { getBookings, getBookingStats, confirmBooking, cancelBooking } from '@/api/examBooking';
+import examBookingApi from '@/api/examBooking';
 import { formatDate, formatTime, formatDateTime, getStatusText } from '@/utils/dateUtils';
 import { Refresh } from '@element-plus/icons-vue';
 
@@ -213,14 +213,14 @@ export default {
       this.loading = true;
       try {
         const params = {
-          page: this.pagination.currentPage,
-          size: this.pagination.pageSize,
+          pageNum: this.pagination.currentPage,
+          pageSize: this.pagination.pageSize,
           status: this.filters.status,
           startDate: this.filters.dateRange ? this.filters.dateRange[0] : null,
           endDate: this.filters.dateRange ? this.filters.dateRange[1] : null
         };
 
-        const response = await getBookings(params);
+        const response = await examBookingApi.getBookings(params);
         this.bookings = response.data.data.list || [];
         this.pagination.total = response.data.data.total || 0;
       } catch (error) {
@@ -232,7 +232,11 @@ export default {
 
     async loadStats() {
       try {
-        const response = await getBookingStats();
+        const params = {
+          startDate: this.filters.dateRange ? this.filters.dateRange[0] : null,
+          endDate: this.filters.dateRange ? this.filters.dateRange[1] : null
+        };
+        const response = await examBookingApi.getBookingStats(params);
         this.stats = {
           totalBookings: response.data.data.totalBookings || 0,
           confirmedBookings: response.data.data.confirmedBookings || 0,
@@ -259,7 +263,7 @@ export default {
             { type: 'warning' }
         );
 
-        await confirmBooking(booking.bookingId);
+        await examBookingApi.confirmBooking(booking.bookingId);
         booking.bookingStatus = 'CONFIRMED';
         this.$message.success('预约确认成功');
         this.loadStats();
@@ -282,7 +286,7 @@ export default {
 
       this.cancelling = true;
       try {
-        await cancelBooking(this.selectedBooking.bookingId, { reason: this.cancelForm.reason });
+        await examBookingApi.cancelBooking(this.selectedBooking.bookingId, { reason: this.cancelForm.reason });
 
         this.selectedBooking.bookingStatus = 'CANCELLED';
         this.$message.success('预约取消成功');

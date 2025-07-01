@@ -78,5 +78,24 @@ export default {
     },
     sendExamReminder(examId) {
         return axios.post(`${API_URL}/notifications/exam-reminder/${examId}`);
+    },
+    getBookings(params = {}) {
+        return axios.get(`${API_URL}/list`, {
+            params: {
+                status: params.status,
+                startDate: params.startDate,
+                endDate: params.endDate,
+                pageNum: params.pageNum || 1,
+                pageSize: params.pageSize || 20
+            }
+        });
+    },
+    getBookingStats(params = {}) {
+        return axios.get(`${API_URL}/stats`, {
+            params: {
+                startDate: params.startDate,
+                endDate: params.endDate
+            }
+        });
     }
 };
