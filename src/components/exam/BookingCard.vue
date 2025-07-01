@@ -16,7 +16,7 @@
       <div class="exam-details">
         <div class="detail-item">
           <el-icon><Calendar /></el-icon>
-          <span>考试时间：{{ formatDate(booking.slotDate) }} {{ formatTime(booking.startTime) }} - {{ formatTime(booking.endTime) }}</span>
+          <span>考试时间：{{ formatDate(booking.slotDate) }} {{ booking.startTime }} - {{ booking.endTime }}</span>
         </div>
 
         <div class="detail-item">

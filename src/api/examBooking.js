@@ -61,7 +61,6 @@ export default {
     getUserBookingStats(userId) {
         return axios.get(`${API_URL}/stats/user/${userId}`);
     },
-
     // 通知管理
     getUserNotifications(userId) {
         return axios.get(`${API_URL}/notifications/${userId}`);

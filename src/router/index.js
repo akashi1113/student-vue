@@ -30,7 +30,7 @@ function isAuthenticated() {
 const routes = [
   {
     path: '/',
-    redirect: '/exam-booking/notifications'
+    redirect: '/exam-booking/my-bookings'
   },
   // 来自index.js的路由
   {

@@ -29,7 +29,7 @@
         <el-col :span="6">
           <el-card class="stats-card">
             <div class="stats-content">
-              <div class="stats-number">{{ stats.totalBookings || 0 }}</div>
+              <div class="stats-number">{{ stats.total_bookings || 0 }}</div>
               <div class="stats-label">总预约</div>
             </div>
             <el-icon class="stats-icon"><Calendar /></el-icon>
@@ -38,7 +38,7 @@
         <el-col :span="6">
           <el-card class="stats-card active">
             <div class="stats-content">
-              <div class="stats-number">{{ stats.activeBookings || 0 }}</div>
+              <div class="stats-number">{{ stats.active_bookings || 0 }}</div>
               <div class="stats-label">有效预约</div>
             </div>
             <el-icon class="stats-icon"><Clock /></el-icon>
@@ -47,7 +47,7 @@
         <el-col :span="6">
           <el-card class="stats-card completed">
             <div class="stats-content">
-              <div class="stats-number">{{ stats.completedBookings || 0 }}</div>
+              <div class="stats-number">{{ stats.completed_bookings || 0 }}</div>
               <div class="stats-label">已完成</div>
             </div>
             <el-icon class="stats-icon"><CircleCheck /></el-icon>
@@ -56,7 +56,7 @@
         <el-col :span="6">
           <el-card class="stats-card cancelled">
             <div class="stats-content">
-              <div class="stats-number">{{ stats.cancelledBookings || 0 }}</div>
+              <div class="stats-number">{{ stats.cancelled_bookings || 0 }}</div>
               <div class="stats-label">已取消</div>
             </div>
             <el-icon class="stats-icon"><CircleClose /></el-icon>
@@ -186,7 +186,7 @@ import {
 import BookingCard from '@/components/exam/BookingCard.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { useBookingStore } from '@/stores/booking'
-import { getUserBookingStats, checkIn } from '@/api/examBooking'
+import examBookingApi from '@/api/examBooking'
 import {
   formatDate,
   formatTime,
@@ -206,7 +206,7 @@ export default {
       loading: false,
       cancelling: false,
       checkingIn: false,
-      selectedStatus: '',
+      selectedStatus: null,
       stats: {
         totalBookings: 0,
         activeBookings: 0,
@@ -246,7 +246,7 @@ export default {
 
     async loadStats() {
       try {
-        const response = await getUserBookingStats(this.currentUserId)
+        const response = await examBookingApi.getUserBookingStats(this.currentUserId)
         Object.assign(this.stats, response.data.data)
       } catch (error) {
         console.error('加载统计数据失败:', error)
@@ -289,7 +289,7 @@ export default {
     async confirmCheckIn() {
       this.checkingIn = true
       try {
-        await checkIn(this.selectedBooking.bookingId, {
+        await examBookingApi.checkIn(this.selectedBooking.bookingId, {
           checkInStatus: 'CHECKED_IN'
         })
         this.$message.success('签到成功')
