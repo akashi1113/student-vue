@@ -32,12 +32,12 @@
         </el-table-column>
         <el-table-column prop="startTime" label="开始时间" width="100">
           <template #default="{ row }">
-            {{ formatTime(row.startTime) }}
+            {{ row.startTime }}
           </template>
         </el-table-column>
         <el-table-column prop="endTime" label="结束时间" width="100">
           <template #default="{ row }">
-            {{ formatTime(row.endTime) }}
+            {{ row.endTime }}
           </template>
         </el-table-column>
         <el-table-column prop="examLocation" label="考试地点" width="150" />
@@ -74,7 +74,6 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="editTimeSlot(row)">编辑</el-button>
-            <el-button size="small" type="info" @click="viewBookings(row)">预约情况</el-button>
             <el-button
                 size="small"
                 :type="row.isActive ? 'danger' : 'success'"
@@ -191,13 +190,8 @@
 </template>
 
 <script>
-import {
-  getExams,
-  getTimeSlots,
-  createTimeSlot,
-  updateTimeSlot,
-  toggleTimeSlotStatus
-} from '@/api/examBooking';
+import examApi from '@/api/exam';
+import examBookingApi from '@/api/examBooking';
 import { formatDate, formatTime, formatDateTime, getExamModeText } from '@/utils/dateUtils';
 import { Plus } from '@element-plus/icons-vue';
 
@@ -207,7 +201,7 @@ export default {
     return {
       loading: false,
       submitting: false,
-      selectedExam: '',
+      selectedExam: null,
       timeSlots: [],
       examList: [],
       dialogVisible: false,
@@ -242,7 +236,8 @@ export default {
   methods: {
     async loadExamList() {
       try {
-        const response = await getExams();
+        const response = await examApi.getAllExams();
+        console.log('考试列表响应:', response); // 添加调试日志
         this.examList = response.data.data || [];
       } catch (error) {
         this.$message.error('加载考试列表失败: ' + (error.message || ''));
@@ -251,11 +246,10 @@ export default {
 
     async loadTimeSlots() {
       if (!this.selectedExam) return;
-
       this.loading = true;
       try {
-        const response = await getTimeSlots(this.selectedExam);
-        this.timeSlots = response.data || [];
+        const response = await examBookingApi.getTimeSlots(this.selectedExam);
+        this.timeSlots = response.data.data || [];
       } catch (error) {
         this.$message.error('加载时间段失败: ' + (error.message || ''));
       } finally {
@@ -298,15 +292,15 @@ export default {
         this.form.examId = this.selectedExam;
 
         if (this.isEdit) {
-          await updateTimeSlot(this.form.id, this.form);
+          await examBookingApi.updateTimeSlot(this.form.id, this.form);
           this.$message.success('更新成功');
         } else {
-          await createTimeSlot(this.form);
+          await examBookingApi.createTimeSlot(this.form);
           this.$message.success('创建成功');
         }
 
         this.dialogVisible = false;
-        this.loadTimeSlots();
+        await this.loadTimeSlots();
       } catch (error) {
         if (error !== false) {
           this.$message.error(this.isEdit ? '更新失败' : '创建失败');
@@ -342,17 +336,12 @@ export default {
             { type: 'warning' }
         );
 
-        await toggleTimeSlotStatus(row.id);
+        await examBookingApi.toggleTimeSlotStatus(row.id);
         row.isActive = !row.isActive;
         this.$message.success(`${row.isActive ? '启用' : '禁用'}成功`);
       } catch (error) {
         // 用户取消操作
       }
-    },
-
-    viewBookings(row) {
-      this.$message.info(`查看时间段 ${row.id} 的预约情况`);
-      // 这里可以跳转到预约详情页面或打开对话框
     },
 
     getModeTagType(mode) {
@@ -370,8 +359,13 @@ export default {
     getExamModeText
   },
   created() {
-    this.loadExamList();
-  }
+    this.loadExamList().then(() => {
+      if (this.examList.length > 0) {
+        this.selectedExam = this.examList[0].id; // 默认选择第一个考试
+        this.loadTimeSlots();
+      }
+    });
+  },
 };
 </script>
 

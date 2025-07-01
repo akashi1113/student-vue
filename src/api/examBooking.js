@@ -97,5 +97,13 @@ export default {
                 endDate: params.endDate
             }
         });
+    },
+    // 获取考试时间段
+    getTimeSlots(examId) {
+        return axios.get(`${API_URL}/${examId}/time-slots`);
+    },
+    // 切换时间段状态
+    toggleTimeSlotStatus(timeSlotId) {
+        return axios.post(`${API_URL}/time-slots/${timeSlotId}/toggle-status`);
     }
 };
