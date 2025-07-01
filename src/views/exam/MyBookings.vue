@@ -247,7 +247,7 @@ export default {
     async loadStats() {
       try {
         const response = await getUserBookingStats(this.currentUserId)
-        Object.assign(this.stats, response.data)
+        Object.assign(this.stats, response.data.data)
       } catch (error) {
         console.error('加载统计数据失败:', error)
       }

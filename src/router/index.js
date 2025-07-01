@@ -30,7 +30,7 @@ function isAuthenticated() {
 const routes = [
   {
     path: '/',
-    redirect: '/exams'
+    redirect: '/exam-booking/notifications'
   },
   // 来自index.js的路由
   {
@@ -131,17 +131,6 @@ const routes = [
 
   // ============================== 考试预约系统路由 ==============================
 
-  // 学生端考试预约路由
-  // {
-  //   path: '/exam-booking/available',
-  //   name: 'AvailableExams',
-  //   component: () => import('@/views/exam/AvailableExams.vue'),
-  //   meta: {
-  //     title: '可预约考试',
-  //     requiresAuth: true,
-  //     roles: ['STUDENT']
-  //   }
-  // },
   {
     path: '/exam-booking/my-bookings',
     name: 'MyBookings',

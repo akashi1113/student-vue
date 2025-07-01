@@ -221,8 +221,8 @@ export default {
         };
 
         const response = await getBookings(params);
-        this.bookings = response.data.list || [];
-        this.pagination.total = response.data.total || 0;
+        this.bookings = response.data.data.list || [];
+        this.pagination.total = response.data.data.total || 0;
       } catch (error) {
         this.$message.error('加载预约列表失败: ' + (error.message || ''));
       } finally {
@@ -234,10 +234,10 @@ export default {
       try {
         const response = await getBookingStats();
         this.stats = {
-          totalBookings: response.data.totalBookings || 0,
-          confirmedBookings: response.data.confirmedBookings || 0,
-          cancelledBookings: response.data.cancelledBookings || 0,
-          completedBookings: response.data.completedBookings || 0
+          totalBookings: response.data.data.totalBookings || 0,
+          confirmedBookings: response.data.data.confirmedBookings || 0,
+          cancelledBookings: response.data.data.cancelledBookings || 0,
+          completedBookings: response.data.data.completedBookings || 0
         };
       } catch (error) {
         console.error('加载统计数据失败:', error);

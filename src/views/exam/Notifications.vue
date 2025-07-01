@@ -53,7 +53,7 @@
               :key="notification.id"
               class="notification-item"
               :class="{
-              'unread': notification.sendStatus !== 'read',
+              'unread': notification.sendStatus !== 'READ',
               'selected': selectedNotifications.includes(notification.id)
             }"
               @click="handleNotificationClick(notification)"
@@ -71,7 +71,7 @@
                 <div class="notification-title">
                   <span class="title-text">{{ notification.title }}</span>
                   <el-tag
-                      v-if="notification.sendStatus !== 'read'"
+                      v-if="notification.sendStatus !== 'READ'"
                       type="danger"
                       size="small"
                       effect="plain"
@@ -102,7 +102,7 @@
 
             <div class="notification-actions">
               <el-button
-                  v-if="notification.sendStatus !== 'read'"
+                  v-if="notification.sendStatus !== 'READ'"
                   size="small"
                   @click.stop="markAsRead(notification.id)"
               >
@@ -228,7 +228,7 @@ export default {
       this.detailDialogVisible = true
 
       // 如果是未读通知，自动标记为已读
-      if (notification.sendStatus !== 'read') {
+      if (notification.sendStatus !== 'READ') {
         this.markAsRead(notification.id)
       }
     },
@@ -274,7 +274,7 @@ export default {
     },
 
     viewRelatedBooking(bookingId) {
-      this.$router.push(`/student/booking-details/${bookingId}`)
+      this.$router.push(`/exam-booking/details/${bookingId}`)
     },
 
     getNotificationTypeText(type) {

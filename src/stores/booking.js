@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import * as bookingApi from '@/api/examBooking'
+import bookingApi from '@/api/examBooking'
 
 export const useBookingStore = defineStore('booking', () => {
     // 状态
@@ -12,7 +12,7 @@ export const useBookingStore = defineStore('booking', () => {
 
     // 计算属性
     const unreadNotifications = computed(() => {
-        return notifications.value.filter(n => n.sendStatus !== 'read')
+        return notifications.value.filter(n => n.sendStatus !== 'READ')
     })
 
     const activeBookings = computed(() => {
@@ -26,7 +26,7 @@ export const useBookingStore = defineStore('booking', () => {
         loading.value = true
         try {
             const response = await bookingApi.getAvailableTimeSlots(examId)
-            timeSlots.value = response.data || []
+            timeSlots.value = response.data.data || []
             return response
         } finally {
             loading.value = false
@@ -37,7 +37,7 @@ export const useBookingStore = defineStore('booking', () => {
         loading.value = true
         try {
             const response = await bookingApi.getUserBookings(userId, status)
-            userBookings.value = response.data || []
+            userBookings.value = response.data.data || []
             return response
         } finally {
             loading.value = false
@@ -47,7 +47,7 @@ export const useBookingStore = defineStore('booking', () => {
     const fetchUserNotifications = async (userId) => {
         try {
             const response = await bookingApi.getUserNotifications(userId)
-            notifications.value = response.data || []
+            notifications.value = response.data.data || []
             return response
         } catch (error) {
             console.error('获取通知失败:', error)
@@ -89,7 +89,7 @@ export const useBookingStore = defineStore('booking', () => {
             // 更新本地状态
             const notification = notifications.value.find(n => n.id === notificationId)
             if (notification) {
-                notification.sendStatus = 'read'
+                notification.sendStatus = 'READ'
                 notification.readTime = new Date().toISOString()
             }
         } catch (error) {

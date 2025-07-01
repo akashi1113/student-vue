@@ -243,7 +243,7 @@ export default {
     async loadExamList() {
       try {
         const response = await getExams();
-        this.examList = response.data || [];
+        this.examList = response.data.data || [];
       } catch (error) {
         this.$message.error('加载考试列表失败: ' + (error.message || ''));
       }
