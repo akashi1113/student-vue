@@ -175,9 +175,7 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+<script>
 import {
   Refresh,
   Calendar,
@@ -197,123 +195,135 @@ import {
   getExamModeText
 } from '@/utils/dateUtils'
 
-// 状态管理
-const bookingStore = useBookingStore()
+export default {
+  name: 'MyBookings',
+  components: {
+    BookingCard,
+    ConfirmDialog
+  },
+  data() {
+    return {
+      loading: false,
+      cancelling: false,
+      checkingIn: false,
+      selectedStatus: '',
+      stats: {
+        totalBookings: 0,
+        activeBookings: 0,
+        completedBookings: 0,
+        cancelledBookings: 0
+      },
+      cancelDialogVisible: false,
+      checkInDialogVisible: false,
+      detailsDialogVisible: false,
+      selectedBooking: null,
+      currentUserId: 1 // 实际项目中应该从用户状态获取
+    }
+  },
+  computed: {
+    bookings() {
+      return useBookingStore().userBookings
+    },
+    bookingStore() {
+      return useBookingStore()
+    }
+  },
+  created() {
+    this.loadBookings()
+    this.loadStats()
+  },
+  methods: {
+    async loadBookings() {
+      this.loading = true
+      try {
+        await this.bookingStore.fetchUserBookings(this.currentUserId, this.selectedStatus)
+      } catch (error) {
+        this.$message.error('加载预约列表失败')
+      } finally {
+        this.loading = false
+      }
+    },
 
-// 响应式数据
-const loading = ref(false)
-const cancelling = ref(false)
-const checkingIn = ref(false)
-const selectedStatus = ref('')
-const stats = reactive({
-  totalBookings: 0,
-  activeBookings: 0,
-  completedBookings: 0,
-  cancelledBookings: 0
-})
+    async loadStats() {
+      try {
+        const response = await getUserBookingStats(this.currentUserId)
+        Object.assign(this.stats, response.data)
+      } catch (error) {
+        console.error('加载统计数据失败:', error)
+      }
+    },
 
-// 对话框状态
-const cancelDialogVisible = ref(false)
-const checkInDialogVisible = ref(false)
-const detailsDialogVisible = ref(false)
-const selectedBooking = ref(null)
+    handleCancelBooking(booking) {
+      this.selectedBooking = booking
+      this.cancelDialogVisible = true
+    },
 
-// 计算属性
-const bookings = computed(() => bookingStore.userBookings)
+    async confirmCancel(cancelReason) {
+      if (!cancelReason.trim()) {
+        this.$message.warning('请输入取消原因')
+        return
+      }
 
-// 当前用户ID（实际项目中应该从用户状态获取）
-const currentUserId = ref(1)
+      this.cancelling = true
+      try {
+        await this.bookingStore.cancelBooking(
+            this.selectedBooking.bookingId,
+            this.currentUserId,
+            cancelReason
+        )
+        this.$message.success('预约已取消')
+        this.cancelDialogVisible = false
+        await this.loadStats() // 重新加载统计数据
+      } catch (error) {
+        this.$message.error(error.message || '取消预约失败')
+      } finally {
+        this.cancelling = false
+      }
+    },
 
-// 生命周期
-onMounted(() => {
-  loadBookings()
-  loadStats()
-})
+    handleCheckIn(booking) {
+      this.selectedBooking = booking
+      this.checkInDialogVisible = true
+    },
 
-// 方法
-const loadBookings = async () => {
-  loading.value = true
-  try {
-    await bookingStore.fetchUserBookings(currentUserId.value, selectedStatus.value)
-  } catch (error) {
-    ElMessage.error('加载预约列表失败')
-  } finally {
-    loading.value = false
+    async confirmCheckIn() {
+      this.checkingIn = true
+      try {
+        await checkIn(this.selectedBooking.bookingId, {
+          checkInStatus: 'CHECKED_IN'
+        })
+        this.$message.success('签到成功')
+        this.checkInDialogVisible = false
+        await this.loadBookings() // 重新加载预约列表
+      } catch (error) {
+        this.$message.error(error.message || '签到失败')
+      } finally {
+        this.checkingIn = false
+      }
+    },
+
+    viewBookingDetails(booking) {
+      this.selectedBooking = booking
+      this.detailsDialogVisible = true
+    },
+
+    getStatusTagType(status) {
+      const typeMap = {
+        'BOOKED': 'warning',
+        'CONFIRMED': 'success',
+        'CANCELLED': 'danger',
+        'COMPLETED': 'info',
+        'NO_SHOW': 'danger'
+      }
+      return typeMap[status] || 'info'
+    },
+
+    formatDate,
+    formatTime,
+    formatDateTime,
+    getStatusText,
+    getExamModeText
   }
-}
-
-const loadStats = async () => {
-  try {
-    const response = await getUserBookingStats(currentUserId.value)
-    Object.assign(stats, response.data)
-  } catch (error) {
-    console.error('加载统计数据失败:', error)
-  }
-}
-
-const handleCancelBooking = (booking) => {
-  selectedBooking.value = booking
-  cancelDialogVisible.value = true
-}
-
-const confirmCancel = async (cancelReason) => {
-  if (!cancelReason.trim()) {
-    ElMessage.warning('请输入取消原因')
-    return
-  }
-
-  cancelling.value = true
-  try {
-    await bookingStore.cancelBooking(
-        selectedBooking.value.bookingId,
-        currentUserId.value,
-        cancelReason
-    )
-    ElMessage.success('预约已取消')
-    cancelDialogVisible.value = false
-    await loadStats() // 重新加载统计数据
-  } catch (error) {
-    ElMessage.error(error.message || '取消预约失败')
-  } finally {
-    cancelling.value = false
-  }
-}
-
-const handleCheckIn = (booking) => {
-  selectedBooking.value = booking
-  checkInDialogVisible.value = true
-}
-
-const confirmCheckIn = async () => {
-  checkingIn.value = true
-  try {
-    await checkIn(selectedBooking.value.bookingId, {
-      checkInStatus: 'CHECKED_IN'
-    })
-    ElMessage.success('签到成功')
-    checkInDialogVisible.value = false
-    await loadBookings() // 重新加载预约列表
-  } catch (error) {
-    ElMessage.error(error.message || '签到失败')
-  } finally {
-    checkingIn.value = false
-  }
-}
-
-const viewBookingDetails = (booking) => {
-  selectedBooking.value = booking
-  detailsDialogVisible.value = true
-}
-
-const getStatusTagType = (status) => {
-  const typeMap = {
-    'BOOKED': 'warning',
-    'CONFIRMED': 'success',
-    'CANCELLED': 'danger',
-    'COMPLETED': 'info',
-    'NO_SHOW': 'danger'
-  }
-  return typeMap[status] || 'info'
 }
 </script>
 

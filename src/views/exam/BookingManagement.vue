@@ -84,7 +84,7 @@
         </el-table-column>
         <el-table-column label="考试时间" width="140">
           <template #default="{ row }">
-            {{ formatTime(row.startTime) }} - {{ formatTime(row.endTime) }}
+            {{ row.startTime }} - {{ row.endTime }}
           </template>
         </el-table-column>
         <el-table-column prop="examLocation" label="考试地点" width="120" />
@@ -166,173 +166,155 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
-import { useRouter } from 'vue-router'
-import { formatDate, formatTime, formatDateTime, getStatusText } from '@/utils/dateUtils'
+<script>
+import { getBookings, getBookingStats, confirmBooking, cancelBooking } from '@/api/examBooking';
+import { formatDate, formatTime, formatDateTime, getStatusText } from '@/utils/dateUtils';
+import { Refresh } from '@element-plus/icons-vue';
 
-const router = useRouter()
+export default {
+  name: 'BookingManagement',
+  data() {
+    return {
+      loading: false,
+      cancelling: false,
+      bookings: [],
+      cancelDialogVisible: false,
+      selectedBooking: null,
 
-// 响应式数据
-const loading = ref(false)
-const cancelling = ref(false)
-const bookings = ref([])
-const cancelDialogVisible = ref(false)
-const selectedBooking = ref(null)
-
-// 筛选条件
-const filters = reactive({
-  status: '',
-  dateRange: null
-})
-
-// 统计数据
-const stats = reactive({
-  totalBookings: 0,
-  confirmedBookings: 0,
-  cancelledBookings: 0,
-  completedBookings: 0
-})
-
-// 分页数据
-const pagination = reactive({
-  currentPage: 1,
-  pageSize: 20,
-  total: 0
-})
-
-// 取消表单
-const cancelForm = reactive({
-  reason: ''
-})
-
-// 生命周期
-onMounted(() => {
-  loadBookings()
-  loadStats()
-})
-
-// 方法
-const loadBookings = async () => {
-  loading.value = true
-  try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    bookings.value = [
-      {
-        bookingId: 1,
-        bookingNumber: 'BK20240115001',
-        studentName: '张三',
-        examTitle: '高等数学期末考试',
-        slotDate: '2024-01-15',
-        startTime: '09:00',
-        endTime: '11:00',
-        examLocation: '教学楼A101',
-        contactPhone: '13812345678',
-        bookingStatus: 'BOOKED',
-        bookingTime: '2024-01-10 10:30:00'
+      // 筛选条件
+      filters: {
+        status: '',
+        dateRange: null
       },
-      {
-        bookingId: 2,
-        bookingNumber: 'BK20240115002',
-        studentName: '李四',
-        examTitle: '英语四级模拟考试',
-        slotDate: '2024-01-16',
-        startTime: '14:00',
-        endTime: '16:00',
-        examLocation: '在线考试系统',
-        contactPhone: '13987654321',
-        bookingStatus: 'CONFIRMED',
-        bookingTime: '2024-01-11 15:20:00'
+
+      // 统计数据
+      stats: {
+        totalBookings: 0,
+        confirmedBookings: 0,
+        cancelledBookings: 0,
+        completedBookings: 0
+      },
+
+      // 分页数据
+      pagination: {
+        currentPage: 1,
+        pageSize: 20,
+        total: 0
+      },
+
+      // 取消表单
+      cancelForm: {
+        reason: ''
       }
-    ]
+    };
+  },
+  methods: {
+    async loadBookings() {
+      this.loading = true;
+      try {
+        const params = {
+          page: this.pagination.currentPage,
+          size: this.pagination.pageSize,
+          status: this.filters.status,
+          startDate: this.filters.dateRange ? this.filters.dateRange[0] : null,
+          endDate: this.filters.dateRange ? this.filters.dateRange[1] : null
+        };
 
-    pagination.total = bookings.value.length
-  } catch (error) {
-    ElMessage.error('加载预约列表失败')
-  } finally {
-    loading.value = false
+        const response = await getBookings(params);
+        this.bookings = response.data.list || [];
+        this.pagination.total = response.data.total || 0;
+      } catch (error) {
+        this.$message.error('加载预约列表失败: ' + (error.message || ''));
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async loadStats() {
+      try {
+        const response = await getBookingStats();
+        this.stats = {
+          totalBookings: response.data.totalBookings || 0,
+          confirmedBookings: response.data.confirmedBookings || 0,
+          cancelledBookings: response.data.cancelledBookings || 0,
+          completedBookings: response.data.completedBookings || 0
+        };
+      } catch (error) {
+        console.error('加载统计数据失败:', error);
+      }
+    },
+
+    viewDetails(booking) {
+      this.$router.push({
+        name: 'BookingDetails',
+        params: { bookingId: booking.bookingId }
+      });
+    },
+
+    async confirmBooking(booking) {
+      try {
+        await this.$confirm(
+            `确定要确认学生 ${booking.studentName} 的预约吗？`,
+            '确认预约',
+            { type: 'warning' }
+        );
+
+        await confirmBooking(booking.bookingId);
+        booking.bookingStatus = 'CONFIRMED';
+        this.$message.success('预约确认成功');
+        this.loadStats();
+      } catch (error) {
+        // 用户取消操作
+      }
+    },
+
+    cancelBooking(booking) {
+      this.selectedBooking = booking;
+      this.cancelForm.reason = '';
+      this.cancelDialogVisible = true;
+    },
+
+    async submitCancel() {
+      if (!this.cancelForm.reason.trim()) {
+        this.$message.warning('请输入取消原因');
+        return;
+      }
+
+      this.cancelling = true;
+      try {
+        await cancelBooking(this.selectedBooking.bookingId, { reason: this.cancelForm.reason });
+
+        this.selectedBooking.bookingStatus = 'CANCELLED';
+        this.$message.success('预约取消成功');
+        this.cancelDialogVisible = false;
+        this.loadStats();
+      } catch (error) {
+        this.$message.error('取消预约失败: ' + (error.message || ''));
+      } finally {
+        this.cancelling = false;
+      }
+    },
+
+    getStatusTagType(status) {
+      const typeMap = {
+        'BOOKED': 'warning',
+        'CONFIRMED': 'success',
+        'CANCELLED': 'danger',
+        'COMPLETED': 'info'
+      };
+      return typeMap[status] || 'info';
+    },
+
+    formatDate,
+    formatTime,
+    formatDateTime,
+    getStatusText
+  },
+  created() {
+    this.loadBookings();
+    this.loadStats();
   }
-}
-
-const loadStats = async () => {
-  try {
-    // 模拟API调用
-    Object.assign(stats, {
-      totalBookings: 156,
-      confirmedBookings: 89,
-      cancelledBookings: 12,
-      completedBookings: 45
-    })
-  } catch (error) {
-    console.error('加载统计数据失败:', error)
-  }
-}
-
-const viewDetails = (booking) => {
-  router.push({
-    name: 'BookingDetails',
-    params: { bookingId: booking.bookingId }
-  })
-}
-
-const confirmBooking = async (booking) => {
-  try {
-    await ElMessageBox.confirm(
-        `确定要确认学生 ${booking.studentName} 的预约吗？`,
-        '确认预约',
-        { type: 'warning' }
-    )
-
-    // 模拟API调用
-    booking.bookingStatus = 'CONFIRMED'
-    ElMessage.success('预约确认成功')
-    loadStats()
-  } catch (error) {
-    // 用户取消操作
-  }
-}
-
-const cancelBooking = (booking) => {
-  selectedBooking.value = booking
-  cancelForm.reason = ''
-  cancelDialogVisible.value = true
-}
-
-const submitCancel = async () => {
-  if (!cancelForm.reason.trim()) {
-    ElMessage.warning('请输入取消原因')
-    return
-  }
-
-  cancelling.value = true
-  try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    selectedBooking.value.bookingStatus = 'CANCELLED'
-    ElMessage.success('预约取消成功')
-    cancelDialogVisible.value = false
-    loadStats()
-  } catch (error) {
-    ElMessage.error('取消预约失败')
-  } finally {
-    cancelling.value = false
-  }
-}
-
-const getStatusTagType = (status) => {
-  const typeMap = {
-    'BOOKED': 'warning',
-    'CONFIRMED': 'success',
-    'CANCELLED': 'danger',
-    'COMPLETED': 'info'
-  }
-  return typeMap[status] || 'info'
-}
+};
 </script>
 
 <style scoped>

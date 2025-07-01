@@ -157,157 +157,160 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+<script>
 import { Refresh } from '@element-plus/icons-vue'
 import { useBookingStore } from '@/stores/booking'
-import { useRouter } from 'vue-router'
 import { formatDateTime } from '@/utils/dateUtils'
 
-// 路由
-const router = useRouter()
+export default {
+  name: 'NotificationsPage',
+  data() {
+    return {
+      loading: false,
+      batchReading: false,
+      markingAll: false,
+      selectedNotifications: [],
+      selectAll: false,
+      detailDialogVisible: false,
+      selectedNotification: null,
+      currentUserId: 1 // 实际项目中应该从用户状态获取
+    }
+  },
+  computed: {
+    notifications() {
+      return useBookingStore().notifications
+    },
+    unreadNotifications() {
+      return useBookingStore().unreadNotifications
+    },
+    unreadCount() {
+      return this.unreadNotifications.length
+    },
+    indeterminate() {
+      const selected = this.selectedNotifications.length
+      const total = this.notifications.length
+      return selected > 0 && selected < total
+    },
+    bookingStore() {
+      return useBookingStore()
+    }
+  },
+  watch: {
+    selectAll(val) {
+      if (val) {
+        this.selectedNotifications = this.notifications.map(n => n.id)
+      } else {
+        this.selectedNotifications = []
+      }
+    }
+  },
+  created() {
+    this.loadNotifications()
+  },
+  methods: {
+    async loadNotifications() {
+      this.loading = true
+      try {
+        await this.bookingStore.fetchUserNotifications(this.currentUserId)
+      } catch (error) {
+        this.$message.error('加载通知失败')
+      } finally {
+        this.loading = false
+      }
+    },
 
-// 状态管理
-const bookingStore = useBookingStore()
+    handleSelectAll(val) {
+      this.selectAll = val
+    },
 
-// 响应式数据
-const loading = ref(false)
-const batchReading = ref(false)
-const markingAll = ref(false)
-const selectedNotifications = ref([])
-const selectAll = ref(false)
-const detailDialogVisible = ref(false)
-const selectedNotification = ref(null)
+    handleNotificationClick(notification) {
+      this.selectedNotification = notification
+      this.detailDialogVisible = true
 
-// 当前用户ID
-const currentUserId = ref(1)
+      // 如果是未读通知，自动标记为已读
+      if (notification.sendStatus !== 'read') {
+        this.markAsRead(notification.id)
+      }
+    },
 
-// 计算属性
-const notifications = computed(() => bookingStore.notifications)
-const unreadNotifications = computed(() => bookingStore.unreadNotifications)
-const unreadCount = computed(() => unreadNotifications.value.length)
+    async markAsRead(notificationId) {
+      try {
+        await this.bookingStore.markAsRead(notificationId)
+      } catch (error) {
+        this.$message.error('标记已读失败')
+      }
+    },
 
-const indeterminate = computed(() => {
-  const selected = selectedNotifications.value.length
-  const total = notifications.value.length
-  return selected > 0 && selected < total
-})
+    async batchMarkAsRead() {
+      if (this.selectedNotifications.length === 0) {
+        this.$message.warning('请选择要标记的通知')
+        return
+      }
 
-// 生命周期
-onMounted(() => {
-  loadNotifications()
-})
+      this.batchReading = true
+      try {
+        await this.bookingStore.batchMarkAsRead(this.currentUserId, this.selectedNotifications)
+        this.selectedNotifications = []
+        this.selectAll = false
+        this.$message.success('批量标记成功')
+      } catch (error) {
+        this.$message.error('批量标记失败')
+      } finally {
+        this.batchReading = false
+      }
+    },
 
-// 监听全选状态
-watch(selectAll, (val) => {
-  if (val) {
-    selectedNotifications.value = notifications.value.map(n => n.id)
-  } else {
-    selectedNotifications.value = []
+    async markAllAsRead() {
+      this.markingAll = true
+      try {
+        const unreadIds = this.unreadNotifications.map(n => n.id)
+        await this.bookingStore.batchMarkAsRead(this.currentUserId, unreadIds)
+        this.$message.success('全部标记为已读')
+      } catch (error) {
+        this.$message.error('标记失败')
+      } finally {
+        this.markingAll = false
+      }
+    },
+
+    viewRelatedBooking(bookingId) {
+      this.$router.push(`/student/booking-details/${bookingId}`)
+    },
+
+    getNotificationTypeText(type) {
+      const typeMap = {
+        'BOOKING_CONFIRMED': '预约确认',
+        'BOOKING_CANCELLED': '预约取消',
+        'EXAM_REMINDER': '考试提醒',
+        'EXAM_CHANGED': '考试变更',
+        'SYSTEM_NOTICE': '系统通知'
+      }
+      return typeMap[type] || type
+    },
+
+    getNotificationTypeTag(type) {
+      const tagMap = {
+        'BOOKING_CONFIRMED': 'success',
+        'BOOKING_CANCELLED': 'danger',
+        'EXAM_REMINDER': 'warning',
+        'EXAM_CHANGED': 'primary',
+        'SYSTEM_NOTICE': 'info'
+      }
+      return tagMap[type] || 'info'
+    },
+
+    getPriorityText(priority) {
+      const priorityMap = {
+        'LOW': '低',
+        'NORMAL': '普通',
+        'HIGH': '高',
+        'URGENT': '紧急'
+      }
+      return priorityMap[priority] || priority
+    },
+
+    formatDateTime
   }
-})
-
-// 方法
-const loadNotifications = async () => {
-  loading.value = true
-  try {
-    await bookingStore.fetchUserNotifications(currentUserId.value)
-  } catch (error) {
-    ElMessage.error('加载通知失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleSelectAll = (val) => {
-  selectAll.value = val
-}
-
-const handleNotificationClick = (notification) => {
-  selectedNotification.value = notification
-  detailDialogVisible.value = true
-
-  // 如果是未读通知，自动标记为已读
-  if (notification.sendStatus !== 'read') {
-    markAsRead(notification.id)
-  }
-}
-
-const markAsRead = async (notificationId) => {
-  try {
-    await bookingStore.markAsRead(notificationId)
-  } catch (error) {
-    ElMessage.error('标记已读失败')
-  }
-}
-
-const batchMarkAsRead = async () => {
-  if (selectedNotifications.value.length === 0) {
-    ElMessage.warning('请选择要标记的通知')
-    return
-  }
-
-  batchReading.value = true
-  try {
-    await bookingStore.batchMarkAsRead(currentUserId.value, selectedNotifications.value)
-    selectedNotifications.value = []
-    selectAll.value = false
-    ElMessage.success('批量标记成功')
-  } catch (error) {
-    ElMessage.error('批量标记失败')
-  } finally {
-    batchReading.value = false
-  }
-}
-
-const markAllAsRead = async () => {
-  markingAll.value = true
-  try {
-    const unreadIds = unreadNotifications.value.map(n => n.id)
-    await bookingStore.batchMarkAsRead(currentUserId.value, unreadIds)
-    ElMessage.success('全部标记为已读')
-  } catch (error) {
-    ElMessage.error('标记失败')
-  } finally {
-    markingAll.value = false
-  }
-}
-
-const viewRelatedBooking = (bookingId) => {
-  router.push(`/student/booking-details/${bookingId}`)
-}
-
-const getNotificationTypeText = (type) => {
-  const typeMap = {
-    'BOOKING_CONFIRMED': '预约确认',
-    'BOOKING_CANCELLED': '预约取消',
-    'EXAM_REMINDER': '考试提醒',
-    'EXAM_CHANGED': '考试变更',
-    'SYSTEM_NOTICE': '系统通知'
-  }
-  return typeMap[type] || type
-}
-
-const getNotificationTypeTag = (type) => {
-  const tagMap = {
-    'BOOKING_CONFIRMED': 'success',
-    'BOOKING_CANCELLED': 'danger',
-    'EXAM_REMINDER': 'warning',
-    'EXAM_CHANGED': 'primary',
-    'SYSTEM_NOTICE': 'info'
-  }
-  return tagMap[type] || 'info'
-}
-
-const getPriorityText = (priority) => {
-  const priorityMap = {
-    'LOW': '低',
-    'NORMAL': '普通',
-    'HIGH': '高',
-    'URGENT': '紧急'
-  }
-  return priorityMap[priority] || priority
 }
 </script>
 

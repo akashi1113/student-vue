@@ -147,158 +147,170 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+<script>
 import { Timer, Trophy, Calendar } from '@element-plus/icons-vue'
 import TimeSlotCard from '@/components/exam/TimeSlotCard.vue'
 import { useBookingStore } from '@/stores/booking'
 import { getAvailableTimeSlots } from '@/api/examBooking'
 import { formatDate, formatTime, formatDateTime, getExamModeText } from '@/utils/dateUtils'
 
-// 状态管理
-const bookingStore = useBookingStore()
+export default {
+  name: 'AvailableExams',
+  components: {
+    TimeSlotCard
+  },
+  data() {
+    return {
+      loading: false,
+      loadingSlots: false,
+      bookingLoading: false,
+      selectedExamMode: '',
+      selectedDate: '',
+      availableExams: [],
+      bookingDialogVisible: false,
+      selectedTimeSlot: null,
 
-// 响应式数据
-const loading = ref(false)
-const loadingSlots = ref(false)
-const bookingLoading = ref(false)
-const selectedExamMode = ref('')
-const selectedDate = ref('')
-const availableExams = ref([])
-const bookingDialogVisible = ref(false)
-const selectedTimeSlot = ref(null)
-
-// 表单相关
-const bookingFormRef = ref()
-const bookingForm = reactive({
-  timeSlotId: null,
-  userId: 1, // 这里应该从用户状态获取
-  contactPhone: '',
-  contactEmail: '',
-  specialRequirements: '',
-  remarks: ''
-})
-
-const bookingRules = {
-  contactPhone: [
-    { required: true, message: '请输入联系电话', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
-  ],
-  contactEmail: [
-    { required: true, message: '请输入联系邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
-  ]
-}
-
-// 生命周期
-onMounted(() => {
-  loadAvailableExams()
-})
-
-// 方法
-const loadAvailableExams = async () => {
-  loading.value = true
-  try {
-    // 这里应该调用获取可用考试列表的API
-    // 模拟数据
-    availableExams.value = [
-      {
-        id: 1,
-        title: '高等数学期末考试',
-        description: '本学期高等数学课程期末考试，包含微积分、线性代数等内容',
-        duration: 120,
-        totalScore: 100,
-        type: 'EXAM',
-        endTime: '2024-01-15 23:59:59',
-        timeSlots: []
+      // 表单相关
+      bookingForm: {
+        timeSlotId: null,
+        userId: 1, // 这里应该从用户状态获取
+        contactPhone: '',
+        contactEmail: '',
+        specialRequirements: '',
+        remarks: ''
       },
-      {
-        id: 2,
-        title: '英语四级模拟考试',
-        description: '英语四级考试模拟测试，帮助学生熟悉考试流程',
-        duration: 150,
-        totalScore: 710,
-        type: 'EXAM',
-        endTime: '2024-01-20 23:59:59',
-        timeSlots: []
+
+      // 表单验证规则
+      bookingRules: {
+        contactPhone: [
+          { required: true, message: '请输入联系电话', trigger: 'blur' },
+          { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+        ],
+        contactEmail: [
+          { required: true, message: '请输入联系邮箱', trigger: 'blur' },
+          { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+        ]
       }
-    ]
-  } catch (error) {
-    ElMessage.error('加载考试列表失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-const loadTimeSlots = async (examId) => {
-  loadingSlots.value = true
-  try {
-    const response = await getAvailableTimeSlots(examId)
-    const exam = availableExams.value.find(e => e.id === examId)
-    if (exam) {
-      exam.timeSlots = response.data || []
     }
-  } catch (error) {
-    ElMessage.error('加载时间段失败')
-  } finally {
-    loadingSlots.value = false
-  }
-}
-
-const handleModeChange = () => {
-  // 根据模式筛选
-  loadAvailableExams()
-}
-
-const handleDateChange = () => {
-  // 根据日期筛选
-  loadAvailableExams()
-}
-
-const handleBookExam = (timeSlot) => {
-  selectedTimeSlot.value = timeSlot
-  bookingForm.timeSlotId = timeSlot.id
-  bookingDialogVisible.value = true
-}
-
-const confirmBooking = async () => {
-  try {
-    await bookingFormRef.value.validate()
-
-    bookingLoading.value = true
-    const response = await bookingStore.bookExam(bookingForm)
-
-    ElMessage.success('预约成功！')
-    bookingDialogVisible.value = false
-
-    // 刷新时间段信息
-    const exam = availableExams.value.find(e =>
-        e.timeSlots.some(slot => slot.id === bookingForm.timeSlotId)
-    )
-    if (exam) {
-      await loadTimeSlots(exam.id)
+  },
+  computed: {
+    bookingStore() {
+      return useBookingStore()
     }
+  },
+  created() {
+    this.loadAvailableExams()
+  },
+  methods: {
+    async loadAvailableExams() {
+      this.loading = true
+      try {
+        // 这里应该调用获取可用考试列表的API
+        // 模拟数据
+        this.availableExams = [
+          {
+            id: 1,
+            title: '高等数学期末考试',
+            description: '本学期高等数学课程期末考试，包含微积分、线性代数等内容',
+            duration: 120,
+            totalScore: 100,
+            type: 'EXAM',
+            endTime: '2024-01-15 23:59:59',
+            timeSlots: []
+          },
+          {
+            id: 2,
+            title: '英语四级模拟考试',
+            description: '英语四级考试模拟测试，帮助学生熟悉考试流程',
+            duration: 150,
+            totalScore: 710,
+            type: 'EXAM',
+            endTime: '2024-01-20 23:59:59',
+            timeSlots: []
+          }
+        ]
+      } catch (error) {
+        this.$message.error('加载考试列表失败')
+      } finally {
+        this.loading = false
+      }
+    },
 
-  } catch (error) {
-    if (error.message) {
-      ElMessage.error(error.message)
-    }
-  } finally {
-    bookingLoading.value = false
-  }
-}
+    async loadTimeSlots(examId) {
+      this.loadingSlots = true
+      try {
+        const response = await getAvailableTimeSlots(examId)
+        const exam = this.availableExams.find(e => e.id === examId)
+        if (exam) {
+          exam.timeSlots = response.data || []
+        }
+      } catch (error) {
+        this.$message.error('加载时间段失败')
+      } finally {
+        this.loadingSlots = false
+      }
+    },
 
-const resetBookingForm = () => {
-  bookingForm.timeSlotId = null
-  bookingForm.contactPhone = ''
-  bookingForm.contactEmail = ''
-  bookingForm.specialRequirements = ''
-  bookingForm.remarks = ''
-  selectedTimeSlot.value = null
+    handleModeChange() {
+      // 根据模式筛选
+      this.loadAvailableExams()
+    },
 
-  if (bookingFormRef.value) {
-    bookingFormRef.value.resetFields()
+    handleDateChange() {
+      // 根据日期筛选
+      this.loadAvailableExams()
+    },
+
+    handleBookExam(timeSlot) {
+      this.selectedTimeSlot = timeSlot
+      this.bookingForm.timeSlotId = timeSlot.id
+      this.bookingDialogVisible = true
+    },
+
+    async confirmBooking() {
+      try {
+        await this.$refs.bookingForm.validate()
+
+        this.bookingLoading = true
+        const response = await this.bookingStore.bookExam(this.bookingForm)
+
+        this.$message.success('预约成功！')
+        this.bookingDialogVisible = false
+
+        // 刷新时间段信息
+        const exam = this.availableExams.find(e =>
+            e.timeSlots.some(slot => slot.id === this.bookingForm.timeSlotId)
+        )
+        if (exam) {
+          await this.loadTimeSlots(exam.id)
+        }
+
+      } catch (error) {
+        if (error.message) {
+          this.$message.error(error.message)
+        }
+      } finally {
+        this.bookingLoading = false
+      }
+    },
+
+    resetBookingForm() {
+      this.bookingForm.timeSlotId = null
+      this.bookingForm.contactPhone = ''
+      this.bookingForm.contactEmail = ''
+      this.bookingForm.specialRequirements = ''
+      this.bookingForm.remarks = ''
+      this.selectedTimeSlot = null
+
+      if (this.$refs.bookingForm) {
+        this.$refs.bookingForm.resetFields()
+      }
+    },
+
+    formatDate,
+    formatTime,
+    formatDateTime,
+    getExamModeText
   }
 }
 </script>
