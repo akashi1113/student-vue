@@ -18,7 +18,7 @@
         <div class="progress-bar" :style="progressStyle"></div>
         <div class="time-label">
           <span>剩余时间</span>
-          <span>{{ Math.floor(exam.duration / 60) }}分钟考试</span>
+          <span>{{ Math.floor(exam.duration) }}分钟考试</span>
         </div>
       </div>
     </div>
@@ -252,6 +252,12 @@ export default {
         this.initializeAnswers();
 
         const recordResponse = await examApi.startExam(this.examId);
+        if (recordResponse.data.message === "您已经完成该考试，无法再次开始") {
+          // 已经完成考试，跳转到结果页面
+          this.$message.warning('您已经完成该考试，正在跳转到结果页面...');
+          this.$router.push(`/exams/${this.examId}/result`);
+          return;
+        }
         this.examRecord = recordResponse.data.data;
         this.violationCount = this.examRecord.violationCount || 0;
       } catch (error) {

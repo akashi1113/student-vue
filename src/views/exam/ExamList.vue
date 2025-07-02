@@ -679,7 +679,7 @@ export default {
       return timeDiff <= 30 * 60 * 1000 && timeDiff >= -exam.duration * 60 * 1000
     },
     canShowStartButton(exam) {
-      return exam.status === 'PUBLISHED' || exam.examStatus === 'CONFIRMED' || exam.examStatus === 'IN_PROGRESS'
+      return exam.status === 'PUBLISHED'
     },
     getExamStatusText(status) {
       const statusMap = {
@@ -687,10 +687,6 @@ export default {
         'PUBLISHED': '已发布',
         'ENDED': '已结束',
         'CANCELLED': '已取消',
-        'BOOKED': '已预约',
-        'CONFIRMED': '已确认',
-        'IN_PROGRESS': '进行中',
-        'COMPLETED': '已完成'
       }
       return statusMap[status] || status
     },
