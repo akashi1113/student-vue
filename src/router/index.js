@@ -341,6 +341,15 @@ const routes = [
       title: '实验报告',
       requiresAuth: true
     }
+  },
+  {
+    path: '/audit/report',
+    name: 'AuditReport',
+    component: () => import('@/views/audit/AuditReport.vue'),
+    meta: {
+      title: '日志审计报表',
+      requiresAuth: false
+    }
   }
   // {
   //   path: '/reports/generate/:recordId',

@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    BarChart: typeof import('./src/components/common/BarChart.vue')['default']
     BookingCard: typeof import('./src/components/exam/BookingCard.vue')['default']
     CategoryFilter: typeof import('./src/components/CategoryFilter.vue')['default']
     ConfirmDialog: typeof import('./src/components/common/ConfirmDialog.vue')['default']
@@ -58,7 +59,7 @@ declare module 'vue' {
     KnowledgeCard: typeof import('./src/components/KnowledgeCard.vue')['default']
     Loading: typeof import('./src/components/common/Loading.vue')['default']
     LoadingSpinner: typeof import('./src/components/LoadingSpinner.vue')['default']
-    Programming: typeof import('./src/components/Programming.vue')['default']
+    ModulePieChart: typeof import('./src/components/common/ModulePieChart.vue')['default']
     ReportGenerator: typeof import('./src/components/ReportGenerator.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
