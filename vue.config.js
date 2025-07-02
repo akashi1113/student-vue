@@ -9,23 +9,24 @@ module.exports = defineConfig({
   devServer: {
     host: "localhost",
     port: 5173,
-    https: false,
+    // https: false,
     proxy: {
-      '/': {
-        target: 'http://localhost:8080/',
-        changeOrigin: true,
-        secure: false,
-        ws: false,
-        pathRewrite: {
-          // '^/springbootsu39z': ''
-        }
-      },
+      // '/': {
+      //   target: 'http://localhost:8080/',
+      //   changeOrigin: true,
+      //   secure: false,
+      //   ws: false,
+      //   pathRewrite: {
+      //     // '^/springbootsu39z': ''
+      //   }
+      // },
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8081',
         changeOrigin: true,
         pathRewrite: {
           '^/api': ''
-        }
+        },
+        secure: false
       }
     },
     webSocketServer: false

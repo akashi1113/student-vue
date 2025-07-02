@@ -71,3 +71,24 @@ export function changePassword(id, oldPassword, newPassword) {
     }
   })
 }
+
+// 添加发送验证码接口
+export function sendVerificationCode(email) {
+  const formData = new FormData()
+  formData.append('email', email.email)
+
+   return request({
+    url: '/api/users/sendCode',
+    method: 'POST',
+    data: formData
+  })
+}
+
+// 添加邮箱验证码登录接口
+export function loginByCode(email, code) {
+  return request({
+    url: '/api/users/loginByCode',
+    method: 'POST',
+    params: { email, code }
+  })
+}
