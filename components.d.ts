@@ -58,6 +58,7 @@ declare module 'vue' {
     KnowledgeCard: typeof import('./src/components/KnowledgeCard.vue')['default']
     Loading: typeof import('./src/components/common/Loading.vue')['default']
     LoadingSpinner: typeof import('./src/components/LoadingSpinner.vue')['default']
+    Programming: typeof import('./src/components/Programming.vue')['default']
     ReportGenerator: typeof import('./src/components/ReportGenerator.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

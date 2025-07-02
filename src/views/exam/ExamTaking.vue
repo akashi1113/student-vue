@@ -118,6 +118,16 @@
                 rows="4"
             ></textarea>
           </div>
+
+          <!-- 编程题 -->
+          <div v-if="question.type === 'PROGRAMMING'" class="question-card">
+            <ProgrammingQuestion
+                :question="question"
+                :questionIndex="index"
+                :initialCode="answers[question.id] || ''"
+                @save="saveProgrammingAnswer"
+            />
+          </div>
         </div>
 
         <!-- 提交按钮 -->
@@ -151,9 +161,13 @@
 <script>
 import examApi from '../../api/exam';
 import questionApi from '../../api/question';
+import ProgrammingQuestion from '@/components/Programming.vue';
 
 export default {
   name: 'ExamTaking',
+  components: {
+    ProgrammingQuestion
+  },
   props: {
     examId: {
       type: [String, Number],
@@ -171,7 +185,8 @@ export default {
       examRecord: null,
       showConfirmDialog: false,
       lastViolationTime: 0,
-      violationDebounce: 1000 // 1秒内不重复记录同类型违规
+      violationDebounce: 1000, // 1秒内不重复记录同类型违规
+      isInProgrammingEditor: false // 新增：标记是否在编程编辑器中
     };
   },
   computed: {
@@ -234,6 +249,20 @@ export default {
         this.answers[questionId] = [...currentAnswers, optionId];
       } else {
         this.answers[questionId] = currentAnswers.filter(id => id !== optionId);
+      }
+    },
+
+    saveProgrammingAnswer({ questionId, code, language, isSubmitted }) {
+      // 保存编程题答案
+      this.answers[questionId] = {
+        code: code,
+        language: language,
+        isSubmitted: isSubmitted || false
+      };
+
+      // 如果是最终提交，可以在这里做额外处理
+      if (isSubmitted) {
+        console.log(`编程题 ${questionId} 已提交`, { code, language });
       }
     },
 
@@ -310,9 +339,14 @@ export default {
     prepareAnswersForSubmit() {
       return this.questions.map(question => {
         let answer = this.answers[question.id];
-        if (question.type === 'MULTIPLE' && Array.isArray(answer)) {
+
+        if (question.type === 'PROGRAMMING') {
+          // 编程题特殊处理
+          answer = typeof answer === 'object' ? JSON.stringify(answer) : answer;
+        } else if (question.type === 'MULTIPLE' && Array.isArray(answer)) {
           answer = answer.length > 0 ? answer.join(',') : null;
         }
+
         return {
           questionId: question.id,
           answer: answer
@@ -346,6 +380,10 @@ export default {
       document.addEventListener('keydown', this.handleKeyDown);
       document.addEventListener('selectstart', this.preventSelection);
       document.addEventListener('copy', this.preventCopy);
+
+      // 监听编程编辑器的焦点状态
+      document.addEventListener('focusin', this.handleFocusIn);
+      document.addEventListener('focusout', this.handleFocusOut);
     },
 
     cleanupViolationDetection() {
@@ -355,24 +393,66 @@ export default {
       document.removeEventListener('keydown', this.handleKeyDown);
       document.removeEventListener('selectstart', this.preventSelection);
       document.removeEventListener('copy', this.preventCopy);
+      document.removeEventListener('focusin', this.handleFocusIn);
+      document.removeEventListener('focusout', this.handleFocusOut);
+    },
+
+    // 处理焦点进入
+    handleFocusIn(e) {
+      // 检查是否在编程编辑器内
+      const programmingEditor = e.target.closest('.programming-question');
+      this.isInProgrammingEditor = !!programmingEditor;
+    },
+
+    // 处理焦点离开
+    handleFocusOut(e) {
+      // 延迟检查，确保焦点真正离开了编程编辑器区域
+      setTimeout(() => {
+        const activeElement = document.activeElement;
+        const programmingEditor = activeElement?.closest('.programming-question');
+        this.isInProgrammingEditor = !!programmingEditor;
+      }, 100);
     },
 
     async handleWindowBlur() {
+      // 如果在编程编辑器中，不记录违规
+      if (this.isInProgrammingEditor) {
+        console.log('在编程编辑器中，忽略窗口失焦违规检测');
+        return;
+      }
       await this.recordViolation('WINDOW_BLUR', '窗口失去焦点');
     },
 
     handleVisibilityChange() {
       if (document.hidden) {
+        // 如果在编程编辑器中，不记录违规
+        if (this.isInProgrammingEditor) {
+          console.log('在编程编辑器中，忽略标签页切换违规检测');
+          return;
+        }
         this.recordViolation('TAB_SWITCH', '切换到其他标签页');
       }
     },
 
-    preventContextMenu(e) {
-      e.preventDefault();
-      this.recordViolation('RIGHT_CLICK', '尝试打开右键菜单');
-    },
-
+// 在 ExamTaking 组件的 methods 中修改
     handleKeyDown(e) {
+      // 检查是否在编程编辑器相关元素中
+      const target = e.target;
+      const isProgrammingEditor = target.closest('[data-programming-editor]') ||
+          target.hasAttribute('data-programming-input') ||
+          target.closest('.programming-question');
+
+      // 如果在编程编辑器中，允许大部分操作
+      if (isProgrammingEditor) {
+        // 在编程编辑器中，只禁止F12开发者工具
+        if (e.key === 'F12') {
+          e.preventDefault();
+          this.recordViolation('DEVTOOLS_ATTEMPT', '尝试打开开发者工具');
+        }
+        return; // 其他按键操作都允许
+      }
+
+      // 其他区域的严格检测
       if (e.key === 'F12' ||
           (e.ctrlKey && e.shiftKey && e.key === 'I') ||
           (e.ctrlKey && e.key === 'u')) {
@@ -386,11 +466,43 @@ export default {
       }
     },
 
+    preventContextMenu(e) {
+      // 检查是否在编程编辑器中
+      const isProgrammingEditor = e.target.closest('[data-programming-editor]') ||
+          e.target.hasAttribute('data-programming-input') ||
+          e.target.closest('.programming-question');
+
+      if (isProgrammingEditor) {
+        return; // 允许右键菜单
+      }
+
+      e.preventDefault();
+      this.recordViolation('RIGHT_CLICK', '尝试打开右键菜单');
+    },
+
     preventSelection(e) {
+      // 检查是否在编程编辑器中
+      const isProgrammingEditor = e.target.closest('[data-programming-editor]') ||
+          e.target.hasAttribute('data-programming-input') ||
+          e.target.closest('.programming-question');
+
+      if (isProgrammingEditor) {
+        return; // 允许选择文本
+      }
+
       e.preventDefault();
     },
 
     preventCopy(e) {
+      // 检查是否在编程编辑器中
+      const isProgrammingEditor = e.target.closest('[data-programming-editor]') ||
+          e.target.hasAttribute('data-programming-input') ||
+          e.target.closest('.programming-question');
+
+      if (isProgrammingEditor) {
+        return; // 允许复制
+      }
+
       e.preventDefault();
       this.recordViolation('COPY_PASTE', '尝试复制内容');
     },
@@ -403,13 +515,19 @@ export default {
           return console.warn('防抖：忽略短时间内重复违规');
         }
         this.lastViolationTime = now;
+
         const answers = this.prepareAnswersForSubmit();
         const payload = {
           type: type,
           description: description,
-          answers:answers
+          answers: answers
         };
-        const response = await examApi.recordViolation(this.examId, JSON.stringify(payload),{headers: {'Content-Type': 'application/json'}});
+
+        const response = await examApi.recordViolation(
+            this.examId,
+            JSON.stringify(payload),
+            { headers: { 'Content-Type': 'application/json' } }
+        );
 
         // 从响应或重新获取最新状态
         this.violationCount = response.data?.data?.violationCount ||
@@ -418,48 +536,51 @@ export default {
 
         // 自动提交逻辑
         if (this.violationCount >= 3) {
-          setTimeout(() => this.submitExam(), 2000);
+          alert('违规次数过多，系统将自动提交考试！');
           await this.forceSubmitExam('VIOLATION');
         }
       } catch (error) {
         console.error('记录违规失败:', error);
       }
+    },
+
+    async forceSubmitExam(reason) {
+      try {
+        const answers = this.prepareAnswersForSubmit();
+        console.log('自动提交数据:', { answers }); // 调试用
+
+        const response = await examApi.submitExam(this.examId, {
+          answers,
+          submitType: 'AUTO',
+          reason
+        });
+
+        // 确保跳转前请求完成
+        this.$router.push({
+          name: 'ExamResult',
+          params: {
+            examId: this.examId,
+            recordId: response.data.recordId
+          },
+          query: {
+            autoSubmitted: true,
+            violationCount: this.violationCount
+          }
+        });
+      } catch (error) {
+        console.error('强制提交失败:', error);
+        alert('系统即将强制结束考试');
+        window.location.href = `/exams/${this.examId}/result?force=1`; // 后备方案
+      }
     }
   },
-  async forceSubmitExam(reason) {
-    try {
-      const answers = this.prepareAnswersForSubmit();
-      console.log('自动提交数据:', { answers }); // 调试用
 
-      const response = await examApi.submitExam(this.examId, {
-        answers,
-        submitType: 'AUTO',
-        reason
-      });
-
-      // 确保跳转前请求完成
-      this.$router.push({
-        name: 'ExamResult',
-        params: {
-          examId: this.examId,
-          recordId: response.data.recordId
-        },
-        query: {
-          autoSubmitted: true,
-          violationCount: this.violationCount
-        }
-      });
-    } catch (error) {
-      console.error('强制提交失败:', error);
-      alert('系统即将强制结束考试');
-      window.location.href = `/exams/${this.examId}/result?force=1`; // 后备方案
-    }
-  },
   created() {
     this.loadExamData();
     this.setupExamTimer();
     this.setupViolationDetection();
   },
+
   beforeUnmount() {
     clearInterval(this.timer);
     this.cleanupViolationDetection();
