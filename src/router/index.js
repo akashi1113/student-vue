@@ -28,6 +28,10 @@ function isAuthenticated() {
 }
 
 const routes = [
+  {
+    path: '/',
+    redirect: '/exams'
+  },
   // 来自index.js的路由
   {
     path: '/login',
@@ -47,15 +51,15 @@ const routes = [
       requiresAuth: false
     }
   },
-  {
-    path: '/',
-    name: 'KnowledgeList',
-    component: KnowledgeList,
-    meta: {
-      title: '知识库',
-      requiresAuth: true
-    }
-  },
+  // {
+  //   path: '/',
+  //   name: 'KnowledgeList',
+  //   component: KnowledgeList,
+  //   meta: {
+  //     title: '知识库',
+  //     requiresAuth: true
+  //   }
+  // },
   {
     path: '/knowledge/:id',
     name: 'KnowledgeDetail',
@@ -127,17 +131,6 @@ const routes = [
 
   // ============================== 考试预约系统路由 ==============================
 
-  // 学生端考试预约路由
-  {
-    path: '/exam-booking/available',
-    name: 'AvailableExams',
-    component: () => import('@/views/exam/AvailableExams.vue'),
-    meta: {
-      title: '可预约考试',
-      requiresAuth: true,
-      roles: ['STUDENT']
-    }
-  },
   {
     path: '/exam-booking/my-bookings',
     name: 'MyBookings',
@@ -394,40 +387,40 @@ function hasPermission(requiredRoles, userRole) {
 }
 
 // 合并路由守卫逻辑
-router.beforeEach((to, from, next) => {
-  // 来自index.js的标题设置
-  if (to.meta.title) {
-    document.title = `${to.meta.title} - 智能化在线教学支持服务平台`
-  }
-
-  // 来自index.js的认证检查
-  if (to.meta.requiresAuth) {
-    if (isAuthenticated()) {
-      // 检查角色权限
-      if (to.meta.roles) {
-        const userRole = getUserRole()
-        if (!hasPermission(to.meta.roles, userRole)) {
-          ElMessage.error('您没有权限访问此页面')
-          next('/')
-          return
-        }
-      }
-      next()
-    } else {
-      ElMessage.warning('请先登录')
-      next({
-        path: '/login',
-        query: { redirect: to.fullPath }
-      })
-    }
-  } else {
-    // 来自index.js的重定向逻辑
-    if ((to.path === '/login' || to.path === '/register') && isAuthenticated()) {
-      next('/')
-    } else {
-      next()
-    }
-  }
-})
+// router.beforeEach((to, from, next) => {
+//   // 来自index.js的标题设置
+//   if (to.meta.title) {
+//     document.title = `${to.meta.title} - 智能化在线教学支持服务平台`
+//   }
+//
+//   // 来自index.js的认证检查
+//   if (to.meta.requiresAuth) {
+//     if (isAuthenticated()) {
+//       // 检查角色权限
+//       if (to.meta.roles) {
+//         const userRole = getUserRole()
+//         if (!hasPermission(to.meta.roles, userRole)) {
+//           ElMessage.error('您没有权限访问此页面')
+//           next('/')
+//           return
+//         }
+//       }
+//       next()
+//     } else {
+//       ElMessage.warning('请先登录')
+//       next({
+//         path: '/login',
+//         query: { redirect: to.fullPath }
+//       })
+//     }
+//   } else {
+//     // 来自index.js的重定向逻辑
+//     if ((to.path === '/login' || to.path === '/register') && isAuthenticated()) {
+//       next('/')
+//     } else {
+//       next()
+//     }
+//   }
+// })
 
 export default router

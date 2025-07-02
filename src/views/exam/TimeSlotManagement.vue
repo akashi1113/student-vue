@@ -32,12 +32,12 @@
         </el-table-column>
         <el-table-column prop="startTime" label="开始时间" width="100">
           <template #default="{ row }">
-            {{ formatTime(row.startTime) }}
+            {{ row.startTime }}
           </template>
         </el-table-column>
         <el-table-column prop="endTime" label="结束时间" width="100">
           <template #default="{ row }">
-            {{ formatTime(row.endTime) }}
+            {{ row.endTime }}
           </template>
         </el-table-column>
         <el-table-column prop="examLocation" label="考试地点" width="150" />
@@ -74,7 +74,6 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="editTimeSlot(row)">编辑</el-button>
-            <el-button size="small" type="info" @click="viewBookings(row)">预约情况</el-button>
             <el-button
                 size="small"
                 :type="row.isActive ? 'danger' : 'success'"
@@ -190,203 +189,184 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
-import { formatDate, formatTime, formatDateTime, getExamModeText } from '@/utils/dateUtils'
+<script>
+import examApi from '@/api/exam';
+import examBookingApi from '@/api/examBooking';
+import { formatDate, formatTime, formatDateTime, getExamModeText } from '@/utils/dateUtils';
+import { Plus } from '@element-plus/icons-vue';
 
-// 响应式数据
-const loading = ref(false)
-const submitting = ref(false)
-const selectedExam = ref('')
-const timeSlots = ref([])
-const examList = ref([])
-const dialogVisible = ref(false)
-const isEdit = ref(false)
-const formRef = ref()
+export default {
+  name: 'TimeSlotManagement',
+  data() {
+    return {
+      loading: false,
+      submitting: false,
+      selectedExam: null,
+      timeSlots: [],
+      examList: [],
+      dialogVisible: false,
+      isEdit: false,
 
-// 表单数据
-const form = reactive({
-  examId: '',
-  slotDate: '',
-  startTime: '',
-  endTime: '',
-  examLocation: '',
-  examMode: '',
-  maxCapacity: 30,
-  bookingEndTime: '',
-  requirements: ''
-})
-
-// 表单验证规则
-const rules = {
-  slotDate: [{ required: true, message: '请选择考试日期', trigger: 'change' }],
-  startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
-  endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
-  examLocation: [{ required: true, message: '请输入考试地点', trigger: 'blur' }],
-  examMode: [{ required: true, message: '请选择考试模式', trigger: 'change' }],
-  maxCapacity: [{ required: true, message: '请输入最大容量', trigger: 'blur' }],
-  bookingEndTime: [{ required: true, message: '请选择预约截止时间', trigger: 'change' }]
-}
-
-// 生命周期
-onMounted(() => {
-  loadExamList()
-})
-
-// 方法
-const loadExamList = async () => {
-  try {
-    // 模拟API调用
-    examList.value = [
-      { id: 1, title: '高等数学期末考试' },
-      { id: 2, title: '英语四级模拟考试' },
-      { id: 3, title: '计算机基础考试' }
-    ]
-  } catch (error) {
-    ElMessage.error('加载考试列表失败')
-  }
-}
-
-const loadTimeSlots = async () => {
-  if (!selectedExam.value) return
-
-  loading.value = true
-  try {
-    // 模拟API调用
-    timeSlots.value = [
-      {
-        id: 1,
-        examId: selectedExam.value,
-        slotDate: '2024-01-15',
-        startTime: '09:00',
-        endTime: '11:00',
-        examLocation: '教学楼A101',
-        examMode: 'OFFLINE',
+      // 表单数据
+      form: {
+        id: '',
+        examId: '',
+        slotDate: '',
+        startTime: '',
+        endTime: '',
+        examLocation: '',
+        examMode: '',
         maxCapacity: 30,
-        currentBookings: 15,
-        bookingEndTime: '2024-01-14 18:00:00',
-        isActive: true,
-        requirements: '请携带身份证和准考证'
+        bookingEndTime: '',
+        requirements: ''
       },
-      {
-        id: 2,
-        examId: selectedExam.value,
-        slotDate: '2024-01-15',
-        startTime: '14:00',
-        endTime: '16:00',
-        examLocation: '在线考试系统',
-        examMode: 'ONLINE',
-        maxCapacity: 50,
-        currentBookings: 25,
-        bookingEndTime: '2024-01-14 20:00:00',
-        isActive: true,
-        requirements: '确保网络稳定'
+
+      // 表单验证规则
+      rules: {
+        slotDate: [{ required: true, message: '请选择考试日期', trigger: 'change' }],
+        startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+        endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
+        examLocation: [{ required: true, message: '请输入考试地点', trigger: 'blur' }],
+        examMode: [{ required: true, message: '请选择考试模式', trigger: 'change' }],
+        maxCapacity: [{ required: true, message: '请输入最大容量', trigger: 'blur' }],
+        bookingEndTime: [{ required: true, message: '请选择预约截止时间', trigger: 'change' }]
       }
-    ]
-  } catch (error) {
-    ElMessage.error('加载时间段失败')
-  } finally {
-    loading.value = false
-  }
-}
+    };
+  },
+  methods: {
+    async loadExamList() {
+      try {
+        const response = await examApi.getAllExams();
+        console.log('考试列表响应:', response); // 添加调试日志
+        this.examList = response.data.data || [];
+      } catch (error) {
+        this.$message.error('加载考试列表失败: ' + (error.message || ''));
+      }
+    },
 
-const showCreateDialog = () => {
-  if (!selectedExam.value) {
-    ElMessage.warning('请先选择考试')
-    return
-  }
-  isEdit.value = false
-  resetForm()
-  dialogVisible.value = true
-}
+    async loadTimeSlots() {
+      if (!this.selectedExam) return;
+      this.loading = true;
+      try {
+        const response = await examBookingApi.getTimeSlots(this.selectedExam);
+        this.timeSlots = response.data.data || [];
+      } catch (error) {
+        this.$message.error('加载时间段失败: ' + (error.message || ''));
+      } finally {
+        this.loading = false;
+      }
+    },
 
-const editTimeSlot = (row) => {
-  isEdit.value = true
-  Object.assign(form, {
-    id: row.id,
-    examId: row.examId,
-    slotDate: row.slotDate,
-    startTime: row.startTime,
-    endTime: row.endTime,
-    examLocation: row.examLocation,
-    examMode: row.examMode,
-    maxCapacity: row.maxCapacity,
-    bookingEndTime: row.bookingEndTime,
-    requirements: row.requirements
-  })
-  dialogVisible.value = true
-}
+    showCreateDialog() {
+      if (!this.selectedExam) {
+        this.$message.warning('请先选择考试');
+        return;
+      }
+      this.isEdit = false;
+      this.resetForm();
+      this.dialogVisible = true;
+    },
 
-const submitForm = async () => {
-  try {
-    await formRef.value.validate()
-    submitting.value = true
+    editTimeSlot(row) {
+      this.isEdit = true;
+      Object.assign(this.form, {
+        id: row.id,
+        examId: row.examId,
+        slotDate: row.slotDate,
+        startTime: row.startTime,
+        endTime: row.endTime,
+        examLocation: row.examLocation,
+        examMode: row.examMode,
+        maxCapacity: row.maxCapacity,
+        bookingEndTime: row.bookingEndTime,
+        requirements: row.requirements
+      });
+      this.dialogVisible = true;
+    },
 
-    form.examId = selectedExam.value
+    async submitForm() {
+      try {
+        await this.$refs.form.validate();
+        this.submitting = true;
 
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
+        this.form.examId = this.selectedExam;
 
-    ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
-    dialogVisible.value = false
-    loadTimeSlots()
-  } catch (error) {
-    if (error !== false) {
-      ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
-    }
-  } finally {
-    submitting.value = false
-  }
-}
+        if (this.isEdit) {
+          await examBookingApi.updateTimeSlot(this.form.id, this.form);
+          this.$message.success('更新成功');
+        } else {
+          await examBookingApi.createTimeSlot(this.form);
+          this.$message.success('创建成功');
+        }
 
-const resetForm = () => {
-  Object.assign(form, {
-    examId: '',
-    slotDate: '',
-    startTime: '',
-    endTime: '',
-    examLocation: '',
-    examMode: '',
-    maxCapacity: 30,
-    bookingEndTime: '',
-    requirements: ''
-  })
-  if (formRef.value) {
-    formRef.value.resetFields()
-  }
-}
+        this.dialogVisible = false;
+        await this.loadTimeSlots();
+      } catch (error) {
+        if (error !== false) {
+          this.$message.error(this.isEdit ? '更新失败' : '创建失败');
+        }
+      } finally {
+        this.submitting = false;
+      }
+    },
 
-const toggleStatus = async (row) => {
-  try {
-    await ElMessageBox.confirm(
-        `确定要${row.isActive ? '禁用' : '启用'}该时间段吗？`,
-        '确认操作',
-        { type: 'warning' }
-    )
+    resetForm() {
+      Object.assign(this.form, {
+        id: '',
+        examId: '',
+        slotDate: '',
+        startTime: '',
+        endTime: '',
+        examLocation: '',
+        examMode: '',
+        maxCapacity: 30,
+        bookingEndTime: '',
+        requirements: ''
+      });
+      if (this.$refs.form) {
+        this.$refs.form.resetFields();
+      }
+    },
 
-    // 模拟API调用
-    row.isActive = !row.isActive
-    ElMessage.success(`${row.isActive ? '启用' : '禁用'}成功`)
-  } catch (error) {
-    // 用户取消操作
-  }
-}
+    async toggleStatus(row) {
+      try {
+        await this.$confirm(
+            `确定要${row.isActive ? '禁用' : '启用'}该时间段吗？`,
+            '确认操作',
+            { type: 'warning' }
+        );
 
-const viewBookings = (row) => {
-  ElMessage.info(`查看时间段 ${row.id} 的预约情况`)
-  // 这里可以跳转到预约详情页面或打开对话框
-}
+        await examBookingApi.toggleTimeSlotStatus(row.id);
+        row.isActive = !row.isActive;
+        this.$message.success(`${row.isActive ? '启用' : '禁用'}成功`);
+      } catch (error) {
+        // 用户取消操作
+      }
+    },
 
-const getModeTagType = (mode) => {
-  const typeMap = {
-    'ONLINE': 'success',
-    'OFFLINE': 'primary',
-    'HYBRID': 'warning'
-  }
-  return typeMap[mode] || 'info'
-}
+    getModeTagType(mode) {
+      const typeMap = {
+        'ONLINE': 'success',
+        'OFFLINE': 'primary',
+        'HYBRID': 'warning'
+      };
+      return typeMap[mode] || 'info';
+    },
+
+    formatDate,
+    formatTime,
+    formatDateTime,
+    getExamModeText
+  },
+  created() {
+    this.loadExamList().then(() => {
+      if (this.examList.length > 0) {
+        this.selectedExam = this.examList[0].id; // 默认选择第一个考试
+        this.loadTimeSlots();
+      }
+    });
+  },
+};
 </script>
 
 <style scoped>

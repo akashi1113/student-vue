@@ -80,7 +80,7 @@ export default {
       if (!path) return ''
       if (path.startsWith('http')) return path
       if (!path.startsWith('/')) path = '/' + path
-      return 'http://localhost:8081' + path
+      return 'http://localhost:8080' + path
     }
   }
 }

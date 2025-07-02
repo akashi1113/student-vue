@@ -151,7 +151,9 @@ export default {
         'SINGLE': '单选题',
         'MULTIPLE': '多选题',
         'JUDGE': '判断题',
-        'TEXT': '简答题'
+        'TEXT': '简答题',
+        'FILL': '填空题',
+        'PROGRAMMING': '编程题',
       }
       return map[type] || type
     }
@@ -162,7 +164,9 @@ export default {
         'SINGLE': 'el-icon-circle-check',
         'MULTIPLE': 'el-icon-check',
         'JUDGE': 'el-icon-question',
-        'TEXT': 'el-icon-edit'
+        'TEXT': 'el-icon-edit',
+        'FILL': 'el-icon-edit-outline',
+        'PROGRAMMING': 'el-icon-cpu'
       }
       return map[type] || 'el-icon-question'
     }
@@ -173,7 +177,9 @@ export default {
         'SINGLE': '#409EFF',
         'MULTIPLE': '#67C23A',
         'JUDGE': '#E6A23C',
-        'TEXT': '#F56C6C'
+        'TEXT': '#F56C6C',
+        'FILL': '#9B59B6',
+        'PROGRAMMING': '#2ECC71'
       }
       return map[type] || '#909399'
     }
@@ -201,7 +207,7 @@ export default {
 
 <style scoped>
 .exam-detail-container {
-  max-width: 1200px;
+  max-width: 2000px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -397,5 +403,15 @@ export default {
 .stat-item:nth-child(4) .stat-icon {
   color: #F56C6C;
   background: rgba(245, 108, 108, 0.1);
+}
+
+.stat-item:nth-child(5) .stat-icon {
+  color: #9B59B6; /* 填空题 */
+  background: rgba(155, 89, 182, 0.1);
+}
+
+.stat-item:nth-child(6) .stat-icon {
+  color: #2ECC71; /* 编程题 */
+  background: rgba(46, 204, 113, 0.1);
 }
 </style>

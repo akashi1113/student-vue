@@ -6,6 +6,12 @@ export default {
     getAllExams() {
         return axios.get(API_URL);
     },
+    getBookableExams() {
+        return axios.get(`${API_URL}/bookable`);
+    },
+    getBookedExams() {
+        return axios.get(`${API_URL}/booked`);
+    },
     getExamById(examId) {
         return axios.get(`${API_URL}/${examId}`);
     },
@@ -26,5 +32,11 @@ export default {
     },
     getExamScore(examId) {
         return axios.get(`${API_URL}/${examId}/score`);
+    },
+    // 检查预约状态
+    checkBookingStatus(userId, examId) {
+        return axios.get(`${API_URL}/check-status`, {
+            params: { userId, examId }
+        });
     }
 };

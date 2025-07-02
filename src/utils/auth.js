@@ -119,3 +119,11 @@ export function getUserInfo() {
     }
     return statusMap[status] || '未知'
   }
+
+  /**
+ * 获取用户邮箱
+ */
+export function getUserEmail() {
+  const userInfo = getUserInfo()
+  return userInfo ? userInfo.email : null
+}

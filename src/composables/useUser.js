@@ -34,11 +34,11 @@ export function useUser() {
     }
   }
   
-  // 登录成功后更新用户信息
-  const login = (userData) => {
-    updateUserInfo(userData)
-    ElMessage.success('登录成功！')
-  }
+ // 在login方法中添加邮箱登录支持
+const login = (userData, loginType = 'password') => {
+  updateUserInfo(userData)
+  ElMessage.success(loginType === 'password' ? '登录成功！' : '邮箱登录成功！')
+}
   
   // 登出
   const logout = () => {

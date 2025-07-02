@@ -106,10 +106,25 @@
               </div>
             </div>
 
+            <!-- 题目解析 -->
             <div v-if="item.analysis" class="analysis-section">
-              <div class="analysis-label">题目解析:</div>
-              <div class="analysis-content">{{ item.analysis }}</div>
+              <div class="section-header">
+                <i class="icon-explanation"></i>
+                <h4>题目解析</h4>
+              </div>
+              <div class="section-content">{{ item.analysis }}</div>
             </div>
+
+            <!-- AI反馈 -->
+            <div v-if="item.aiFeedback" class="ai-feedback-section">
+              <div class="section-header">
+                <i class="icon-ai"></i>
+                <h4>AI反馈</h4>
+                <span v-if="item.aiScoreRatio" class="score-ratio">匹配度: {{ item.aiScoreRatio }}%</span>
+              </div>
+              <div class="section-content">{{ item.aiFeedback }}</div>
+            </div>
+          </div>
           </div>
         </div>
       </div>
@@ -124,7 +139,6 @@
           重新考试
         </button>
       </div>
-    </div>
   </div>
 </template>
 
@@ -481,6 +495,58 @@ export default {
   margin-bottom: 30px;
 }
 
+.ai-feedback-section {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid #409EFF;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.section-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #409EFF;
+}
+
+.score-ratio {
+  margin-left: auto;
+  padding: 2px 8px;
+  background-color: rgba(64, 158, 255, 0.1);
+  border-radius: 4px;
+  color: #409EFF;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.section-content {
+  line-height: 1.6;
+  color: #333;
+}
+
+/* AI图标 */
+.icon-ai {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23409EFF' d='M12 3c-4.97 0-9 3.185-9 7.115 0 2.557 1.522 4.82 3.889 6.115l-.78 2.77 3.116-1.65c.88.275 1.823.425 2.775.425 4.97 0 9-3.186 9-7.115C21 6.186 16.97 3 12 3zm0 1c4.416 0 8 2.691 8 6.115 0 3.424-3.584 6.115-8 6.115-.875 0-1.74-.14-2.56-.414l-.32-.107-1.793.95.48-1.706-.176-.317C6.342 14.043 5 12.183 5 10.115 5 6.691 8.584 4 12 4zm0 2.5a1 1 0 100 2 1 1 0 000-2zm-4 0a1 1 0 100 2 1 1 0 000-2zm8 0a1 1 0 100 2 1 1 0 000-2z'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* 解析图标 */
+.icon-explanation {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2342b983' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'/%3E%3C/svg%3E") no-repeat center;
+}
+
 .section-title {
   color: #2c3e50;
   font-size: 22px;
@@ -723,6 +789,22 @@ export default {
   .analysis-tabs button {
     padding: 8px 12px;
     font-size: 13px;
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .ai-feedback-section,
+  .analysis-section {
+    padding: 12px;
+  }
+
+  .section-header h4 {
+    font-size: 15px;
+  }
+
+  .score-ratio {
+    font-size: 11px;
   }
 }
 </style>
