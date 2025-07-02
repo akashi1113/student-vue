@@ -5,7 +5,7 @@
       <h1 class="page-title">考试中心</h1>
       <div class="header-actions">
         <el-button @click="refreshCurrentTab" :loading="loading">
-          <el-icon><refresh-icon /></el-icon>
+          <el-icon><Refresh /></el-icon>
           刷新
         </el-button>
       </div>
@@ -13,16 +13,16 @@
 
     <!-- 标签页 -->
     <el-tabs v-model="activeTab" @tab-click="handleTabClick" class="exam-tabs">
+      <!-- 可预约考试 -->
       <el-tab-pane label="可预约考试" name="bookable">
         <template #label>
           <span class="tab-label">
-            <el-icon><calendar-icon /></el-icon>
+            <el-icon><Calendar /></el-icon>
             可预约考试
             <el-badge v-if="bookableExams.length > 0" :value="bookableExams.length" class="tab-badge" />
           </span>
         </template>
 
-        <!-- 可预约考试列表 -->
         <div v-loading="loading" class="tab-content">
           <div v-if="bookableExams.length === 0" class="empty-state">
             <el-empty description="暂无可预约的考试" />
@@ -34,6 +34,9 @@
                 <h3 class="exam-title">{{ exam.title }}</h3>
                 <div class="exam-badges">
                   <el-tag type="warning" size="small">可预约</el-tag>
+                  <el-tag :type="getExamModeTagType(exam.examMode)" size="small">
+                    {{ getExamModeText(exam.examMode) }}
+                  </el-tag>
                   <span class="duration-badge">{{ exam.duration }}分钟</span>
                 </div>
               </div>
@@ -42,15 +45,15 @@
 
               <div class="exam-info">
                 <div class="info-item">
-                  <el-icon><calendar-icon /></el-icon>
+                  <el-icon><Calendar /></el-icon>
                   <span>{{ formatDateTime(exam.startTime) }}</span>
                 </div>
                 <div class="info-item">
-                  <el-icon><timer-icon /></el-icon>
+                  <el-icon><Timer /></el-icon>
                   <span>{{ exam.duration }}分钟</span>
                 </div>
                 <div class="info-item">
-                  <el-icon><trophy-icon /></el-icon>
+                  <el-icon><Trophy /></el-icon>
                   <span>总分：{{ exam.totalScore }}</span>
                 </div>
               </div>
@@ -58,7 +61,7 @@
               <div class="card-footer">
                 <div class="action-buttons">
                   <el-button size="small" @click="viewExamDetail(exam.id)">
-                    <el-icon><view-icon /></el-icon>
+                    <el-icon><View /></el-icon>
                     详情
                   </el-button>
                   <el-button
@@ -66,7 +69,7 @@
                       type="warning"
                       @click="showTimeSlots(exam)"
                   >
-                    <el-icon><clock-icon /></el-icon>
+                    <el-icon><Clock /></el-icon>
                     预约时段
                   </el-button>
                 </div>
@@ -76,85 +79,180 @@
         </div>
       </el-tab-pane>
 
-      <el-tab-pane label="已预约考试" name="booked">
+      <!-- 我的考试 -->
+      <el-tab-pane label="我的考试" name="myExams">
         <template #label>
           <span class="tab-label">
-            <el-icon><success-filled-icon /></el-icon>
-            已预约成功的考试
-            <el-badge v-if="bookedExams.length > 0" :value="bookedExams.length" class="tab-badge" />
+            <el-icon><SuccessFilled /></el-icon>
+            我的考试
+            <el-badge v-if="onlineExams.length + offlineExams.length > 0"
+                      :value="onlineExams.length + offlineExams.length"
+                      class="tab-badge" />
           </span>
         </template>
 
-        <!-- 已预约考试列表 -->
         <div v-loading="loading" class="tab-content">
-          <div v-if="bookedExams.length === 0" class="empty-state">
-            <el-empty description="暂无已预约成功的考试" />
+          <div v-if="onlineExams.length === 0 && offlineExams.length === 0" class="empty-state">
+            <el-empty description="暂无考试" />
           </div>
 
-          <div v-else class="exam-grid">
-            <div v-for="exam in bookedExams" :key="exam.id" class="exam-card booked-card">
-              <div class="card-header">
-                <h3 class="exam-title">{{ exam.title }}</h3>
-                <div class="exam-badges">
-                  <el-tag type="success" size="small">已预约</el-tag>
-                  <span class="duration-badge">{{ exam.duration }}分钟</span>
-                </div>
+          <div v-else class="exam-sections">
+            <!-- 线上考试 -->
+            <div v-if="onlineExams.length > 0" class="exam-section">
+              <div class="section-header">
+                <h3 class="section-title">
+                  <el-icon><Monitor /></el-icon>
+                  线上考试
+                </h3>
+                <el-tag type="primary" effect="light">
+                  共 {{ onlineExams.length }} 场
+                </el-tag>
               </div>
 
-              <p class="exam-description">{{ exam.description || '暂无考试说明' }}</p>
+              <div class="exam-grid">
+                <div v-for="exam in onlineExams" :key="exam.id" class="exam-card online-card">
+                  <div class="card-header">
+                    <h3 class="exam-title">{{ exam.title }}</h3>
+                    <div class="exam-badges">
+                      <el-tag type="success" size="small">已预约</el-tag>
+                      <el-tag type="primary" size="small">线上</el-tag>
+                      <span class="duration-badge">{{ exam.duration }}分钟</span>
+                    </div>
+                  </div>
 
-              <div class="exam-info">
-                <div class="info-item">
-                  <el-icon><timer-icon /></el-icon>
-                  <span>{{ exam.duration }}分钟</span>
-                </div>
-                <div class="info-item">
-                  <el-icon><trophy-icon /></el-icon>
-                  <span>总分：{{ exam.totalScore }}</span>
-                </div>
-                <div class="info-item">
-                  <el-icon><user-icon /></el-icon>
-                  <span>状态：{{ getExamStatusText(exam.status) }}</span>
+                  <p class="exam-description">{{ exam.description || '暂无考试说明' }}</p>
+
+                  <div class="exam-info">
+                    <div class="info-item">
+                      <el-icon><Timer /></el-icon>
+                      <span>{{ exam.duration }}分钟</span>
+                    </div>
+                    <div class="info-item">
+                      <el-icon><Trophy /></el-icon>
+                      <span>总分：{{ exam.totalScore }}</span>
+                    </div>
+                    <div class="info-item">
+                      <el-icon><User /></el-icon>
+                      <span>状态：{{ getExamStatusText(exam.status) }}</span>
+                    </div>
+                  </div>
+
+                  <div class="card-footer">
+                    <div class="action-buttons">
+                      <el-button size="small" @click="viewExamDetail(exam.id)">
+                        <el-icon><View /></el-icon>
+                        详情
+                      </el-button>
+                      <el-button
+                          size="small"
+                          type="primary"
+                          @click="startExam(exam.id)"
+                          :disabled="!canStartExam(exam)"
+                          v-if="canShowStartButton(exam)"
+                      >
+                        <el-icon><CaretRight /></el-icon>
+                        开始考试
+                      </el-button>
+                      <el-button
+                          size="small"
+                          type="info"
+                          @click="viewExamResult(exam.id)"
+                          v-if="exam.examStatus === 'COMPLETED'"
+                      >
+                        <el-icon><Trophy /></el-icon>
+                        查看成绩
+                      </el-button>
+                    </div>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div class="card-footer">
-                <div class="action-buttons">
-                  <el-button size="small" @click="viewExamDetail(exam.id)">
-                    <el-icon><view-icon /></el-icon>
-                    详情
-                  </el-button>
-                  <el-button
-                      size="small"
-                      @click="viewBookingDetails(exam.id)"
-                      :loading="loadingBookingDetails"
-                  >
-                    <el-icon><document-icon /></el-icon>
-                    预约详情
-                  </el-button>
-                  <el-button
-                      size="small"
-                      type="primary"
-                      @click="startExam(exam.id)"
-                      :disabled="!canStartExam(exam)"
-                      v-if="canShowStartButton(exam)"
-                  >
-                    <el-icon><caret-right-icon /></el-icon>
-                    开始考试
-                  </el-button>
-                  <el-button
-                      size="small"
-                      type="info"
-                      @click="viewExamResult(exam.id)"
-                      v-if="exam.examStatus === 'COMPLETED'"
-                  >
-                    <el-icon><trophy-icon /></el-icon>
-                    查看成绩
-                  </el-button>
+            <!-- 线下考试 -->
+            <div v-if="offlineExams.length > 0" class="exam-section">
+              <div class="section-header">
+                <h3 class="section-title">
+                  <el-icon><Location /></el-icon>
+                  线下考试
+                </h3>
+                <el-tag type="warning" effect="light">
+                  共 {{ offlineExams.length }} 场
+                </el-tag>
+              </div>
+
+              <div class="exam-grid">
+                <div v-for="exam in offlineExams" :key="exam.id" class="exam-card offline-card">
+                  <div class="card-header">
+                    <h3 class="exam-title">{{ exam.title }}</h3>
+                    <div class="exam-badges">
+                      <el-tag type="success" size="small">已预约</el-tag>
+                      <el-tag type="warning" size="small">线下</el-tag>
+                      <span class="duration-badge">{{ exam.duration }}分钟</span>
+                    </div>
+                  </div>
+
+                  <p class="exam-description">{{ exam.description || '暂无考试说明' }}</p>
+
+                  <div class="exam-info">
+                    <div class="info-item">
+                      <el-icon><Timer /></el-icon>
+                      <span>{{ exam.duration }}分钟</span>
+                    </div>
+                    <div class="info-item">
+                      <el-icon><Trophy /></el-icon>
+                      <span>总分：{{ exam.totalScore }}</span>
+                    </div>
+                    <div class="info-item">
+                      <el-icon><User /></el-icon>
+                      <span>状态：{{ getExamStatusText(exam.status) }}</span>
+                    </div>
+                    <div class="info-item" v-if="exam.bookingInfo">
+                      <el-icon><Location /></el-icon>
+                      <span>地点：{{ exam.bookingInfo.examLocation }}</span>
+                    </div>
+                  </div>
+
+                  <div class="card-footer">
+                    <div class="action-buttons">
+                      <el-button size="small" @click="viewExamDetail(exam.id)">
+                        <el-icon><View /></el-icon>
+                        详情
+                      </el-button>
+                      <el-button
+                          size="small"
+                          @click="viewBookingDetails(exam.id)"
+                          :loading="loadingBookingDetails"
+                      >
+                        <el-icon><Document /></el-icon>
+                        预约详情
+                      </el-button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+      </el-tab-pane>
+
+      <!-- 我的预约 -->
+      <el-tab-pane label="我的预约" name="myBookings">
+        <template #label>
+          <span class="tab-label">
+            <el-icon><Document /></el-icon>
+            我的预约
+          </span>
+        </template>
+        <div class="redirect-message">
+          <el-result
+              icon="info"
+              title="正在跳转到我的预约"
+              sub-title="请稍候..."
+          >
+            <template #extra>
+              <el-button type="primary" @click="goToMyBookings">立即跳转</el-button>
+            </template>
+          </el-result>
         </div>
       </el-tab-pane>
     </el-tabs>
@@ -164,7 +262,7 @@
       <div class="slots-header">
         <h2 class="section-title">{{ selectedExam.title }} - 可预约时间段</h2>
         <el-button size="small" @click="closeTimeSlots">
-          <el-icon><close-icon /></el-icon>
+          <el-icon><Close /></el-icon>
           关闭
         </el-button>
       </div>
@@ -215,15 +313,15 @@
 
           <div class="slot-info">
             <div class="info-row">
-              <el-icon><location-icon /></el-icon>
+              <el-icon><Location /></el-icon>
               <span>{{ slot.examLocation }}</span>
             </div>
             <div class="info-row">
-              <el-icon><user-icon /></el-icon>
+              <el-icon><User /></el-icon>
               <span>{{ slot.currentBookings }}/{{ slot.maxCapacity }}人</span>
             </div>
             <div class="info-row">
-              <el-icon><monitor-icon /></el-icon>
+              <el-icon><Monitor /></el-icon>
               <span>{{ getExamModeText(slot.examMode) }}</span>
             </div>
           </div>
@@ -348,27 +446,13 @@ import examBookingApi from '@/api/examBooking'
 
 export default {
   name: 'ExamBookingCenter',
-  components: {
-    RefreshIcon,
-    CalendarIcon,
-    TimerIcon,
-    TrophyIcon,
-    ViewIcon,
-    ClockIcon,
-    CaretRightIcon,
-    CloseIcon,
-    LocationIcon,
-    UserIcon,
-    MonitorIcon,
-    DocumentIcon,
-    SuccessFilledIcon
-  },
   data() {
     return {
       loading: false,
       activeTab: 'bookable',
       bookableExams: [],
-      bookedExams: [],
+      onlineExams: [],
+      offlineExams: [],
       selectedExam: null,
       timeSlots: [],
       loadingSlots: false,
@@ -393,79 +477,64 @@ export default {
         ]
       },
       loadingBookingDetails: false,
-      dataLoaded: false, // 添加数据加载标志
+      dataLoaded: false,
     }
   },
-
   computed: {
-    // 计算属性确保数据更新时重新渲染
     currentExams() {
       if (this.activeTab === 'bookable') {
         return this.bookableExams
-      } else if (this.activeTab === 'booked') {
-        return this.bookedExams
+      } else if (this.activeTab === 'myExams') {
+        return [...this.onlineExams, ...this.offlineExams]
       }
       return []
     }
   },
-
   watch: {
-    // 监听 activeTab 变化
     activeTab: {
       handler(newTab) {
-        console.log('Active tab changed to:', newTab)
-        this.loadCurrentTabData()
+        if (newTab !== 'myBookings') {
+          this.loadCurrentTabData()
+        }
       },
-      immediate: true // 立即执行一次
+      immediate: true
     }
   },
-
   mounted() {
-    // 确保初始数据加载
     if (!this.dataLoaded) {
       this.loadCurrentTabData()
     }
   },
-
   methods: {
     async loadCurrentTabData() {
-      console.log('Loading data for tab:', this.activeTab)
-
       if (this.activeTab === 'bookable') {
         await this.loadBookableExams()
-      } else if (this.activeTab === 'booked') {
+      } else if (this.activeTab === 'myExams') {
         await this.loadBookedExams()
       }
-
       this.dataLoaded = true
     },
-
     handleTabClick(tab) {
-      console.log('Tab clicked:', tab.name)
-      this.activeTab = tab.name
-      // watch 会自动触发数据加载
+      if (tab.paneName === 'myBookings') {
+        this.goToMyBookings()
+      } else {
+        this.activeTab = tab.paneName
+      }
     },
-
     refreshCurrentTab() {
       this.loadCurrentTabData()
     },
-
     async loadBookableExams() {
       this.loading = true
       try {
         const response = await examApi.getBookableExams()
-        console.log('Bookable exams response:', response) // 调试日志
-
-        // 确保正确访问数据
         const data = response.data?.data || response.data || []
         this.bookableExams = data.map(exam => ({
           ...exam,
           allowBooking: true
         }))
-
-        console.log('Bookable exams loaded:', this.bookableExams) // 调试日志
       } catch (error) {
-        console.error('Failed to load bookable exams:', error) // 调试日志
+        console.error('Failed to load bookable exams:', error)
         this.$message.error('加载可预约考试失败：' + (error.message || '请稍后重试'))
       } finally {
         this.loading = false
@@ -475,57 +544,44 @@ export default {
       this.loading = true
       try {
         const response = await examApi.getBookedExams()
-        console.log('Booked exams response:', response) // 调试日志
-
-        // 确保正确访问数据
-        const data = response.data.data
-        this.bookedExams = data
-
-        console.log('Booked exams loaded:', this.bookedExams) // 调试日志
+        const data = response.data?.data || []
+        this.onlineExams = data.filter(exam => exam.examMode === 'ONLINE')
+        this.offlineExams = data.filter(exam => exam.examMode === 'OFFLINE')
       } catch (error) {
-        console.error('Failed to load booked exams:', error) // 调试日志
+        console.error('Failed to load booked exams:', error)
         this.$message.error('加载已预约考试失败：' + (error.message || '请稍后重试'))
       } finally {
         this.loading = false
       }
     },
-
     async showTimeSlots(exam) {
       this.selectedExam = exam
       this.loadingSlots = true
       this.timeSlotsError = null
-
       try {
         const response = await examBookingApi.getAvailableTimeSlots(exam.id)
-        console.log('Time slots response:', response) // 调试日志
-
-        // 确保正确访问数据
         this.timeSlots = response.data?.data || response.data || []
       } catch (err) {
-        console.error('Failed to load time slots:', err) // 调试日志
+        console.error('Failed to load time slots:', err)
         this.timeSlotsError = err.message || '加载时间段失败'
       } finally {
         this.loadingSlots = false
       }
     },
-
     closeTimeSlots() {
       this.selectedExam = null
       this.timeSlots = []
       this.selectedTimeSlot = null
     },
-
     selectTimeSlot(slot) {
       if (slot.status !== 'AVAILABLE') {
         this.$message.warning('该时间段已满，无法预约')
         return
       }
-
       this.selectedTimeSlot = slot
       this.bookingForm.timeSlotId = slot.id
       this.bookingDialogVisible = true
     },
-
     async confirmBooking() {
       try {
         await this.$refs.bookingFormRef.validate()
@@ -539,12 +595,10 @@ export default {
 
         const response = await examBookingApi.bookExam(bookingData)
 
-        // 严格检查响应
         if (!response.data || !response.data.success) {
           throw new Error(response.data?.message || '预约失败')
         }
 
-        // 确保返回了预约ID
         if (!response.data.data?.id) {
           throw new Error('未返回预约ID')
         }
@@ -552,7 +606,6 @@ export default {
         this.$message.success('预约成功！ID: ' + response.data.data.id)
         this.bookingDialogVisible = false
 
-        // 刷新数据
         await this.showTimeSlots(this.selectedExam)
         await this.loadBookableExams()
 
@@ -563,7 +616,6 @@ export default {
         this.bookingLoading = false
       }
     },
-
     resetBookingForm() {
       this.bookingForm = {
         timeSlotId: null,
@@ -575,7 +627,6 @@ export default {
         this.$refs.bookingFormRef.resetFields()
       }
     },
-
     async startExam(examId) {
       try {
         await this.$confirm(
@@ -587,63 +638,49 @@ export default {
               cancelButtonText: '取消'
             }
         )
-
         this.$router.push(`/exams/${examId}/take`)
       } catch (error) {
         // 用户取消
       }
     },
-
     viewExamDetail(examId) {
       this.$router.push(`/exams/${examId}`)
     },
-
     async viewBookingDetails(examId) {
       try {
-        const userId = this.getCurrentUserId();
-        this.loadingBookingDetails = true;
-        console.log('Fetching booking for:', { userId, examId });
-
-        const bookingResponse = await examBookingApi.getBookingIdByUserAndExam(userId, examId);
-        console.log('Booking ID response:', bookingResponse.data);
-
-        const bookingId = bookingResponse.data?.data || bookingResponse.data;
+        const userId = this.getCurrentUserId()
+        this.loadingBookingDetails = true
+        const bookingResponse = await examBookingApi.getBookingIdByUserAndExam(userId, examId)
+        const bookingId = bookingResponse.data?.data || bookingResponse.data
 
         if (!bookingId) {
-          console.error('No booking ID found in response');
-          this.$message.error('未找到预约记录');
-          return;
+          this.$message.error('未找到预约记录')
+          return
         }
 
-        this.$router.push(`/exam-booking/details/${bookingId}`);
-
+        this.$router.push(`/exam-booking/details/${bookingId}`)
       } catch (error) {
-        console.error('Failed to view booking details:', error);
-        this.$message.error(`获取预约详情失败: ${error.message || '请稍后重试'}`);
+        console.error('Failed to view booking details:', error)
+        this.$message.error(`获取预约详情失败: ${error.message || '请稍后重试'}`)
       } finally {
-        this.loadingBookingDetails = false;
+        this.loadingBookingDetails = false
       }
     },
-
     viewExamResult(examId) {
       this.$router.push(`/exams/${examId}/result`)
     },
-
     canStartExam(exam) {
-      if (!exam.bookingInfo) return false
+      if (!exam.bookingInfo || exam.examMode !== 'ONLINE') return false
 
       const now = new Date()
       const examTime = new Date(exam.bookingInfo.examDateTime)
       const timeDiff = examTime.getTime() - now.getTime()
 
-      // 考试开始前30分钟可以进入
       return timeDiff <= 30 * 60 * 1000 && timeDiff >= -exam.duration * 60 * 1000
     },
-
     canShowStartButton(exam) {
       return exam.status === 'PUBLISHED' || exam.examStatus === 'CONFIRMED' || exam.examStatus === 'IN_PROGRESS'
     },
-
     getExamStatusText(status) {
       const statusMap = {
         'DRAFT': '草稿',
@@ -657,7 +694,6 @@ export default {
       }
       return statusMap[status] || status
     },
-
     getExamModeText(mode) {
       const modes = {
         'ONLINE': '线上考试',
@@ -666,13 +702,14 @@ export default {
       }
       return modes[mode] || mode
     },
-
+    getExamModeTagType(mode) {
+      return mode === 'ONLINE' ? 'primary' : 'warning'
+    },
     getProgressColor(percentage) {
       if (percentage < 0.5) return '#67c23a'
       if (percentage < 0.8) return '#e6a23c'
       return '#f56c6c'
     },
-
     getCurrentUserId() {
       const userInfo = localStorage.getItem('userInfo')
       if (userInfo) {
@@ -680,12 +717,14 @@ export default {
           const user = JSON.parse(userInfo)
           return user.id
         } catch (e) {
-          return 2
+          return 3
         }
       }
-      return 2
+      return 3
     },
-
+    goToMyBookings() {
+      this.$router.push('/exam-booking/my-bookings')
+    },
     formatDate,
     formatTime,
     formatDateTime
@@ -745,54 +784,84 @@ export default {
   min-height: 400px;
 }
 
+.exam-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.exam-section {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #e4e7ed;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 18px;
+  color: #409eff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .exam-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 20px;
 }
 
 .exam-card {
+  transition: transform 0.3s, box-shadow 0.3s;
   border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  transition: all 0.3s ease;
+  overflow: hidden;
   background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .exam-card:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .bookable-card {
   border-left: 4px solid #e6a23c;
 }
 
-.booked-card {
-  border-left: 4px solid #67c23a;
+.online-card {
+  border-left: 4px solid #409eff;
+}
+
+.offline-card {
+  border-left: 4px solid #e6a23c;
 }
 
 .card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
+  padding: 16px;
+  background: linear-gradient(to right, #f8fafc, #fff);
 }
 
 .exam-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
   color: #303133;
-  flex: 1;
-  margin-right: 12px;
+  margin: 0 0 8px 0;
+  font-weight: 600;
 }
 
 .exam-badges {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-end;
+  gap: 8px;
+  align-items: center;
 }
 
 .duration-badge {
@@ -806,60 +875,42 @@ export default {
 .exam-description {
   color: #606266;
   font-size: 14px;
-  margin: 0 0 16px 0;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.booking-info {
-  background: #f0f9ff;
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 16px;
-}
-
-.booking-details {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.booking-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #409eff;
-  font-size: 13px;
+  margin: 0 16px 16px;
+  line-height: 1.6;
 }
 
 .exam-info {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 0 16px 16px;
 }
 
 .info-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  color: #909399;
-  font-size: 13px;
+  gap: 6px;
+  font-size: 14px;
+  color: #606266;
 }
 
 .card-footer {
+  padding: 12px 16px;
+  background: #f9f9f9;
   border-top: 1px solid #f0f0f0;
-  padding-top: 16px;
 }
 
 .action-buttons {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   justify-content: flex-end;
-  flex-wrap: wrap;
+}
+
+.redirect-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
 }
 
 .time-slots-section {
@@ -877,12 +928,6 @@ export default {
   margin-bottom: 20px;
   padding-bottom: 12px;
   border-bottom: 1px solid #f0f0f0;
-}
-
-.section-title {
-  font-size: 18px;
-  color: #303133;
-  margin: 0;
 }
 
 .time-slots-grid {
@@ -973,12 +1018,18 @@ export default {
   min-height: 200px;
 }
 
+@media (max-width: 992px) {
+  .exam-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
   .exam-grid {
     grid-template-columns: 1fr;
   }
 
-  .time-slots-grid {
+  .exam-info {
     grid-template-columns: 1fr;
   }
 

@@ -30,7 +30,7 @@ function isAuthenticated() {
 const routes = [
   {
     path: '/',
-    redirect: '/exam-booking/time-slot-management'
+    redirect: '/exams'
   },
   // 来自index.js的路由
   {
