@@ -4,7 +4,7 @@
 import { ElMessage } from 'element-plus'
 import router from '../router'
 
-const BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8081'
+const BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080'
 
 export default function request(options) {
   const { url, method = 'GET', data, params } = options

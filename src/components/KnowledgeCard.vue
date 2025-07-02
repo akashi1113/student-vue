@@ -27,7 +27,7 @@ export default {
     getImageUrl(path) {
       if (!path) return ''
       if (path.startsWith('http')) return path
-      return 'http://localhost:8081' + path // 根据你的后端图片访问地址修改
+      return 'http://localhost:8080' + path // 根据你的后端图片访问地址修改
     }
   }
 }

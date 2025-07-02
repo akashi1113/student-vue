@@ -22,7 +22,7 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 }
 
 // 配置axios（合并双方配置）
-// axios.defaults.baseURL = 'http://localhost:8081'  // 来自main.js
+// axios.defaults.baseURL = 'http://localhost:8080'  // 来自main.js
 // axios.defaults.withCredentials = true           // 来自main.ts
 
 // 全局API挂载（注释掉的代码保持原样）

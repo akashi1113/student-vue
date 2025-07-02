@@ -1,7 +1,7 @@
 // 简单的HTTP请求工具
 // 这里使用fetch API，你也可以使用axios等库
 
-const BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8081'
+const BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080'
 
 export default function request(options) {
   const { url, method = 'GET', data, params } = options
