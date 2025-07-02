@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 import router from '../router'
 
 // 两种请求方式并存，可以通过不同导出名使用
-const BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8081'
+const BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080'
 
 // ==================== Axios 实例 ====================
 const axiosInstance = axios.create({
@@ -28,7 +28,7 @@ axiosInstance.interceptors.request.use(config => {
 
 // ==================== Fetch 封装 ====================
 function fetchRequest(options) {
-  const { url, method = 'GET', data, params } = options
+  const { url, method = 'GET', data, params, responseType } = options
   
   // 构建完整URL
   let fullUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`
@@ -81,6 +81,10 @@ function fetchRequest(options) {
           ElMessage.error('服务器内部错误')
         }
         throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      // 新增：如果需要blob，直接返回blob
+      if (responseType === 'blob') {
+        return response.blob()
       }
       return response.json()
     })

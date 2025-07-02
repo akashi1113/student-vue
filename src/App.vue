@@ -7,6 +7,7 @@
       <router-link to="/">知识库</router-link> |
       <router-link to="/score-manage">成绩管理</router-link> |
       <router-link to="/learning-evaluation">学习效果评价</router-link>
+      <router-link to="/audit/report">日志审计</router-link>
     </nav>
     <div class="app-main">
       <router-view />
@@ -26,7 +27,7 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
-  max-width: 800px;
+  /* max-width: 800px; */
   margin: 0 auto;
   padding: 20px;
 }
