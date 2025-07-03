@@ -50,7 +50,7 @@
           </div>
         </div>
         <div v-if="examLoading" class="loading">加载考试记录中...</div>
-        <div v-else-if="examRecords && examRecords.records && examRecords.records.length" class="records-table">
+        <div v-else-if="examRecords && examRecords.list && examRecords.list.length" class="records-table">
           <table>
             <thead>
               <tr>
@@ -61,17 +61,17 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in examRecords.records" :key="item.id">
-                <td>{{ item.examTitle || '未知考试' }}</td>
+              <tr v-for="item in examRecords.list" :key="item.id">
+                <td>{{ item.examTitle || item.title || '未知考试' }}</td>
                 <td>
                   <span class="score" :class="getScoreClass(item.score)">
-                    {{ item.score || 0 }}分
+                    {{ item.score ?? '无' }}分
                   </span>
                 </td>
                 <td>{{ item.startTime ? item.startTime.replace('T', ' ') : '无' }}</td>
                 <td>
                   <span class="status" :class="item.status">
-                    {{ item.statusText || '未知' }}
+                    {{ getStatusText(item.status) }}
                   </span>
                 </td>
               </tr>
@@ -154,11 +154,11 @@ export default {
   },
   computed: {
     averageScore() {
-      if (!this.examRecords || !this.examRecords.records || this.examRecords.records.length === 0) {
+      if (!this.examRecords || !this.examRecords.list || this.examRecords.list.length === 0) {
         return 0
       }
-      const total = this.examRecords.records.reduce((sum, item) => sum + (item.score || 0), 0)
-      return (total / this.examRecords.records.length).toFixed(1)
+      const total = this.examRecords.list.reduce((sum, item) => sum + (item.score || 0), 0)
+      return (total / this.examRecords.list.length).toFixed(1)
     }
   },
   methods: {
@@ -249,7 +249,7 @@ export default {
         if (res.code === 200) {
           this.studyRecords = res.data
           // 统计总学习时长
-          this.totalStudyTime = res.data.records.reduce((sum, item) => sum + (item.duration || 0), 0)
+          this.totalStudyTime = (res.data.records || []).reduce((sum, item) => sum + (item.duration || 0), 0)
         } else {
           this.studyRecords = null
           this.totalStudyTime = 0

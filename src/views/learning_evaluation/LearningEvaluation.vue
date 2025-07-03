@@ -80,13 +80,13 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in studyRecordsTable.records" :key="item.id">
-                <td>{{ item.courseTitle }}</td>
-                <td>{{ item.videoTitle }}</td>
+              <tr v-for="(item, index) in studyRecordsTable.records" :key="item.id || index">
+                <td>{{ item.courseTitle || '课程' + (index + 1) }}</td>
+                <td>{{ item.videoTitle || '视频' + (index + 1) }}</td>
                 <td>
                   <div class="progress-bar">
-                    <div class="progress-fill" :style="{ width: (item.progressPercentage ? item.progressPercentage.toFixed(1) : 0) + '%' }"></div>
-                    <span class="progress-text">{{ (item.progressPercentage ? item.progressPercentage.toFixed(1) : 0) + '%' }}</span>
+                    <div class="progress-fill" :style="{ width: calculateProgress(item) + '%' }"></div>
+                    <span class="progress-text">{{ calculateProgress(item) + '%' }}</span>
                   </div>
                 </td>
                 <td>
@@ -545,7 +545,20 @@ export default {
         },
         series: [{
           type: 'radar',
-          data: [data]
+          data: [{
+            value: data,
+            name: '能力评分',
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(102,126,234,0.4)' },
+                { offset: 0.5, color: 'rgba(102,126,234,0.25)' },
+                { offset: 1, color: 'rgba(118,75,162,0.15)' }
+              ])
+            },
+            lineStyle: {
+              width: 2
+            }
+          }]
         }]
       }
     },
@@ -570,22 +583,50 @@ export default {
       this.hasData = false
       
       try {
-        await Promise.all([
-          this.fetchEvaluationData(),
-          this.fetchRadarData(),
-          this.fetchProgressData(),
-          this.fetchExamAnalysis(),
-          this.generateSuggestions(),
-          this.fetchStudyRecordsTable(),
-          this.fetchChartData(),
-          this.fetchExamRecordsTable()
-        ])
-        this.hasData = true
+        // 单独处理每个请求，确保即使某些请求失败也不会影响整体显示
+        try {
+          await this.fetchStudyRecordsTable()
+        } catch (e) {
+          console.error('获取学习记录失败:', e)
+        }
         
-        // 等待DOM更新后初始化图表
-        this.$nextTick(() => {
-          this.initChart()
-        })
+        try {
+          await this.fetchExamRecordsTable()
+        } catch (e) {
+          console.error('获取考试记录失败:', e)
+        }
+        
+        try {
+          await this.fetchChartData()
+        } catch (e) {
+          console.error('获取图表数据失败:', e)
+        }
+        
+        try {
+          await this.fetchEvaluationData()
+        } catch (e) {
+          console.error('获取评估数据失败:', e)
+        }
+        
+        try {
+          await this.generateSuggestions()
+        } catch (e) {
+          console.error('生成建议失败:', e)
+        }
+        
+        // 只要有一部分数据，就可以显示
+        if (this.studyRecordsTable || this.examRecordsTable) {
+          this.hasData = true
+          
+          // 等待DOM更新后初始化图表
+          this.$nextTick(() => {
+            if (this.$refs.chartDom) {
+              this.initChart()
+            }
+          })
+        } else {
+          alert('未能获取到任何学习或考试记录，请检查用户ID是否正确')
+        }
       } catch (error) {
         console.error('评价分析失败:', error)
         alert('分析失败，请检查网络连接或联系管理员')
@@ -717,41 +758,41 @@ export default {
     },
     
     processRadarData() {
-      // 1. 学习成效：考试成绩平均分
-      let avgScore = 0
-      if (this.examRecordsTable && this.examRecordsTable.records && this.examRecordsTable.records.length) {
-        avgScore = this.examRecordsTable.records.reduce((a, b) => a + (b.score || 0), 0) / this.examRecordsTable.records.length
-      }
+  // 1. 学习成效：考试成绩平均分
+  let avgScore = 0
+  if (this.examRecordsTable && this.examRecordsTable.records && this.examRecordsTable.records.length) {
+    avgScore = (this.examRecordsTable.records || []).reduce((a, b) => a + (b.score || 0), 0) / ((this.examRecordsTable.records || []).length || 1)
+  }
 
-      // 2. 学习投入度：学习时长/标准时长（5小时）
-      let totalStudyTime = this.totalStudyTime / 3600 // 单位小时
-      const standardTime = 5
-      let investScore = Math.min(100, Math.round((totalStudyTime / standardTime) * 100))
+  // 2. 学习投入度：学习时长/标准时长（5小时）
+  let totalStudyTime = this.totalStudyTime / 3600 // 单位小时
+  const standardTime = 5
+  let investScore = Math.min(100, Math.round((totalStudyTime / standardTime) * 100))
 
-      // 3. 知识掌握度：考试成绩方差越小分越高
-      let masteryScore = 0
-      if (this.examRecordsTable && this.examRecordsTable.records && this.examRecordsTable.records.length) {
-        const mean = avgScore
-        const variance = this.examRecordsTable.records.reduce((a, b) => a + Math.pow((b.score || 0) - mean, 2), 0) / this.examRecordsTable.records.length
-        const std = Math.sqrt(variance)
-        masteryScore = Math.max(0, 100 - std * 2)
-      }
+  // 3. 知识掌握度：考试成绩方差越小分越高
+  let masteryScore = 0
+  if (this.examRecordsTable && this.examRecordsTable.records && this.examRecordsTable.records.length) {
+    const mean = avgScore
+    const variance = (this.examRecordsTable.records || []).reduce((a, b) => a + Math.pow((b.score || 0) - mean, 2), 0) / ((this.examRecordsTable.records || []).length || 1)
+    const std = Math.sqrt(variance)
+    masteryScore = Math.max(0, 100 - std * 2)
+  }
 
-      // 4. 学习规律性：一周内学习天数/7
-      let freqScore = 0
-      if (this.studyRecordsTable && this.studyRecordsTable.records && this.studyRecordsTable.records.length) {
-        const days = new Set(this.studyRecordsTable.records.map(item => (new Date(item.lastStudyTime)).toDateString()))
-        freqScore = Math.min(100, Math.round((days.size / 7) * 100))
-      }
+  // 4. 学习规律性：一周内学习天数/7
+  let freqScore = 0
+  if (this.studyRecordsTable && this.studyRecordsTable.records && this.studyRecordsTable.records.length) {
+    const days = new Set((this.studyRecordsTable.records || []).map(item => (new Date(item.lastStudyTime)).toDateString()))
+    freqScore = Math.min(100, Math.round((days.size / 7) * 100))
+  }
 
-      return [
-        Math.round(avgScore),
-        Math.round(masteryScore),
-        investScore,
-        investScore,
-        freqScore
-      ]
-    },
+  return [
+    Math.round(avgScore),
+    Math.round(masteryScore),
+    investScore,
+    investScore,
+    freqScore
+  ]
+},
     
     processProgressData(data) {
       const courses = data.list ? data.list.slice(0, 5).map(item => ({
@@ -784,15 +825,44 @@ export default {
     
       async generateSuggestions() {
         try {
-          // 准备学习数据用于AI分析
+          // 准备学习数据用于AI分析 - 清理数据格式，移除不需要的字段
+          
+          // 1. 处理学习记录，移除userId等后端不需要的字段
+          const cleanStudyRecords = this.studyRecordsTable?.records 
+            ? this.studyRecordsTable.records.map(record => {
+                // 创建一个新对象，只保留后端需要的字段
+                return {
+                  courseTitle: record.courseTitle || '',
+                  videoTitle: record.videoTitle || '',
+                  progressPercentage: record.progressPercentage || 0,
+                  duration: record.duration || 0,
+                  lastStudyTime: record.lastStudyTime || ''
+                };
+              })
+            : [];
+            
+          // 2. 处理考试记录，移除后端不需要的字段
+          const cleanExamRecords = this.examRecordsTable?.records
+            ? this.examRecordsTable.records.map(record => {
+                return {
+                  examTitle: record.examTitle || '未知考试',
+                  score: record.score || 0,
+                  startTime: record.startTime || '',
+                  attemptNumber: record.attemptNumber || record.attempt_number || 1
+                };
+              })
+            : [];
+          
+                    // 根据后端控制器代码，需要包含userId字段
           const learningData = {
-            userId: this.userId,
+            // 必须添加userId字段，这是后端Request类需要的
+            userId: Number(this.userId), // 转换为数字类型
             timePeriod: this.timePeriod,
-            averageScore: this.averageScore,
+            averageScore: parseFloat(this.averageScore),
             totalStudyTime: this.totalStudyTime,
             examPassRate: this.examPassRate,
-            studyRecords: this.studyRecordsTable?.records || [],
-            examRecords: this.examRecordsTable?.records || [],
+            studyRecords: cleanStudyRecords,
+            examRecords: cleanExamRecords,
             timeDistribution: {
               morning: parseFloat(this.getTimeDistribution('morning')),
               afternoon: parseFloat(this.getTimeDistribution('afternoon')),
@@ -800,13 +870,16 @@ export default {
             },
             mostActivePeriod: this.getMostActivePeriod()
           };
-  
+
+          console.log('AI建议数据:', learningData);
+          
           // 调用AI建议接口
           const response = await getAILearningSuggestions(learningData);
           
           if (response.code === 200) {
             this.suggestions = response.data;
           } else {
+            console.log('AI建议API返回错误:', response);
             // 如果AI接口失败，使用备用规则
             this.generateFallbackSuggestions();
           }
@@ -880,41 +953,49 @@ export default {
     
     // 初始化主图表
     initChart() {
-      if (!this.$refs.chartDom) return
+      if (!this.$refs.chartDom) {
+        console.error('图表DOM元素不存在')
+        return
+      }
       
       if (this.chartInstance) {
         this.chartInstance.dispose()
       }
       
-      this.chartInstance = echarts.init(this.$refs.chartDom)
-      
-      let option = {}
-      
-      switch (this.chartType) {
-        case 'bar':
-          option = this.getBarOption()
-          break
-        case 'line':
-          option = this.getLineOption()
-          break
-        case 'score-trend':
-          option = this.getTrendOption()
-          break
-        case 'radar':
-          option = this.getRadarOption()
-          break
-        default:
-          option = this.getBarOption()
-      }
-      
-      this.chartInstance.setOption(option)
-      
-      // 响应式
-      window.addEventListener('resize', () => {
-        if (this.chartInstance) {
-          this.chartInstance.resize()
+      try {
+        this.chartInstance = echarts.init(this.$refs.chartDom)
+        
+        let option = {}
+        
+        switch (this.chartType) {
+          case 'bar':
+            option = this.getBarOption()
+            break
+          case 'line':
+            option = this.getLineOption()
+            break
+          case 'score-trend':
+            option = this.getTrendOption()
+            break
+          case 'radar':
+            option = this.getRadarOption()
+            break
+          default:
+            option = this.getBarOption()
         }
-      })
+        
+        this.chartInstance.setOption(option)
+        console.log('图表初始化成功:', this.chartType)
+        
+        // 响应式
+        window.addEventListener('resize', () => {
+          if (this.chartInstance) {
+            this.chartInstance.resize()
+          }
+        })
+      } catch (error) {
+        console.error('图表初始化失败:', error)
+      }
     },
     
     // 初始化雷达图
@@ -1058,14 +1139,46 @@ export default {
           ...this.getQueryParams()
         })
         if (res.code === 200) {
-          this.studyRecordsTable = res.data
-          this.totalStudyTime = res.data.records.reduce((sum, item) => sum + (item.duration || 0), 0)
+          // 处理数据格式兼容，将list转为records
+          if (res.data && res.data.list && !res.data.records) {
+            res.data.records = res.data.list;
+          }
+          
+          // 确保每条记录都有课程名称、视频名称和最后学习时间
+          // 处理后端返回的StudyRecordDTO与前端期望的字段名映射
+          if (res.data && res.data.records) {
+            res.data.records = res.data.records.map((item, index) => {
+              // 创建一个完整的记录对象，处理可能的字段名差异
+              return {
+                ...item,
+                // 课程名称: 可能是courseTitle, courseName, course, 或从课程ID生成的默认名称
+                courseTitle: item.courseTitle || item.courseName || (item.courseId ? `课程${item.courseId}` : `课程${index + 1}`),
+                
+                // 视频名称: 可能是videoTitle, videoName, video, 或从视频ID生成的默认名称
+                videoTitle: item.videoTitle || item.videoName || (item.videoId ? `视频${item.videoId}` : `视频${index + 1}`),
+                
+                // 最后学习时间: 可能是lastStudyTime, studyTime, updateTime, createTime等
+                lastStudyTime: item.lastStudyTime || item.studyTime || item.updateTime || item.createTime || new Date().toISOString()
+              };
+            });
+            
+            console.log('处理字段映射后的学习记录:', res.data.records[0]);
+          }
+          
+          this.studyRecordsTable = res.data;
+          console.log('处理后的学习记录数据:', this.studyRecordsTable);
+          
+          if (this.studyRecordsTable && this.studyRecordsTable.records) {
+            this.totalStudyTime = this.studyRecordsTable.records.reduce((sum, item) => sum + (item.duration || 0), 0);
+          } else {
+            this.totalStudyTime = 0;
+          }
         } else {
-          this.studyRecordsTable = null
-          this.totalStudyTime = 0
+          this.studyRecordsTable = null;
+          this.totalStudyTime = 0;
         }
       } finally {
-        this.studyLoading = false
+        this.studyLoading = false;
       }
     },
     
@@ -1079,7 +1192,12 @@ export default {
         })
         console.log('考试记录返回数据:', res)
         if (res.code === 200) {
-          this.examRecordsTable = res.data
+          // 处理数据格式兼容，将list转为records
+          if (res.data && res.data.list && !res.data.records) {
+            res.data.records = res.data.list;
+          }
+          this.examRecordsTable = res.data;
+          console.log('处理后的考试记录数据:', this.examRecordsTable);
         } else {
           this.examRecordsTable = null
         }
@@ -1090,8 +1208,34 @@ export default {
     
     formatDate(dateStr) {
       if (!dateStr) return '无'
-      const date = new Date(dateStr)
-      return date.toLocaleString('zh-CN')
+      try {
+        const date = new Date(dateStr)
+        // 检查日期是否有效
+        if (isNaN(date.getTime())) {
+          return '无效日期'
+        }
+        return date.toLocaleString('zh-CN')
+      } catch (error) {
+        console.error('日期格式化错误:', error)
+        return '无法格式化'
+      }
+    },
+    
+    // 计算学习进度百分比
+    calculateProgress(item) {
+      // 如果已有progressPercentage字段，直接使用
+      if (item.progressPercentage !== undefined) {
+        return parseFloat(item.progressPercentage).toFixed(1);
+      }
+      
+      // 否则根据progress和duration计算百分比
+      if (item.progress && item.duration && item.duration > 0) {
+        const percentage = (item.progress / item.duration) * 100;
+        return Math.min(100, percentage).toFixed(1);
+      }
+      
+      // 如果没有必要的字段，返回0
+      return '0.0';
     },
     
     async generateReport() {
@@ -1170,7 +1314,7 @@ export default {
                   <tr style="border-bottom: 1px solid #f0f0f0;">
                     <td style="padding: 10px; border: 1px solid #ddd;">${item.courseTitle || '未知课程'}</td>
                     <td style="padding: 10px; border: 1px solid #ddd;">${item.videoTitle || '未知视频'}</td>
-                    <td style="padding: 10px; border: 1px solid #ddd;">${(item.progressPercentage ? item.progressPercentage.toFixed(1) : 0)}%</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">${this.calculateProgress(item)}%</td>
                     <td style="padding: 10px; border: 1px solid #ddd;">${item.duration ? Math.round(item.duration / 60) : 0}</td>
                     <td style="padding: 10px; border: 1px solid #ddd;">${this.formatDate(item.lastStudyTime)}</td>
                   </tr>

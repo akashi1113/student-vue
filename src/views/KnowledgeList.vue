@@ -71,7 +71,7 @@ export default {
           size: 12
         })
         console.log('完整返回:', res)
-        this.knowledgeList = res.data.records || [] 
+        this.knowledgeList = res.data.list || []
         console.log('records:', this.knowledgeList)
       } catch (error) {
         console.error('加载知识库列表失败:', error)

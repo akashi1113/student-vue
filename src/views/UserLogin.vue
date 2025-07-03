@@ -210,7 +210,7 @@ export default {
     const loginSuccess = (userData) => {
       ElMessage.success('登录成功！')
       localStorage.setItem('userInfo', JSON.stringify(userData))
-      const redirect = router.currentRoute.value.query.redirect || '/'
+      const redirect = router.currentRoute.value.query.redirect || '/';
       router.push(redirect)
       console.log('登录返回的数据:', userData)
     }

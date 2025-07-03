@@ -28,10 +28,10 @@ function isAuthenticated() {
 }
 
 const routes = [
-  {
-    path: '/',
-    redirect: '/exams'
-  },
+  // {
+  //   path: '/',
+  //   redirect: '/exams'
+  // },
   // 来自index.js的路由
   {
     path: '/login',
@@ -51,15 +51,15 @@ const routes = [
       requiresAuth: false
     }
   },
-  // {
-  //   path: '/',
-  //   name: 'KnowledgeList',
-  //   component: KnowledgeList,
-  //   meta: {
-  //     title: '知识库',
-  //     requiresAuth: true
-  //   }
-  // },
+  {
+    path: '/knowledge',
+    name: 'KnowledgeList',
+    component: KnowledgeList,
+    meta: {
+      title: '知识库',
+      requiresAuth: true
+    }
+  },
   {
     path: '/knowledge/:id',
     name: 'KnowledgeDetail',

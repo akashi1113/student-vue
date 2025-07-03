@@ -4,7 +4,7 @@
       <h1>CSU学生管理系统 - 知识库管理</h1>
     </div>
     <nav>
-      <router-link to="/">知识库</router-link> |
+      <router-link to="/knowledge">知识库</router-link> |
       <router-link to="/score-manage">成绩管理</router-link> |
       <router-link to="/learning-evaluation">学习效果评价</router-link>
       <router-link to="/audit/report">日志审计</router-link>
