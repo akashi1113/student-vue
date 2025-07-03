@@ -25,8 +25,8 @@ export const useExperimentStore = defineStore('experiment', {
       try {
         const response = await experimentApi.getExperiments()
         // 确保正确处理API响应结构
-        if (response.data && Array.isArray(response.data.data)) {
-          this.experiments = response.data.data
+        if (response.data && Array.isArray(response.data)) {
+          this.experiments = response.data
         } else {
           console.error('API返回数据格式不正确:', response)
           this.experiments = []

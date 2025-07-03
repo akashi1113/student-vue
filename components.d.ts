@@ -60,6 +60,7 @@ declare module 'vue' {
     Loading: typeof import('./src/components/common/Loading.vue')['default']
     LoadingSpinner: typeof import('./src/components/LoadingSpinner.vue')['default']
     ModulePieChart: typeof import('./src/components/common/ModulePieChart.vue')['default']
+    Programming: typeof import('./src/components/Programming.vue')['default']
     ReportGenerator: typeof import('./src/components/ReportGenerator.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

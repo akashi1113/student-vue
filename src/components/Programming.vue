@@ -218,6 +218,21 @@ export default {
     }
   },
   methods: {
+    // 添加获取当前代码的方法
+    getCurrentCode() {
+      return this.code;
+    },
+
+    // 添加获取当前语言的方法
+    getSelectedLanguage() {
+      return this.selectedLanguage;
+    },
+
+    // 添加更新代码的方法
+    updateCode(newCode) {
+      this.code = newCode;
+    },
+
     // 通知父组件编辑器获得焦点
     notifyEditorFocus() {
       this.$emit('editor-focus');
@@ -657,7 +672,7 @@ int main() {
       }
     },
 
-    // 运行代码
+    // 运行代码 - 修复版本，添加事件触发
     async runCode() {
       if (!this.code.trim()) {
         this.$message?.warning('请先编写代码');
@@ -668,6 +683,8 @@ int main() {
       this.activeTab = 'result';
 
       try {
+        console.log('开始运行代码...');
+
         const response = await codeExecutionApi.executeCode({
           code: this.code,
           language: this.selectedLanguage,
@@ -676,15 +693,43 @@ int main() {
         });
 
         this.executionResult = response.data;
+        console.log('代码执行结果:', this.executionResult);
+
+        // 重要：触发运行事件，传递给父组件
+        this.$emit('run', {
+          questionId: this.question.id,
+          code: this.code,
+          language: this.selectedLanguage,
+          input: this.testInput,
+          executionResult: this.executionResult
+        });
 
         if (this.executionResult.status === 'SUCCESS') {
           this.activeTab = 'output';
         }
+
+        // 返回执行结果，供父组件使用
+        return this.executionResult;
+
       } catch (error) {
+        console.error('代码执行失败:', error);
+
         this.executionResult = {
           status: 'ERROR',
           error: error.message || '执行失败'
         };
+
+        // 即使失败也要触发事件
+        this.$emit('run', {
+          questionId: this.question.id,
+          code: this.code,
+          language: this.selectedLanguage,
+          input: this.testInput,
+          executionResult: this.executionResult
+        });
+
+        return this.executionResult;
+
       } finally {
         this.isRunning = false;
       }
