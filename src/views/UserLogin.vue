@@ -101,6 +101,26 @@
             </el-form-item>
           </el-form>
         </el-tab-pane>
+        
+        <el-tab-pane label="人脸识别登录" name="face">
+          <el-form @submit.prevent="handleFaceLogin" class="login-form">
+            <el-form-item label="用户名">
+              <el-input v-model="faceUsername" placeholder="请输入用户名" size="large" :prefix-icon="User" />
+            </el-form-item>
+            <el-form-item label="人脸照片">
+              <video ref="videoRef" width="240" height="180" autoplay style="border-radius:8px;"></video>
+              <canvas ref="canvasRef" style="display:none;"></canvas>
+              <el-button @click="openCamera" size="small" style="margin:8px 8px 0 0;">打开摄像头</el-button>
+              <el-upload :show-file-list="false" :before-upload="handleUpload" accept="image/*">
+                <el-button size="small">上传照片</el-button>
+              </el-upload>
+              <img v-if="faceImage" :src="'data:image/jpeg;base64,'+faceImage" width="120" style="margin-top:8px;" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :disabled="!faceImage" size="large" @click="handleFaceLogin">手动重试登录</el-button>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
       </el-tabs>
       
       <div class="login-footer">
@@ -116,7 +136,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElLoading } from 'element-plus'
 import { User, Lock, Message, Key } from '@element-plus/icons-vue'
-import { login, loginByCode, sendVerificationCode } from '../api/userApi.js'
+import { login, loginByCode, sendVerificationCode, faceLogin } from '../api/userApi.js'
 
 export default {
   name: 'UserLogin',
@@ -167,18 +187,153 @@ export default {
     const countdown = ref(0)
     let countdownTimer = null
     
+    // 人脸识别登录
+    const faceUsername = ref('')
+    const faceImage = ref('')
+    const videoRef = ref(null)
+    const canvasRef = ref(null)
+    
+    const openCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+        videoRef.value.srcObject = stream
+        
+        // 优化：缩短等待时间为2秒
+        ElMessage.info('摄像头已打开，2秒后将自动拍照并尝试登录')
+        
+        // 等待摄像头稳定，2秒后自动拍照
+        setTimeout(() => {
+          if (videoRef.value && videoRef.value.readyState === 4) {
+            takePhoto()
+            // 拍照后自动尝试登录
+            if (faceUsername.value) {
+              handleFaceLogin()
+            } else {
+              ElMessage.warning('请先输入用户名再尝试自动登录')
+            }
+          } else {
+            ElMessage.warning('摄像头尚未准备好，请稍后手动点击重试登录')
+          }
+        }, 2000)  // 优化：2秒
+      } catch (e) {
+        ElMessage.error('无法打开摄像头，请检查权限')
+      }
+    }
+    const takePhoto = () => {
+      const video = videoRef.value
+      const canvas = canvasRef.value
+      // 提高分辨率
+      canvas.width = 320
+      canvas.height = 240
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
+      faceImage.value = canvas.toDataURL('image/jpeg', 0.7).split(',')[1]
+    }
+    const handleUpload = (file) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        faceImage.value = e.target.result.split(',')[1]
+      }
+      reader.readAsDataURL(file)
+      return false
+    }
+    // 添加重试次数跟踪
+    let faceLoginRetryCount = 0
+    const MAX_RETRY_COUNT = 1  // 减少重试次数以避免QPS限制
+    
+    const handleFaceLogin = async (isAutoRetry = false) => {
+      if (!faceUsername.value || !faceImage.value) {
+        ElMessage.warning('请填写用户名并拍照或上传照片')
+        return
+      }
+      try {
+        if (!isAutoRetry) {
+          faceLoginRetryCount = 0
+        }
+        const res = await faceLogin(faceUsername.value, faceImage.value)
+        if (res.code === 200) {
+          ElMessage.success('人脸登录成功')
+          loginSuccess(res.data)
+          faceLoginRetryCount = 0
+        } else {
+          // 检查是否包含得分信息，如果是得分问题，提供更友好的提示
+          let scoreMessage = ''
+          if (res.message && res.message.includes('得分:')) {
+            const score = res.message.match(/得分:(\d+\.?\d*)/)?.[1]
+            if (score) {
+              scoreMessage = `人脸匹配度不够(得分:${score})，${faceLoginRetryCount < MAX_RETRY_COUNT ? '正在自动调整重试...' : '请尝试调整光线或角度'}`
+              ElMessage.warning(scoreMessage)
+            } else {
+              ElMessage.error(res.message || '人脸登录失败')
+            }
+          } else {
+            // 检查是否达到API请求限制
+            if (res.message && res.message.includes('qps request limit')) {
+              ElMessage.error('人脸识别服务繁忙，请稍后再试(API调用频率限制)')
+              faceLoginRetryCount = MAX_RETRY_COUNT  // 不再自动重试
+            } else {
+              ElMessage.error(res.message || '人脸登录失败')
+            }
+          }
+          
+          // 自动重试逻辑
+          if (faceLoginRetryCount < MAX_RETRY_COUNT && videoRef.value && videoRef.value.srcObject) {
+            faceLoginRetryCount++
+            console.log(`人脸识别失败，正在进行第${faceLoginRetryCount}次重试...`)
+            setTimeout(() => {
+              takePhoto()  // 重新拍照
+              handleFaceLogin(true)  // 重试登录，标记为自动重试
+            }, 3000)  // 增加为3秒间隔，降低请求频率
+          } else if (faceLoginRetryCount >= MAX_RETRY_COUNT) {
+            ElMessage.info('多次识别未成功，请手动调整后重试')
+            faceLoginRetryCount = 0
+          }
+        }
+      } catch (e) {
+        console.error('人脸登录失败:', e)
+        if (e.message && e.message.includes('face is fuzzy')) {
+          ElMessage.error('人脸照片模糊，请调整光线、保持摄像头稳定、正对摄像头后重试。')
+        } else if (e.message && e.message.includes('qps request limit')) {
+          ElMessage.error('人脸识别服务繁忙，请稍后再试(API调用次数限制)')
+          faceLoginRetryCount = MAX_RETRY_COUNT
+          return
+        } else if (e.message && e.message.includes('得分:')) {
+          const score = e.message.match(/得分:(\d+\.?\d*)/)
+          if (score) {
+            const scoreMessage = `人脸匹配度不够(得分:${score[1]})，${faceLoginRetryCount < MAX_RETRY_COUNT ? '正在自动调整重试...' : '请尝试调整光线或角度'}`
+            ElMessage.warning(scoreMessage)
+            if (faceLoginRetryCount < MAX_RETRY_COUNT && videoRef.value && videoRef.value.srcObject) {
+              faceLoginRetryCount++
+              setTimeout(() => {
+                takePhoto()
+                handleFaceLogin(true)
+              }, 3000)
+            } else if (faceLoginRetryCount >= MAX_RETRY_COUNT) {
+              ElMessage.info('多次识别未成功，请手动重试')
+              faceLoginRetryCount = 0
+            }
+          } else {
+            ElMessage.error(e.message || '人脸登录接口异常')
+          }
+        } else {
+          ElMessage.error(e.message || '人脸登录接口异常')
+        }
+      }
+    }
+    
     // 密码登录
     const handlePasswordLogin = async () => {
       try {
         const valid = await passwordFormRef.value.validate()
-        alert(valid)
         if (!valid) return
-        
         passwordLoading.value = true
-        const response = await login(passwordForm.username, passwordForm.password)
-        
-        if (response.code === 200) {
-          loginSuccess(response.data)
+        try {
+          const response = await login(passwordForm.username, passwordForm.password)
+          if (response.code === 200) {
+            loginSuccess(response.data)
+          }
+        } catch (err) {
+          // 捕获登录失败异常并弹窗提示
+          ElMessage.error(err.message || '用户名或密码错误')
         }
         console.log('提交的数据:', {
           username: passwordForm.username,
@@ -209,6 +364,14 @@ export default {
     // 登录成功处理
     const loginSuccess = (userData) => {
       ElMessage.success('登录成功！')
+      // 存储token，确保后续接口能自动带token
+      if (userData.token) {
+        localStorage.setItem('token', userData.token)
+      }
+      // 兼容后端返回userId但没有id的情况
+      if (userData.userId && !userData.id) {
+        userData.id = userData.userId
+      }
       localStorage.setItem('userInfo', JSON.stringify(userData))
       const redirect = router.currentRoute.value.query.redirect || '/';
       router.push(redirect)
@@ -307,10 +470,18 @@ export default {
       Lock,
       Message,
       Key,
+      faceUsername,
+      faceImage,
+      videoRef,
+      canvasRef,
       handlePasswordLogin,
       handleEmailLogin,
       sendVerificationCodef,
-      goToRegister
+      goToRegister,
+      openCamera,
+      takePhoto,
+      handleUpload,
+      handleFaceLogin
     }
   }
 }

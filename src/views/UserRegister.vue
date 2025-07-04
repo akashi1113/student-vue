@@ -54,6 +54,17 @@
             />
           </el-form-item>
           
+          <el-form-item label="人脸照片" required>
+            <video ref="videoRef" width="240" height="180" autoplay style="border-radius:8px;"></video>
+            <canvas ref="canvasRef" style="display:none;"></canvas>
+            <el-button @click="openCamera" size="small" style="margin:8px 8px 0 0;">打开摄像头</el-button>
+            <el-button @click="takePhoto" size="small" style="margin:8px 8px 0 0;">拍照</el-button>
+            <el-upload :show-file-list="false" :before-upload="handleUpload" accept="image/*">
+              <el-button size="small">上传照片</el-button>
+            </el-upload>
+            <img v-if="faceImage" :src="'data:image/jpeg;base64,'+faceImage" width="120" style="margin-top:8px;" />
+          </el-form-item>
+          
           <el-form-item>
             <el-button
               type="primary"
@@ -96,6 +107,10 @@
         confirmPassword: ''
       })
       
+      const faceImage = ref('')
+      const videoRef = ref(null)
+      const canvasRef = ref(null)
+      
       // 自定义验证规则
       const validateConfirmPassword = (rule, value, callback) => {
         if (value === '') {
@@ -125,30 +140,53 @@
         ]
       }
       
+      const openCamera = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+          videoRef.value.srcObject = stream
+        } catch (e) {
+          ElMessage.error('无法打开摄像头，请检查权限')
+        }
+      }
+      const takePhoto = () => {
+        const video = videoRef.value
+        const canvas = canvasRef.value
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        canvas.getContext('2d').drawImage(video, 0, 0)
+        faceImage.value = canvas.toDataURL('image/jpeg').split(',')[1]
+      }
+      const handleUpload = (file) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          faceImage.value = e.target.result.split(',')[1]
+        }
+        reader.readAsDataURL(file)
+        return false
+      }
+      
       const handleRegister = async () => {
         try {
           const valid = await registerFormRef.value.validate()
-          if (!valid) return
-          
+          if (!valid || !faceImage.value) {
+            ElMessage.warning('请完善所有信息并拍照/上传人脸照片')
+            return
+          }
           loading.value = true
-          
-          // 构造注册数据
-          const userData = {
+          // 直接用对象传递参数，JSON格式
+          const params = {
             username: registerForm.username,
             email: registerForm.email,
-            password: registerForm.password
+            password: registerForm.password,
+            faceImage: faceImage.value
           }
-          
-          const response = await register(userData)
-          
+          const response = await register(params)
           if (response.code === 200) {
             ElMessage.success('注册成功！请登录')
-            // 跳转到登录页面
             router.push('/login')
           }
         } catch (error) {
           console.error('注册失败:', error)
-          // 错误信息已在request.js中处理
         } finally {
           loading.value = false
         }
@@ -167,7 +205,13 @@
         Lock,
         Message,
         handleRegister,
-        goToLogin
+        goToLogin,
+        faceImage,
+        videoRef,
+        canvasRef,
+        openCamera,
+        takePhoto,
+        handleUpload
       }
     }
   }

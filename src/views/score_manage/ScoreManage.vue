@@ -10,11 +10,7 @@
       <div class="query-row">
         <div class="query-item">
           <label>用户ID：</label>
-          <input 
-            v-model="userId" 
-            placeholder="请输入用户ID" 
-            @keyup.enter="handleQuery"
-          />
+          <input v-model="userId" placeholder="请输入用户ID" @keyup.enter="handleQuery" />
         </div>
         <div class="query-item">
           <label>开始日期：</label>
@@ -161,17 +157,18 @@ export default {
       return (total / this.examRecords.list.length).toFixed(1)
     }
   },
+  created() {
+    // 不再自动获取当前用户ID
+  },
   methods: {
     async handleQuery() {
-      if (!this.userId.trim()) {
-        alert('请输入用户ID')
+      if (!this.userId) {
+        alert('未获取到当前用户信息，请重新登录')
         return
       }
-      
       this.loading = true
       this.hasData = false
       this.resetPages()
-      
       try {
         await Promise.all([
           this.fetchExamRecords(),
@@ -189,11 +186,11 @@ export default {
     },
     
     handleReset() {
-      this.userId = ''
       this.startDate = ''
       this.endDate = ''
       this.resetData()
       this.resetPages()
+      this.handleQuery()
     },
     
     resetPages() {

@@ -51,6 +51,7 @@ declare module 'vue' {
     ElTimelineItem: typeof import('element-plus/es')['ElTimelineItem']
     ElTimePicker: typeof import('element-plus/es')['ElTimePicker']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
+    ElUpload: typeof import('element-plus/es')['ElUpload']
     ExperimentCard: typeof import('./src/components/ExperimentCard.vue')['default']
     ExperimentScheduler: typeof import('./src/components/ExperimentScheduler.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']

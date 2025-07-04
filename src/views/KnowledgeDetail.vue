@@ -25,18 +25,36 @@
         <div class="link">
           <a :href="knowledge.linkUrl" target="_blank" rel="noopener noreferrer">点击查看书籍链接</a>
         </div>
+        <div class="favorite-bar">
+          <el-button
+            :type="isFavorite ? 'danger' : 'primary'"
+            @click="isFavorite ? handleCancelFavorite() : handleAddFavorite()"
+            style="margin-top: 18px;"
+          >
+            {{ isFavorite ? '取消收藏' : '收藏' }}
+          </el-button>
+        </div>
       </div>
     </div>
     
     <div v-else class="error">
       <p>知识库内容不存在或已被删除</p>
     </div>
+    <!-- 收藏备注弹窗 -->
+    <el-dialog v-model="showRemarkDialog" title="添加收藏备注" width="400px">
+      <el-input v-model="remark" placeholder="可填写备注（选填）" />
+      <template #footer>
+        <el-button @click="showRemarkDialog = false">取消</el-button>
+        <el-button type="primary" @click="confirmAddFavorite">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import { getKnowledgeDetail } from '../api/knowledge.js'
+import { getKnowledgeDetail, addFavorite, cancelFavorite, getFavoriteStatus } from '../api/knowledge.js'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'KnowledgeDetail',
@@ -46,12 +64,16 @@ export default {
   data() {
     return {
       loading: true,
-      knowledge: null
+      knowledge: null,
+      isFavorite: false,
+      showRemarkDialog: false,
+      remark: ''
     }
   },
   mounted() {
     console.log('路由参数id:', this.$route.params.id)
     this.loadKnowledgeDetail()
+    this.fetchFavoriteStatus()
   },
   methods: {
     async loadKnowledgeDetail() {
@@ -68,13 +90,43 @@ export default {
         this.loading = false
       }
     },
+    async fetchFavoriteStatus() {
+      if (!this.$route.params.id) return
+      const res = await getFavoriteStatus(this.$route.params.id)
+      if (res && res.code === 200) {
+        this.isFavorite = res.data
+      }
+    },
+    handleAddFavorite() {
+      this.showRemarkDialog = true
+    },
+    async confirmAddFavorite() {
+      const res = await addFavorite({ knowledgeId: this.$route.params.id, remark: this.remark })
+      if (res && res.code === 200) {
+        ElMessage.success('收藏成功')
+        this.isFavorite = true
+        this.showRemarkDialog = false
+        this.remark = ''
+      } else {
+        ElMessage.error(res.msg || '收藏失败')
+      }
+    },
+    async handleCancelFavorite() {
+      const res = await cancelFavorite(this.$route.params.id)
+      if (res && res.code === 200) {
+        ElMessage.success('取消收藏成功')
+        this.isFavorite = false
+      } else {
+        ElMessage.error(res.msg || '取消收藏失败')
+      }
+    },
     formatDate(dateString) {
       if (!dateString) return ''
       const date = new Date(dateString)
       return date.toLocaleString('zh-CN')
     },
     goBack() {
-      this.$router.push('/')
+      this.$router.push('/knowledge')
     },
     getImageUrl(path) {
       if (!path) return ''
@@ -190,6 +242,10 @@ export default {
   text-align: center;
   padding: 60px 20px;
   color: #909399;
+}
+
+.favorite-bar {
+  margin-top: 18px;
 }
 
 @media (max-width: 768px) {
