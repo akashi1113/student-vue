@@ -275,6 +275,7 @@ import {
 } from '../../api/gradeAnalysis'
   import { getAILearningSuggestions } from '../../api/aiSuggestions'
 import jsPDF from 'jspdf'
+import request from '../../utils/request'
 
 export default {
   name: 'LearningEvaluation',
@@ -1133,52 +1134,28 @@ export default {
     async fetchStudyRecordsTable() {
       this.studyLoading = true
       try {
-        const res = await getUserStudyRecords(this.userId, {
-          pageNum: this.studyPageNum,
-          pageSize: this.studyPageSize,
-          ...this.getQueryParams()
+        // 新接口：直接获取带课程名和视频名的学习记录
+        const res = await request({
+          url: `/api/study-records/user/${this.userId}/all`,
+          method: 'get'
         })
-        if (res.code === 200) {
-          // 处理数据格式兼容，将list转为records
-          if (res.data && res.data.list && !res.data.records) {
-            res.data.records = res.data.list;
+        console.log('新接口返回的学习记录:', res)
+        if (res.code === 200 && Array.isArray(res.data)) {
+          // 适配为前端表格结构
+          this.studyRecordsTable = {
+            records: res.data,
+            total: res.data.length,
+            pageNum: 1,
+            pageSize: res.data.length,
+            pages: 1
           }
-          
-          // 确保每条记录都有课程名称、视频名称和最后学习时间
-          // 处理后端返回的StudyRecordDTO与前端期望的字段名映射
-          if (res.data && res.data.records) {
-            res.data.records = res.data.records.map((item, index) => {
-              // 创建一个完整的记录对象，处理可能的字段名差异
-              return {
-                ...item,
-                // 课程名称: 可能是courseTitle, courseName, course, 或从课程ID生成的默认名称
-                courseTitle: item.courseTitle || item.courseName || (item.courseId ? `课程${item.courseId}` : `课程${index + 1}`),
-                
-                // 视频名称: 可能是videoTitle, videoName, video, 或从视频ID生成的默认名称
-                videoTitle: item.videoTitle || item.videoName || (item.videoId ? `视频${item.videoId}` : `视频${index + 1}`),
-                
-                // 最后学习时间: 可能是lastStudyTime, studyTime, updateTime, createTime等
-                lastStudyTime: item.lastStudyTime || item.studyTime || item.updateTime || item.createTime || new Date().toISOString()
-              };
-            });
-            
-            console.log('处理字段映射后的学习记录:', res.data.records[0]);
-          }
-          
-          this.studyRecordsTable = res.data;
-          console.log('处理后的学习记录数据:', this.studyRecordsTable);
-          
-          if (this.studyRecordsTable && this.studyRecordsTable.records) {
-            this.totalStudyTime = this.studyRecordsTable.records.reduce((sum, item) => sum + (item.duration || 0), 0);
-          } else {
-            this.totalStudyTime = 0;
-          }
+          this.totalStudyTime = res.data.reduce((sum, item) => sum + (item.duration || 0), 0)
         } else {
-          this.studyRecordsTable = null;
-          this.totalStudyTime = 0;
+          this.studyRecordsTable = null
+          this.totalStudyTime = 0
         }
       } finally {
-        this.studyLoading = false;
+        this.studyLoading = false
       }
     },
     

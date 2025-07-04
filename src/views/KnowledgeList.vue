@@ -3,6 +3,7 @@
     <div class="search-section">
       <SearchBar @search="handleSearch" />
       <CategoryFilter :categories="categories" @filter="handleFilter" />
+      <el-button type="primary" @click="showFavoriteDialog = true" style="margin-left:auto;">我的收藏</el-button>
     </div>
     
     <div class="content-section">
@@ -21,6 +22,30 @@
         />
       </div>
     </div>
+    <!-- 我的收藏弹窗 -->
+    <el-dialog v-model="showFavoriteDialog" title="我的收藏" width="700px">
+      <el-table :data="favoriteList" v-loading="favoriteLoading" style="width: 100%">
+        <el-table-column prop="title" label="标题" />
+        <el-table-column prop="author" label="作者" />
+        <el-table-column prop="remark" label="备注" />
+        <el-table-column prop="favoriteTime" label="收藏时间" />
+        <el-table-column prop="linkUrl" label="书籍链接">
+          <template #default="scope">
+            <a :href="scope.row.linkUrl" target="_blank" style="color:#409eff;">{{ scope.row.linkUrl }}</a>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination
+        :current-page="favoritePage"
+        :page-size="favoriteSize"
+        :total="favoriteTotal"
+        @update:current-page="val => { favoritePage = val; fetchFavoriteList() }"
+        @update:page-size="val => { favoriteSize = val; fetchFavoriteList() }"
+        layout="total, sizes, prev, pager, next, jumper"
+        :page-sizes="[10, 20, 50, 100]"
+        style="margin-top: 20px; text-align: center;"
+      />
+    </el-dialog>
   </div>
 </template>
 
@@ -29,7 +54,7 @@ import SearchBar from '../components/SearchBar.vue'
 import CategoryFilter from '../components/CategoryFilter.vue'
 import KnowledgeCard from '../components/KnowledgeCard.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import { getKnowledgeList, getCategories } from '../api/knowledge.js'
+import { getKnowledgeList, getCategories, getFavoriteList } from '../api/knowledge.js'
 
 export default {
   name: 'KnowledgeList',
@@ -45,7 +70,21 @@ export default {
       knowledgeList: [],
       searchQuery: '',
       selectedCategory: '',
-      categories: []
+      categories: [],
+      // 收藏弹窗相关
+      showFavoriteDialog: false,
+      favoriteList: [],
+      favoriteTotal: 0,
+      favoritePage: 1,
+      favoriteSize: 10,
+      favoriteLoading: false
+    }
+  },
+  watch: {
+    showFavoriteDialog(val) {
+      if (val) {
+        this.fetchFavoriteList()
+      }
     }
   },
   mounted() {
@@ -90,6 +129,22 @@ export default {
     },
     viewDetail(id) {
       this.$router.push(`/knowledge/${id}`)
+    },
+    async fetchFavoriteList() {
+      this.favoriteLoading = true
+      const res = await getFavoriteList(this.favoritePage, this.favoriteSize)
+      // 兼容数组和对象两种返回格式
+      if (Array.isArray(res.data)) {
+        this.favoriteList = res.data
+        this.favoriteTotal = res.data.length
+      } else if (res.data && Array.isArray(res.data.list)) {
+        this.favoriteList = res.data.list
+        this.favoriteTotal = res.data.total
+      } else {
+        this.favoriteList = []
+        this.favoriteTotal = 0
+      }
+      this.favoriteLoading = false
     }
   }
 }

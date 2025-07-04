@@ -60,4 +60,40 @@ export function deleteKnowledge(id) {
   })
 }
 
+// 添加收藏
+export function addFavorite({ knowledgeId, remark }) {
+  return request({
+    url: '/api/knowledge/favorite',
+    method: 'POST',
+    params: { knowledgeId, remark }
+  })
+}
+
+// 取消收藏
+export function cancelFavorite(knowledgeId) {
+  return request({
+    url: '/api/knowledge/unfavorite',
+    method: 'POST',
+    params: { knowledgeId }
+  })
+}
+
+// 查询收藏列表
+export function getFavoriteList(page = 1, size = 10) {
+  return request({
+    url: '/api/knowledge/favorite/list',
+    method: 'GET',
+    params: { page, size }
+  })
+}
+
+// 判断是否已收藏
+export function getFavoriteStatus(knowledgeId) {
+  return request({
+    url: '/api/knowledge/favorite/status',
+    method: 'GET',
+    params: { knowledgeId }
+  })
+}
+
 
