@@ -1,22 +1,46 @@
 import request from '@/utils/request';
 
-export const codeExecutionApi = {
-    // 执行代码
+export default {
     executeCode(data) {
         return request({
             url: '/api/code/execute',
             method: 'post',
-            data
+            data: {
+                code: data.code,
+                language: data.language,
+                className: data.className || 'Solution',
+                input: data.input || '',
+                expectedOutput: data.expectedOutput || ''
+            }
         });
     },
 
-    // 测试基本功能
-    testBasic() {
+    testJava() {
         return request({
-            url: '/api/code/test',
+            url: '/api/code/test/java',
             method: 'post'
         });
     },
-};
 
-export default codeExecutionApi;
+    testCpp() {
+        return request({
+            url: '/api/code/test/cpp',
+            method: 'post'
+        });
+    },
+
+    testPython() {
+        return request({
+            url: '/api/code/test/python',
+            method: 'post'
+        });
+    },
+
+    testInput(language) {
+        return request({
+            url: '/api/code/test/input',
+            method: 'post',
+            params: { language }
+        });
+    }
+};

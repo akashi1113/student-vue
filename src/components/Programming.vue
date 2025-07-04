@@ -91,9 +91,10 @@
                 @focus="notifyEditorFocus"
                 @blur="notifyEditorBlur"
                 class="code-textarea"
-                :placeholder="getCodeTemplate()"
-                spellcheck="false"
                 data-programming-input="true"
+                data-programming-editor="true"
+                :placeholder="getPlaceholderText()"
+                spellcheck="false"
             ></textarea>
           </div>
         </div>
@@ -186,12 +187,13 @@ export default {
       required: true
     },
     initialCode: {
-      type: String,
-      default: ''
+      type: [String, Object],
+      default: () => ({})
     }
   },
   data() {
     return {
+      // 基本状态
       selectedLanguage: 'java',
       code: '',
       testInput: '',
@@ -201,35 +203,167 @@ export default {
       executionResult: {},
       autoSaveTimer: null,
       currentLine: 1,
-      currentColumn: 1
+      currentColumn: 1,
+
+      // 状态管理
+      isInitialized: false,
+      userHasEditedCode: false,  // 用户是否编辑过代码
+      codeInitializedFromProp: false, // 是否从 prop 初始化过
+
+      // 问题相关
+      questionId: null  // 当前问题ID
     };
   },
   computed: {
     lineCount() {
-      return Math.max(this.code.split('\n').length, 20); // 最少显示20行
+      return Math.max(this.code.split('\n').length, 20);
     }
   },
   watch: {
+    // 监听问题变化 - 最重要的隔离逻辑
+    'question.id': {
+      handler(newQuestionId, oldQuestionId) {
+        console.log(`题目ID变化: ${oldQuestionId} -> ${newQuestionId}`);
+
+        if (newQuestionId !== oldQuestionId) {
+          this.questionId = newQuestionId;
+          this.resetForNewQuestion();
+          this.initializeFromProp();
+        }
+      },
+      immediate: true
+    },
+
+    // 监听 initialCode 变化
+    initialCode: {
+      handler(newCode) {
+        console.log(`题目 ${this.questionId} 接收到 initialCode:`, newCode);
+
+        // 只在未初始化或者是新题目时才处理
+        if (!this.codeInitializedFromProp || !this.userHasEditedCode) {
+          this.initializeFromProp();
+        }
+      },
+      immediate: false // 已在 question.id 的 immediate 中处理
+    },
+
+    // 监听代码变化
     code: {
-      handler() {
-        this.autoSave();
-        this.updateCurrentLine();
+      handler(newCode, oldCode) {
+        if (this.isInitialized) {
+          // 检查是否为用户主动编辑
+          if (this.codeInitializedFromProp && newCode !== oldCode) {
+            this.userHasEditedCode = true;
+          }
+
+          this.autoSave();
+          this.updateCurrentLine();
+        }
       }
     }
   },
   methods: {
-    // 通知父组件编辑器获得焦点
-    notifyEditorFocus() {
-      this.$emit('editor-focus');
+    // 为新题目重置状态
+    resetForNewQuestion() {
+      console.log(`重置题目 ${this.questionId} 的状态`);
+
+      this.isInitialized = false;
+      this.userHasEditedCode = false;
+      this.codeInitializedFromProp = false;
+
+      // 清空定时器
+      if (this.autoSaveTimer) {
+        clearTimeout(this.autoSaveTimer);
+        this.autoSaveTimer = null;
+      }
+
+      // 重置界面状态
+      this.activeTab = 'input';
+      this.executionResult = {};
+      this.currentLine = 1;
+      this.currentColumn = 1;
+      this.testInput = '';
+      this.isRunning = false;
+      this.isSubmitting = false;
     },
 
-    // 通知父组件编辑器失去焦点
-    notifyEditorBlur() {
-      this.$emit('editor-blur');
+    // 从 prop 初始化
+    initializeFromProp() {
+      if (!this.questionId) return;
+
+      console.log(`初始化题目 ${this.questionId}:`, this.initialCode);
+
+      let codeToSet = '';
+      let languageToSet = 'java';
+      let hasValidData = false;
+
+      // 解析 initialCode
+      if (this.initialCode) {
+        if (typeof this.initialCode === 'string') {
+          try {
+            const parsed = JSON.parse(this.initialCode);
+            codeToSet = parsed.code || '';
+            languageToSet = parsed.language || 'java';
+            hasValidData = !!(parsed.code && parsed.code.trim());
+          } catch (e) {
+            codeToSet = this.initialCode;
+            hasValidData = !!(this.initialCode && this.initialCode.trim());
+          }
+        } else if (typeof this.initialCode === 'object') {
+          codeToSet = this.initialCode.code || '';
+          languageToSet = this.initialCode.language || 'java';
+          hasValidData = !!(this.initialCode.code && this.initialCode.code.trim());
+        }
+      }
+
+      // 设置语言
+      this.selectedLanguage = languageToSet;
+
+      // 设置代码
+      if (hasValidData) {
+        // 有有效数据，直接使用
+        this.code = codeToSet;
+        this.userHasEditedCode = !this.isCodeTemplate(codeToSet);
+      } else {
+        // 没有数据，使用模板
+        this.code = this.getCodeTemplate();
+        this.userHasEditedCode = false;
+      }
+
+      this.codeInitializedFromProp = true;
+      this.isInitialized = true;
+
+      console.log(`题目 ${this.questionId} 初始化完成:`, {
+        language: this.selectedLanguage,
+        codeLength: this.code.length,
+        hasValidData,
+        userHasEditedCode: this.userHasEditedCode
+      });
     },
 
-    // 获取代码模板 - 增强版
-    getCodeTemplate() {
+    // 检查是否为模板代码
+    isCodeTemplate(code) {
+      if (!code) return false;
+
+      const templates = this.getAllTemplates();
+      const codeToCheck = code.trim();
+
+      return Object.values(templates).some(template =>
+          template.trim() === codeToCheck
+      );
+    },
+
+    // 获取所有模板
+    getAllTemplates() {
+      return {
+        java: this.getTemplateForLanguage('java'),
+        python: this.getTemplateForLanguage('python'),
+        cpp: this.getTemplateForLanguage('cpp')
+      };
+    },
+
+    // 获取指定语言的模板
+    getTemplateForLanguage(language) {
       const templates = {
         java: `public class Solution {
     public static void main(String[] args) {
@@ -282,57 +416,41 @@ int main() {
 }`
       };
 
-      return templates[this.selectedLanguage] || templates.java;
+      return templates[language] || templates.java;
     },
 
-    // 语言切换 - 修复版本
+    // 获取代码模板
+    getCodeTemplate() {
+      return this.getTemplateForLanguage(this.selectedLanguage);
+    },
+
+    // 语言切换处理
     onLanguageChange() {
+      const oldLanguage = this.selectedLanguage;
+      console.log(`题目 ${this.questionId} 语言切换: ${oldLanguage} -> ${this.selectedLanguage}`);
+
       const newTemplate = this.getCodeTemplate();
 
-      // 检查当前代码是否为模板代码
-      if (!this.code.trim() || this.isCurrentCodeTemplate()) {
-        // 如果代码为空或者是模板代码，直接替换
+      // 如果是模板代码或用户没有编辑过，直接切换
+      if (!this.userHasEditedCode || this.isCodeTemplate(this.code)) {
         this.code = newTemplate;
+        this.userHasEditedCode = false;
         console.log(`已切换到 ${this.getLanguageName()} 模板`);
       } else {
-        // 如果有自定义代码，询问是否替换
+        // 用户有自定义代码，询问是否替换
         const shouldReplace = confirm(`检测到您已编写代码，是否要替换为 ${this.getLanguageName()} 模板？`);
         if (shouldReplace) {
           this.code = newTemplate;
+          this.userHasEditedCode = false;
           console.log(`已切换到 ${this.getLanguageName()} 模板`);
         } else {
-          console.log('已保留当前代码');
+          // 用户选择不替换，保持原代码但更新语言
+          console.log(`保持原代码，仅更新语言为 ${this.getLanguageName()}`);
         }
       }
-    },
 
-    // 检查当前代码是否为模板代码
-    isCurrentCodeTemplate() {
-      const templates = this.getAllTemplates();
-      const currentCode = this.code.trim();
-
-      // 检查是否匹配任何一个模板
-      return Object.values(templates).some(template =>
-          template.trim() === currentCode
-      );
-    },
-
-    // 获取所有模板
-    getAllTemplates() {
-      return {
-        java: this.getTemplateForLanguage('java'),
-        python: this.getTemplateForLanguage('python'),
-        cpp: this.getTemplateForLanguage('cpp')
-      };
-    },
-
-    // 获取指定语言的模板
-    getTemplateForLanguage(language) {
-      const currentLang = this.selectedLanguage;
-      this.selectedLanguage = language;
-      const template = this.getCodeTemplate();
-      this.selectedLanguage = currentLang;
-      return template;
+      // 保存语言变更
+      this.onCodeChange();
     },
 
     // 获取语言显示名称
@@ -345,35 +463,50 @@ int main() {
       return languageNames[this.selectedLanguage] || this.selectedLanguage.toUpperCase();
     },
 
-    // 代码输入处理
-    onCodeInput(event) {
-      this.onCodeChange();
+    // 代码变更保存
+    onCodeChange() {
+      if (!this.isInitialized || !this.questionId) return;
+
+      console.log(`题目 ${this.questionId} 代码变更，保存中...`);
+
+      this.$emit('save', {
+        questionId: this.questionId,
+        code: this.code,
+        language: this.selectedLanguage,
+        isSubmitted: false
+      });
     },
 
-    // 代码变更
-    onCodeChange() {
-      this.$emit('save', {
-        questionId: this.question.id,
-        code: this.code,
-        language: this.selectedLanguage
-      });
+    // 代码输入处理
+    onCodeInput() {
+      if (this.isInitialized) {
+        this.userHasEditedCode = true;
+        this.onCodeChange();
+      }
+    },
+
+    // 清空代码
+    clearCode() {
+      this.code = '';
+      this.userHasEditedCode = true;
+      this.onCodeChange();
     },
 
     // 处理键盘事件
     handleKeyDown(event) {
-      const textarea = event.target;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const value = textarea.value;
+      // Ctrl+K 清空代码
+      if (event.ctrlKey && event.key === 'k') {
+        event.preventDefault();
+        this.clearCode();
+        return;
+      }
 
-      // Tab键处理 - 智能缩进
+      // Tab键处理
       if (event.key === 'Tab') {
         event.preventDefault();
         if (event.shiftKey) {
-          // Shift+Tab: 减少缩进
           this.unindentLines();
         } else {
-          // Tab: 增加缩进
           this.indentLines();
         }
         return;
@@ -382,11 +515,14 @@ int main() {
       // Enter键处理 - 自动缩进
       if (event.key === 'Enter') {
         event.preventDefault();
+        const textarea = event.target;
+        const start = textarea.selectionStart;
+        const value = textarea.value;
+
         const currentLineStart = value.lastIndexOf('\n', start - 1) + 1;
         const currentLine = value.substring(currentLineStart, start);
         const indent = currentLine.match(/^\s*/)[0];
 
-        // 检查是否需要增加缩进（如果行末是 { 或 :）
         const needsExtraIndent = /[{:]$/.test(currentLine.trim());
         const extraIndent = needsExtraIndent ? '    ' : '';
 
@@ -404,25 +540,24 @@ int main() {
         "'": "'"
       };
 
-      if (pairs[event.key] && start === end) {
-        event.preventDefault();
-        const pair = pairs[event.key];
-        this.insertText(event.key + pair);
-        textarea.selectionStart = textarea.selectionEnd = start + 1;
-        return;
+      if (pairs[event.key]) {
+        const textarea = event.target;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+
+        if (start === end) {
+          event.preventDefault();
+          const pair = pairs[event.key];
+          this.insertText(event.key + pair);
+          textarea.selectionStart = textarea.selectionEnd = start + 1;
+          return;
+        }
       }
 
       // Ctrl+/ 注释切换
       if (event.ctrlKey && event.key === '/') {
         event.preventDefault();
         this.toggleComment();
-        return;
-      }
-
-      // Ctrl+A 全选
-      if (event.ctrlKey && event.key === 'a') {
-        event.preventDefault();
-        textarea.select();
         return;
       }
     },
@@ -441,7 +576,7 @@ int main() {
       });
     },
 
-    // 缩进选中行
+    // 缩进处理
     indentLines() {
       const textarea = this.$refs.codeEditor;
       const start = textarea.selectionStart;
@@ -449,7 +584,6 @@ int main() {
       const value = textarea.value;
 
       const beforeSelection = value.substring(0, start);
-      const selection = value.substring(start, end);
       const afterSelection = value.substring(end);
 
       const lineStart = beforeSelection.lastIndexOf('\n') + 1;
@@ -468,7 +602,7 @@ int main() {
       });
     },
 
-    // 取消缩进选中行
+    // 取消缩进
     unindentLines() {
       const textarea = this.$refs.codeEditor;
       const start = textarea.selectionStart;
@@ -506,10 +640,8 @@ int main() {
 
       let newLine;
       if (line.trim().startsWith(commentPrefix)) {
-        // 取消注释
         newLine = line.replace(new RegExp(`^(\\s*)${commentPrefix}\\s?`), '$1');
       } else {
-        // 添加注释
         const indent = line.match(/^\s*/)[0];
         newLine = indent + commentPrefix + ' ' + line.trim();
       }
@@ -530,29 +662,22 @@ int main() {
 
     // 格式化代码
     formatCode(event) {
-      // 阻止事件冒泡和默认行为
       if (event) {
         event.preventDefault();
         event.stopPropagation();
-        event.stopImmediatePropagation();
       }
 
       try {
         const originalCode = this.code;
         this.code = this.formatCodeByLanguage(this.code, this.selectedLanguage);
 
-        // 只有在代码真正改变时才显示成功消息
         if (originalCode !== this.code) {
           console.log('代码格式化完成');
-        } else {
-          console.log('代码已经是标准格式');
         }
       } catch (error) {
         console.error('格式化失败:', error);
-        console.log('代码格式化失败');
       }
 
-      // 确保焦点回到编辑器
       this.$nextTick(() => {
         this.$refs.codeEditor?.focus();
       });
@@ -560,17 +685,15 @@ int main() {
 
     // 根据语言格式化代码
     formatCodeByLanguage(code, language) {
-      if (language === 'java') {
+      if (language === 'java' || language === 'cpp') {
         return this.formatJavaCode(code);
       } else if (language === 'python') {
         return this.formatPythonCode(code);
-      } else if (language === 'cpp') {
-        return this.formatCppCode(code);
       }
       return code;
     },
 
-    // 格式化Java代码
+    // 格式化Java/C++代码
     formatJavaCode(code) {
       let formatted = '';
       let indentLevel = 0;
@@ -583,16 +706,13 @@ int main() {
           continue;
         }
 
-        // 减少缩进的情况
-        if (trimmed.startsWith('}') || trimmed.startsWith('case ') || trimmed.startsWith('default:')) {
+        if (trimmed.startsWith('}')) {
           indentLevel = Math.max(0, indentLevel - 1);
         }
 
-        // 添加缩进
         formatted += '    '.repeat(indentLevel) + trimmed + '\n';
 
-        // 增加缩进的情况
-        if (trimmed.endsWith('{') || trimmed.endsWith(':')) {
+        if (trimmed.endsWith('{')) {
           indentLevel++;
         }
       }
@@ -613,7 +733,6 @@ int main() {
           continue;
         }
 
-        // Python缩进处理
         if (trimmed.startsWith('except') || trimmed.startsWith('elif') ||
             trimmed.startsWith('else') || trimmed.startsWith('finally')) {
           indentLevel = Math.max(0, indentLevel - 1);
@@ -627,11 +746,6 @@ int main() {
       }
 
       return formatted.trim();
-    },
-
-    // 格式化C++代码
-    formatCppCode(code) {
-      return this.formatJavaCode(code); // C++和Java格式类似
     },
 
     // 更新当前行列信息
@@ -677,14 +791,28 @@ int main() {
 
         this.executionResult = response.data;
 
+        this.$emit('run', {
+          questionId: this.questionId,
+          code: this.code,
+          language: this.selectedLanguage,
+          input: this.testInput,
+          executionResult: this.executionResult
+        });
+
         if (this.executionResult.status === 'SUCCESS') {
           this.activeTab = 'output';
         }
+
+        return this.executionResult;
+
       } catch (error) {
         this.executionResult = {
           status: 'ERROR',
           error: error.message || '执行失败'
         };
+
+        return this.executionResult;
+
       } finally {
         this.isRunning = false;
       }
@@ -700,17 +828,8 @@ int main() {
       this.isSubmitting = true;
 
       try {
-        // 如果有测试用例，先运行所有测试用例
-        if (this.question.testCases && this.question.testCases.length > 0) {
-          const results = await this.runAllTestCases();
-          const passedTests = results.filter(r => r.passed).length;
-
-          this.$message?.info(`通过了 ${passedTests}/${results.length} 个测试用例`);
-        }
-
-        // 保存最终答案
         this.$emit('save', {
-          questionId: this.question.id,
+          questionId: this.questionId,
           code: this.code,
           language: this.selectedLanguage,
           isSubmitted: true
@@ -724,52 +843,16 @@ int main() {
       }
     },
 
-    // 运行所有测试用例
-    async runAllTestCases() {
-      const results = [];
-
-      for (const testCase of this.question.testCases) {
-        try {
-          const response = await codeExecutionApi.executeCode({
-            code: this.code,
-            language: this.selectedLanguage,
-            input: testCase.input,
-            expectedOutput: testCase.expectedOutput,
-            className: this.getClassName()
-          });
-
-          results.push({
-            input: testCase.input,
-            expectedOutput: testCase.expectedOutput,
-            actualOutput: response.data.output,
-            passed: response.data.correct,
-            executionTime: response.data.executionTime
-          });
-        } catch (error) {
-          results.push({
-            input: testCase.input,
-            expectedOutput: testCase.expectedOutput,
-            actualOutput: '',
-            passed: false,
-            error: error.message
-          });
-        }
-      }
-
-      return results;
-    },
-
     // 获取类名
     getClassName() {
       if (this.selectedLanguage === 'java') {
-        // 从代码中提取类名
         const classMatch = this.code.match(/public\s+class\s+(\w+)/);
         return classMatch ? classMatch[1] : 'Solution';
       }
       return 'Solution';
     },
 
-    // 获取状态样式类
+    // 获取状态相关方法
     getStatusClass() {
       const statusMap = {
         'SUCCESS': 'success',
@@ -781,7 +864,53 @@ int main() {
       return statusMap[this.executionResult.status] || '';
     },
 
-    // 获取状态图标
+    // 编辑器获得焦点时的通知
+    notifyEditorFocus() {
+      console.log(`题目 ${this.questionId} 编辑器获得焦点`);
+      // 可以在这里添加焦点获得时的逻辑，比如：
+      // - 更新UI状态
+      // - 通知父组件
+      // - 记录用户行为等
+      this.$emit('editor-focus', {
+        questionId: this.questionId,
+        language: this.selectedLanguage
+      });
+    },
+
+    // 编辑器失去焦点时的通知
+    notifyEditorBlur() {
+      console.log(`题目 ${this.questionId} 编辑器失去焦点`);
+      this.$emit('editor-blur', {
+        questionId: this.questionId,
+        language: this.selectedLanguage,
+        codeLength: this.code.length
+      });
+
+      // 失去焦点时触发保存
+      this.onCodeChange();
+    },
+
+    // 获取占位符文本
+    getPlaceholderText() {
+      // 如果用户已经编辑过代码，显示编辑提示
+      if (this.userHasEditedCode) {
+        return '继续编写您的代码...';
+      }
+
+      // 如果代码为空，显示开始提示
+      if (!this.code || this.code.trim() === '') {
+        return '请在这里编写您的代码...';
+      }
+
+      // 如果是模板代码，显示模板提示
+      if (this.isCodeTemplate(this.code)) {
+        return '您可以修改此模板代码...';
+      }
+
+      // 默认情况
+      return '';
+    },
+
     getStatusIcon() {
       const iconMap = {
         'SUCCESS': 'icon-check-circle',
@@ -793,7 +922,6 @@ int main() {
       return iconMap[this.executionResult.status] || 'icon-info';
     },
 
-    // 获取状态文本
     getStatusText() {
       const textMap = {
         'SUCCESS': '执行成功',
@@ -807,20 +935,35 @@ int main() {
 
     // 自动保存
     autoSave() {
+      if (!this.isInitialized) return;
+
       if (this.autoSaveTimer) {
         clearTimeout(this.autoSaveTimer);
       }
 
       this.autoSaveTimer = setTimeout(() => {
         this.onCodeChange();
-      }, 1000); // 1秒后自动保存
+      }, 1000);
+    },
+
+    // 提供给外部的方法
+    getCurrentCode() {
+      return this.code;
+    },
+
+    getSelectedLanguage() {
+      return this.selectedLanguage;
+    },
+
+    updateCode(newCode) {
+      this.code = newCode;
+      this.userHasEditedCode = true;
     }
   },
-  mounted() {
-    // 初始化代码
-    this.code = this.initialCode || this.getCodeTemplate();
 
-    // 添加滚动同步
+  mounted() {
+    console.log(`编程题组件挂载，题目ID: ${this.questionId}`);
+
     this.$nextTick(() => {
       const textarea = this.$refs.codeEditor;
       if (textarea) {
@@ -828,7 +971,10 @@ int main() {
       }
     });
   },
+
   beforeUnmount() {
+    console.log(`编程题组件卸载，题目ID: ${this.questionId}`);
+
     if (this.autoSaveTimer) {
       clearTimeout(this.autoSaveTimer);
     }
@@ -1200,14 +1346,24 @@ int main() {
   line-height: 1.4;
 }
 
+.clear-btn {
+  border-color: #f56c6c;
+  color: #f56c6c;
+}
+
+.clear-btn:hover:not(:disabled) {
+  background: #f56c6c;
+  color: white;
+}
+
+.icon-clear::before {
+  content: "🗑";
+}
+
 /* 图标样式 */
 .icon-play::before { content: "▶"; }
 .icon-check::before { content: "✓"; }
 .icon-format::before { content: "{}"; }
-.icon-check-circle::before { content: "✓"; }
-.icon-x-circle::before { content: "✗"; }
-.icon-clock::before { content: "⏰"; }
-.icon-info::before { content: "ℹ"; }
 
 /* 响应式设计 */
 @media (max-width: 768px) {

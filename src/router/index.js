@@ -8,12 +8,10 @@ import ScoreManage from '../views/score_manage/ScoreManage.vue'
 import LearningEvaluation from '../views/learning_evaluation/LearningEvaluation.vue'
 
 // 来自index.ts的组件
-// import Dashboard from '@/views/Dashboard.vue'
 import NoteView from '@/views/NoteView.vue'
 import ExperimentListView from '@/views/experiment/ExperimentListView.vue'
-// import ExperimentSimulationView from '@/views/experiment/'
+import ExperimentConducting from '@/views/experiment/ExperimentConducting.vue'
 import ReportView from '@/views/experiment/ReportView.vue'
-// import ReportGenerator from '@/views/experiment/'
 
 // 动态导入组件
 const Login = () => import('../views/UserLogin.vue')
@@ -28,10 +26,10 @@ function isAuthenticated() {
 }
 
 const routes = [
-  // {
-  //   path: '/',
-  //   redirect: '/exams'
-  // },
+  {
+    path: '/',
+    redirect: '/experimentList'
+  },
   // 来自index.js的路由
   {
     path: '/login',
@@ -305,13 +303,13 @@ const routes = [
       requiresAuth: true
     }
   },
-  // {
-  //   path: '/experiment/simulation',
-  //   name: 'ExperimentSimulation',
-  //   component: ExperimentSimulationView,
-  //   props: true,
-  //   meta: { title: '实验操作' }
-  // },
+  {
+    path: '/experiment/conducting/:experimentId',
+    name: 'ExperimentConducting',
+    component: ExperimentConducting,
+    props: true,
+    meta: { title: '实验操作' }
+  },
   {
     path: '/experiment/:id',
     name: 'ExperimentDetail',

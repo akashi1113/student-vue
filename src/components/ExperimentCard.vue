@@ -4,28 +4,28 @@
       <h3>{{ experiment.name }}</h3>
       <el-tag :type="statusTagType">{{ getSubjectName(experiment.subject) }}</el-tag>
     </div>
-    
+
     <div class="card-content">
       <p class="description">{{ experiment.description }}</p>
-      
+
       <div class="meta-info">
         <span class="duration">
           <el-icon><Timer /></el-icon>
           约 {{ experiment.duration }} 分钟
         </span>
         <span class="status" :class="'status-' + experiment.status">
-        <el-icon v-if="experiment.status === 1"><CircleCheck /></el-icon>
-        <el-icon v-if="experiment.status === 0"><Warning /></el-icon>
-        {{ getStatusText(experiment.status) }}
-      </span>
+          <el-icon v-if="experiment.status === 1"><CircleCheck /></el-icon>
+          <el-icon v-if="experiment.status === 0"><Warning /></el-icon>
+          {{ getStatusText(experiment.status) }}
+        </span>
       </div>
     </div>
-    
+
     <div class="card-actions">
-      <el-button 
-        type="primary" 
-        @click="handleBook"
-        :disabled="experiment.status == '1'"
+      <el-button
+          type="primary"
+          @click="handleStartExperiment"
+          :disabled="experiment.status !== 1"
       >
         去实验
       </el-button>
@@ -36,10 +36,9 @@
 
 <script>
 import { computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { Timer, CircleCheck, Warning } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { useExperimentStore } from '@/store/experiment'
 
 export default {
   name: 'ExperimentCard',
@@ -51,31 +50,32 @@ export default {
   props: {
     experiment: {
       type: Object,
-      required: true
+      required: true,
+      validator: (value) => {
+        return value.id && value.name && value.status !== undefined
+      }
     },
     bookingId: {
       type: Number,
-      required: true
+      default: null
     }
   },
   setup(props) {
     const router = useRouter()
-    const route = useRoute()
-    const experimentStore = useExperimentStore()
 
     const subjects = [
       { value: 'c++', label: 'C++' },
       { value: 'java', label: 'JAVA' },
-      { value: 'bianyi', label: '编译原理 ' },
+      { value: 'bianyi', label: '编译原理' },
       { value: 'ssd1', label: 'SSD1' },
       { value: 'database', label: '数据库' }
     ]
 
-     const statusTextMap = {
-      1: '可预约',  // 对应后端的 STATUS_AVAILABLE
-      2: '已满额',  // 对应后端的 STATUS_FULL
-      0: '已预约',  // 对应后端的 STATUS_DISABLED
-      3: '已关闭'   // 对应后端的 STATUS_CLOSED
+    const statusTextMap = {
+      1: '可预约',
+      2: '已满额',
+      0: '已预约',
+      3: '已关闭'
     }
 
     const getSubjectName = (value) => {
@@ -99,57 +99,43 @@ export default {
     })
 
     const viewDetails = () => {
-        console.log(props.experiment.id);
-        
-  // 使用命名路由并确保参数传递正确
-  router.push({
-    name: 'ExperimentDetail', 
-    params: { 
-      id: props.experiment.id
-    }
-  }).catch(err => {
-    console.error('路由跳转失败:', err);
-    // 可以添加用户提示
-    ElMessage.error('无法跳转到详情页');
-  });
-}
-
-    const handleBook = () => {
-        // 检查实验状态是否为已预约 (0)
-  if (props.experiment.status !== 0) {
-    ElMessage.warning('请先完成实验预约');
-    return;
-  }
-        
-        // 尝试从多个来源获取bookingId
-        // const bookingId = 
-        // route.query.bookingId || // 首先检查路由参数
-        // experimentStore.currentBookingId || // 然后检查store
-        // sessionStorage.getItem('currentBookingId') ||
-        // localStorage.getItem('currentBookingId'); // 最后检查sessionStorage
-
-        // if (!bookingId) {
-        //   ElMessage.warning('预约信息无效，请重新预约');
-        //   return;
-        // }
-
-        // 确保store中有最新的bookingId
-        // experimentStore.setCurrentBookingId(bookingId);
+      if (!props.experiment?.id) {
+        ElMessage.error('无效的实验ID')
+        return
+      }
 
       router.push({
-        name: 'ExperimentSimulation',
-        // params: { 
-        //     bookingId: bookingId 
-        // },
-        // query: {
-        //     bookingId: bookingId // 双重保险，同时放在query中
-        // }
-        params: { 
-      experimentId: props.experiment.id 
-    }
+        name: 'ExperimentDetail',
+        params: {
+          id: props.experiment.id
+        }
       }).catch(err => {
         console.error('路由跳转失败:', err)
-        ElMessage.error('无法跳转到实验界面')
+        ElMessage.error('无法跳转到详情页')
+      })
+    }
+
+    const handleStartExperiment = () => {
+      if (!props.experiment?.id) {
+        ElMessage.error('无效的实验ID')
+        return
+      }
+
+      if (props.experiment.status !== 1) {
+        ElMessage.warning(`当前实验状态为 ${getStatusText(props.experiment.status)}，无法进行`)
+        return
+      }
+
+      console.log('正在跳转到实验页面，ID:', props.experiment.id)
+
+      router.push({
+        name: 'ExperimentConducting',
+        params: {
+          experimentId: props.experiment.id
+        }
+      }).catch(err => {
+        console.error('路由跳转失败:', err)
+        ElMessage.error(`无法跳转到实验界面: ${err.message}`)
       })
     }
 
@@ -158,7 +144,7 @@ export default {
       getStatusText,
       statusTagType,
       viewDetails,
-      handleBook
+      handleStartExperiment
     }
   }
 }
@@ -241,32 +227,29 @@ export default {
   font-size: 13px;
 }
 
-.status-available {
+.status-1 {
   color: #67c23a;
 }
 
-.status-full {
+.status-2 {
+  color: #f56c6c;
+}
+
+.status-0 {
   color: #e6a23c;
 }
 
-.status-closed {
-  color: #f56c6c;
+.status-3 {
+  color: #909399;
 }
 
 .el-icon {
   vertical-align: middle;
 }
 
-.status-0 {
-  color: #e6a23c; /* 已预约 - 黄色 */
-}
-.status-1 {
-  color: #67c23a; /* 可预约 - 绿色 */
-}
-.status-2 {
-  color: #f56c6c; /* 已满额 - 红色 */
-}
-.status-3 {
-  color: #909399; /* 已关闭 - 灰色 */
+/* 禁用按钮样式 */
+.el-button.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>
