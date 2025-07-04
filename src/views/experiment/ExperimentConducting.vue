@@ -94,17 +94,22 @@
         <div class="experiment-controls">
           <button
               v-if="experimentRecord.status === 'RUNNING'"
-              class="btn-success"
-              @click="completeExperiment"
+              class="btn btn-save"
+              @click="saveProgress"
+              :disabled="isSaving"
           >
-            完成实验
+            <i class="el-icon-upload"></i>
+            保存进度
           </button>
+
           <button
               v-if="experimentRecord.status === 'RUNNING'"
-              class="btn-warning"
-              @click="saveProgress"
+              class="btn btn-complete"
+              @click="completeExperiment"
+              :disabled="isCompleting"
           >
-            保存进度
+            <i class="el-icon-check"></i>
+            完成实验
           </button>
         </div>
       </div>
@@ -152,33 +157,86 @@
     </div>
 
     <!-- 实验报告对话框 -->
-    <div v-if="showReport" class="modal-overlay" @click="showReport = false">
+    <div v-if="showReport" class="modal-overlay report-overlay" @click="showReport = false">
       <div class="modal-content report-modal" @click.stop>
-        <div class="modal-header">
-          <h3>实验报告</h3>
+        <div class="modal-header report-header">
+          <div class="header-content">
+            <div class="report-title">
+              <h3>{{ experiment.name }} - 实验报告</h3>
+              <div class="report-subtitle">实验编号: {{ experimentRecord.id }}</div>
+            </div>
+            <div class="report-meta">
+              <div class="meta-item">
+                <i class="el-icon-time"></i>
+                <span>{{ formatDate(experimentRecord.startTime) }} - {{ experimentRecord.endTime ? formatDate(experimentRecord.endTime) : '进行中' }}</span>
+              </div>
+              <div class="meta-item">
+                <i class="el-icon-timer"></i>
+                <span>耗时: {{ calculateDuration() }}</span>
+              </div>
+              <div class="meta-item status-badge" :class="experimentRecord.status.toLowerCase()">
+                <i :class="statusIcon"></i>
+                <span>{{ getStatusText() }}</span>
+              </div>
+            </div>
+          </div>
           <button class="modal-close" @click="showReport = false">&times;</button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body report-body">
           <div class="report-content" ref="reportContent">
             <!-- 报告内容将在这里动态生成 -->
           </div>
-          <div class="report-actions">
-            <button class="btn-primary" @click="downloadReport">
-              下载报告
+        </div>
+        <div class="modal-footer report-footer">
+          <div class="footer-actions">
+            <button class="btn btn-primary" @click="downloadReport">
+              <i class="el-icon-download"></i> 下载报告
             </button>
-            <button class="btn-secondary" @click="printReport">
-              打印报告
+            <button class="btn btn-print" @click="printReport">
+              <i class="el-icon-printer"></i> 打印报告
             </button>
           </div>
+          <div class="footer-note">
+            报告生成时间: {{ new Date().toLocaleString() }}
+          </div>
         </div>
+      </div>
+    </div>
+
+    <div class="report-download" ref="reportDownload" v-show="false">
+      <div class="download-container">
+        <header class="download-header">
+          <h1>{{ experiment.name }} - 实验报告</h1>
+          <div class="report-meta">
+            <div class="meta-row">
+              <span><strong>实验编号：</strong>{{ experimentRecord.id }}</span>
+              <span><strong>生成时间：</strong>{{ new Date().toLocaleString() }}</span>
+            </div>
+            <div class="meta-row">
+              <span><strong>实验状态：</strong>{{ getStatusText() }}</span>
+              <span><strong>实验时长：</strong>{{ calculateDuration() }}</span>
+            </div>
+          </div>
+        </header>
+
+        <main class="download-content">
+          <!-- 动态生成的报告内容会插入到这里 -->
+        </main>
+
+        <footer class="download-footer">
+          <p>{{ experiment.subject }} · {{ experiment.department || '计算机学院' }}</p>
+        </footer>
       </div>
     </div>
   </div>
 </template>
 
+
 <script>
 import ProgrammingQuestion from '@/components/Programming.vue';
 import experimentApi from '@/api/experiment';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export default {
   name: 'ExperimentInterface',
@@ -194,7 +252,9 @@ export default {
   data() {
     return {
       experiment: {},
-      experimentRecord: {},
+      experimentRecord: {
+        status: 'RUNNING', // 默认状态
+      },
       experimentSteps: [],
       programmingQuestion: {},
       currentCode: '',
@@ -289,7 +349,7 @@ export default {
       }
     },
 
-    // 新增：代码运行事件处理
+    // 代码运行事件处理
     async onCodeRun(data) {
       console.log('代码运行事件:', data);
 
@@ -444,7 +504,7 @@ export default {
         this.experimentRecord.executionResult = executionResult ? JSON.stringify(executionResult) : null;
         this.experimentRecord.endTime = new Date().toISOString();
 
-        this.$message?.success('实验已完成！');
+        await this.$message.success('实验已完成！');
 
         // 自动生成报告
         setTimeout(() => {
@@ -453,7 +513,7 @@ export default {
 
       } catch (error) {
         console.error('完成实验失败:', error);
-        this.$message?.error('完成实验失败: ' + (error.message || '未知错误'));
+        this.$message.error('完成实验失败');
       }
     },
 
@@ -464,10 +524,10 @@ export default {
         const language = this.$refs.programmingEditor?.selectedLanguage || 'java';
 
         await this.saveCodeHistory(code, language, 'SAVE');
-        this.$message?.success('进度已保存');
+        await this.$message.success('进度保存成功');
       } catch (error) {
         console.error('保存进度失败:', error);
-        this.$message?.error('保存进度失败');
+        this.$message.error('保存进度失败');
       }
     },
 
@@ -485,6 +545,63 @@ export default {
       this.currentCode = history.code;
       this.showHistory = false;
       this.$message?.success('代码已恢复');
+    },
+
+    // 格式化日期
+    formatDate(dateString) {
+      if (!dateString) return '未记录';
+      const date = new Date(dateString);
+      return date.toLocaleString();
+    },
+
+    // 计算实验时长
+    calculateDuration() {
+      if (!this.experimentRecord.startTime) return "0 分钟";
+
+      const start = new Date(this.experimentRecord.startTime);
+      const end = this.experimentRecord.endTime ?
+          new Date(this.experimentRecord.endTime) : new Date();
+
+      // 确保时间有效
+      if (isNaN(start.getTime())) return "时间无效";
+
+      const diffInSeconds = Math.floor((end - start) / 1000);
+
+      // 处理不足1分钟的情况
+      if (diffInSeconds < 60) {
+        return `${diffInSeconds} 秒`;
+      }
+
+      const diffInMinutes = Math.floor(diffInSeconds / 60);
+
+      // 小于1小时显示分钟
+      if (diffInMinutes < 60) {
+        return `${diffInMinutes} 分钟`;
+      }
+
+      // 大于1小时显示小时和分钟
+      const hours = Math.floor(diffInMinutes / 60);
+      const minutes = diffInMinutes % 60;
+
+      // 只显示有值的部分
+      if (minutes === 0) {
+        return `${hours} 小时`;
+      }
+      return `${hours} 小时 ${minutes} 分钟`;
+    },
+
+    // 获取状态图标
+    get statusIcon() {
+      if (!this.experimentRecord || !this.experimentRecord.status) {
+        return 'el-icon-question';
+      }
+
+      const icons = {
+        'RUNNING': 'el-icon-refresh',
+        'COMPLETED': 'el-icon-success',
+        'CANCELLED': 'el-icon-error'
+      };
+      return icons[this.experimentRecord.status] || 'el-icon-question';
     },
 
     // 生成报告
@@ -512,130 +629,337 @@ export default {
       this.$refs.reportContent.innerHTML = reportHtml;
     },
 
-    // 生成报告HTML - 添加实验步骤
     generateReportHtml(data) {
-      const startTime = new Date(this.experimentRecord.startTime).toLocaleString();
-      const endTime = this.experimentRecord.endTime ?
-          new Date(this.experimentRecord.endTime).toLocaleString() : '未完成';
-
-      // 从本地记录获取最终代码
-      let finalCode = this.experimentRecord.finalCode;
-      let finalLanguage = this.experimentRecord.finalLanguage;
-      let executionResult = this.experimentRecord.executionResult;
-
-      if (!finalCode && this.codeHistory.length > 0) {
-        const submitHistory = this.codeHistory.find(h => h.actionType === 'SUBMIT');
-        if (submitHistory) {
-          finalCode = submitHistory.code;
-          finalLanguage = submitHistory.language;
-          executionResult = submitHistory.executionResult;
-        } else {
-          const latestHistory = this.codeHistory[this.codeHistory.length - 1];
-          finalCode = latestHistory.code;
-          finalLanguage = latestHistory.language;
-          executionResult = latestHistory.executionResult;
-        }
-      }
-
-      // 统计运行次数
-      const runCount = this.codeHistory.filter(h => h.actionType === 'RUN').length;
-
-      console.log('报告中使用的数据:', {
-        finalCode: finalCode ? finalCode.substring(0, 50) + '...' : '无',
-        finalLanguage,
-        executionResult,
-        codeVersions: this.codeHistory.length,
-        runCount
-      });
-
+      // 使用更专业的报告模板
       return `
-        <div class="report-header">
-          <h1>${this.experiment.name} - 实验报告</h1>
-          <div class="report-meta">
-            <p><strong>实验时间:</strong> ${startTime} - ${endTime}</p>
-            <p><strong>实验时长:</strong> ${data.duration || 0} 分钟</p>
-            <p><strong>代码版本:</strong> ${this.codeHistory.length} 个</p>
-            <p><strong>运行次数:</strong> ${runCount} 次</p>
+      <div class="report-cover">
+        <h1>${this.experiment.name}</h1>
+        <h2>实验报告</h2>
+        <div class="report-meta">
+          <p>实验编号: ${this.experimentRecord.id}</p>
+          <p>生成时间: ${new Date().toLocaleString()}</p>
+        </div>
+      </div>
+
+      <div class="report-section">
+        <div class="section-header">
+          <i class="el-icon-document"></i>
+          <h4>实验概览</h4>
+        </div>
+        <div class="section-content">
+          <div class="experiment-info-grid">
+            <div class="info-item">
+              <span class="info-label">课程科目:</span>
+              <span class="info-value">${this.experiment.subject || '未指定'}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">开始时间:</span>
+              <span class="info-value">${this.formatDate(this.experimentRecord.startTime)}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">实验状态:</span>
+              <span class="info-value">${this.getStatusText()}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">结束时间:</span>
+              <span class="info-value">${this.formatDate(this.experimentRecord.endTime)}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">实验时长:</span>
+              <span class="info-value">${this.calculateDuration()}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">代码版本:</span>
+              <span class="info-value">${this.codeHistory.length} 个</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="report-section">
-          <h2>实验描述</h2>
-          <div>${this.experiment.description || '无描述'}</div>
+      <div class="report-section">
+        <div class="section-header">
+          <i class="el-icon-notebook-2"></i>
+          <h4>实验描述</h4>
         </div>
+        <div class="section-content">
+          <div class="experiment-description">
+            ${this.experiment.description || '无实验描述'}
+          </div>
+        </div>
+      </div>
 
-        <div class="report-section">
-          <h2>实验步骤</h2>
+      <div class="report-section">
+        <div class="section-header">
+          <i class="el-icon-set-up"></i>
+          <h4>实验步骤</h4>
+        </div>
+        <div class="section-content">
           <ol class="steps-list-report">
             ${this.experimentSteps.map((step, index) => `
               <li class="step-item-report">
-                <div class="step-title-report">${step.name}</div>
-                ${step.description ? `<div class="step-description-report">${step.description}</div>` : ''}
-                ${step.notes ? `<div class="step-notes-report"><strong>笔记:</strong> ${step.notes}</div>` : ''}
+                <div class="step-header-report">
+                  <span class="step-number">${index + 1}</span>
+                  <span class="step-title-report">${step.name}</span>
+                  ${step.completed ? '<span class="step-status">已完成</span>' : ''}
+                </div>
+                ${step.description ? `
+                  <div class="step-description-report">
+                    ${step.description}
+                  </div>
+                ` : ''}
+                ${step.notes ? `
+                  <div class="step-notes-report">
+                    ${step.notes}
+                  </div>
+                ` : ''}
               </li>
             `).join('')}
           </ol>
         </div>
+      </div>
 
-        <div class="report-section">
-          <h2>最终提交代码</h2>
-          <div class="code-language">语言: ${(finalLanguage || 'JAVA').toUpperCase()}</div>
-          <pre class="final-code">${finalCode || '无代码'}</pre>
+      <div class="report-section">
+        <div class="section-header">
+          <i class="el-icon-cpu"></i>
+          <h4>编程成果</h4>
         </div>
+        <div class="section-content">
+          <div class="code-section">
+            <div class="code-header">
+              <span class="code-language">
+                <i class="el-icon-data-line"></i>
+                ${(this.experimentRecord.finalLanguage || 'JAVA').toUpperCase()}
+              </span>
+            </div>
+            <div class="code-block">
+              <pre class="final-code">${this.experimentRecord.finalCode || '无提交代码'}</pre>
+            </div>
+          </div>
 
+          ${this.experimentRecord.executionResult ? `
+            <div class="execution-result">
+              <div class="result-header">
+                <span class="result-status ${this.getExecutionStatus(this.experimentRecord.executionResult) === '成功' ? 'success' : 'error'}">
+                  ${this.getExecutionStatus(this.experimentRecord.executionResult)}
+                </span>
+                ${this.parseExecutionTime(this.experimentRecord.executionResult) ? `
+                  <span class="result-time">
+                    执行时间: ${this.parseExecutionTime(this.experimentRecord.executionResult)}ms
+                  </span>
+                ` : ''}
+              </div>
+              ${this.parseExecutionOutput(this.experimentRecord.executionResult) ? `
+                <div class="result-output">
+                  ${this.parseExecutionOutput(this.experimentRecord.executionResult)}
+                </div>
+              ` : ''}
+            </div>
+          ` : ''}
+        </div>
+      </div>
+
+      ${this.codeHistory.length > 0 ? `
         <div class="report-section">
-          <h2>执行结果</h2>
-          <div class="execution-result">
-            ${executionResult ?
-          this.formatExecutionResult(typeof executionResult === 'string' ? JSON.parse(executionResult) : executionResult) :
-          '无执行结果'}
+          <div class="section-header">
+            <i class="el-icon-time"></i>
+            <h4>实验时间线</h4>
+          </div>
+          <div class="section-content">
+            <div class="timeline-section">
+              ${this.codeHistory.slice().reverse().map(history => `
+                <div class="timeline-item">
+                  <div class="timeline-content">
+                    <div class="timeline-header">
+                      <span class="timeline-time">${this.formatTime(history.createdAt)}</span>
+                      <span class="timeline-action ${history.actionType.toLowerCase()}">
+                        ${this.getActionText(history.actionType)}
+                      </span>
+                      <span class="timeline-language">${history.language.toUpperCase()}</span>
+                    </div>
+                    <div class="timeline-code-preview">
+                      ${history.code.substring(0, 100)}${history.code.length > 100 ? '...' : ''}
+                    </div>
+                    ${history.executionResult ? `
+                      <div class="timeline-result">
+                        <span class="result-status ${this.getExecutionStatus(history.executionResult) === '成功' ? 'success' : 'error'}">
+                          ${this.getExecutionStatus(history.executionResult)}
+                        </span>
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
           </div>
         </div>
-      `;
+      ` : ''}
+    `;
     },
 
-    // 下载报告
-    downloadReport() {
-      const reportContent = this.$refs.reportContent.innerHTML;
-      const fullHtml = `
+    // 生成下载报告内容
+    generateDownloadContent() {
+      const content = `
+      <div class="section-download">
+        <h2 class="section-title">实验概览</h2>
+        <div class="section-content">
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+            <div><strong>课程科目：</strong>${this.experiment.subject || '未指定'}</div>
+            <div><strong>开始时间：</strong>${this.formatDate(this.experimentRecord.startTime)}</div>
+            <div><strong>实验状态：</strong>${this.getStatusText()}</div>
+            <div><strong>结束时间：</strong>${this.formatDate(this.experimentRecord.endTime)}</div>
+            <div><strong>实验时长：</strong>${this.calculateDuration()}</div>
+            <div><strong>代码版本：</strong>${this.codeHistory.length} 个</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-download">
+        <h2 class="section-title">实验描述</h2>
+        <div class="section-content">
+          ${this.experiment.description || '无实验描述'}
+        </div>
+      </div>
+
+      <div class="section-download">
+        <h2 class="section-title">实验步骤</h2>
+        <ol class="steps-list-download">
+          ${this.experimentSteps.map((step, index) => `
+            <li class="step-item-download">
+              <div class="step-number-download">${index + 1}</div>
+              <div class="step-title-download">${step.name}</div>
+              ${step.description ? `
+                <div class="step-desc-download">${step.description}</div>
+              ` : ''}
+              ${step.notes ? `
+                <div class="step-notes-download">${step.notes}</div>
+              ` : ''}
+            </li>
+          `).join('')}
+        </ol>
+      </div>
+
+      <div class="section-download">
+        <h2 class="section-title">编程成果</h2>
+        <div class="code-block-download">
+          <div class="code-header-download">
+            <span class="code-language-download">${(this.experimentRecord.finalLanguage || 'JAVA').toUpperCase()}</span>
+          </div>
+          <pre class="code-content-download">${this.experimentRecord.finalCode || '无提交代码'}</pre>
+        </div>
+
+        ${this.experimentRecord.executionResult ? `
+          <div class="execution-result-download">
+            <div class="result-status-download ${this.getExecutionStatus(this.experimentRecord.executionResult) === '成功' ? 'success' : 'error'}">
+              ${this.getExecutionStatus(this.experimentRecord.executionResult)}
+            </div>
+            ${this.parseExecutionOutput(this.experimentRecord.executionResult) ? `
+              <pre class="result-output-download">${this.parseExecutionOutput(this.experimentRecord.executionResult)}</pre>
+            ` : ''}
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+      return content;
+    },
+
+    // 下载报告方法
+    async downloadReport() {
+      try {
+        // 生成报告内容
+        const content = this.generateDownloadContent();
+
+        // 设置到下载容器
+        const downloadContainer = this.$refs.reportDownload.querySelector('.download-content');
+        downloadContainer.innerHTML = content;
+
+        // 使用html2canvas和jsPDF生成PDF
+        const element = this.$refs.reportDownload;
+
+        // 临时显示元素
+        element.style.display = 'block';
+
+        const canvas = await html2canvas(element);
+        const pdf = new jsPDF();
+
+        // 隐藏元素
+        element.style.display = 'none';
+
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 190; // A4页面宽度
+        const pageHeight = 277; // A4页面高度
+        const imgHeight = canvas.height * imgWidth / canvas.width;
+        let heightLeft = imgHeight;
+        let position = 10; // 顶部边距
+
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        // 如果需要分页
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        // 保存PDF
+        pdf.save(`${this.experiment.name}_实验报告_${new Date().toISOString().slice(0, 10)}.pdf`);
+
+      } catch (error) {
+        console.error('生成报告失败:', error);
+        this.$message.error('生成报告失败');
+
+        // 回退方案：生成HTML文件
+        const content = `
         <!DOCTYPE html>
         <html>
         <head>
           <meta charset="utf-8">
           <title>${this.experiment.name} - 实验报告</title>
           <style>
-            body { font-family: 'Microsoft YaHei', Arial, sans-serif; margin: 40px; line-height: 1.6; }
-            .report-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #409eff; padding-bottom: 20px; }
-            .report-header h1 { color: #409eff; margin-bottom: 10px; }
-            .report-meta p { margin: 5px 0; }
-            .report-section { margin: 30px 0; }
-            .report-section h2 { color: #303133; border-left: 4px solid #409eff; padding-left: 10px; }
-            .final-code, .code-preview { background: #f5f7fa; padding: 15px; border-radius: 4px; font-family: 'Courier New', monospace; overflow-x: auto; }
-            .code-language { font-weight: bold; margin-bottom: 10px; color: #409eff; }
-            .steps-list-report { padding-left: 20px; }
-            .step-item-report { margin-bottom: 15px; }
-            .step-title-report { font-weight: bold; color: #303133; }
-            .step-description-report { margin-top: 5px; color: #606266; }
-            .step-notes-report { margin-top: 5px; color: #909399; font-style: italic; }
+            ${document.querySelector('style.report-download-style')?.innerHTML || ''}
           </style>
         </head>
         <body>
-          ${reportContent}
+          <div class="download-container">
+            ${this.$refs.reportDownload.querySelector('.download-header').outerHTML}
+            ${content}
+            ${this.$refs.reportDownload.querySelector('.download-footer').outerHTML}
+          </div>
         </body>
         </html>
       `;
 
-      const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${this.experiment.name}_实验报告_${new Date().toISOString().slice(0, 10)}.html`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+        const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${this.experiment.name}_实验报告_${new Date().toISOString().slice(0, 10)}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    },
 
-      this.$message?.success('报告已下载');
+    // 解析执行时间
+    parseExecutionTime(resultJson) {
+      try {
+        const result = typeof resultJson === 'string' ? JSON.parse(resultJson) : resultJson;
+        return result.executionTime || null;
+      } catch {
+        return null;
+      }
+    },
+
+    // 解析执行输出
+    parseExecutionOutput(resultJson) {
+      try {
+        const result = typeof resultJson === 'string' ? JSON.parse(resultJson) : resultJson;
+        return result.output || null;
+      } catch {
+        return null;
+      }
     },
 
     // 打印报告
@@ -860,6 +1184,780 @@ export default {
   background: white;
 }
 
+/* 报告模态框样式 */
+.report-overlay {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(3px);
+}
+
+.report-modal {
+  width: 900px;
+  max-width: 95vw;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border: none;
+}
+
+.report-header {
+  background: linear-gradient(135deg, #2196F3, #1976D2); /* 蓝色渐变 */
+  color: white;
+  padding: 25px;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 添加一些装饰元素 */
+.report-header::after {
+  content: "";
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 150px;
+  height: 150px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.report-title h3 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+  color: white !important;
+}
+
+.report-subtitle {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-top: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+/* 更新元信息样式 */
+.report-meta {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 6px 12px;
+  border-radius: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.meta-item i {
+  font-size: 16px;
+}
+
+/* 状态标签更新 */
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-badge.running {
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.status-badge.completed {
+  background: rgba(76, 175, 80, 0.8);
+}
+
+.status-badge i {
+  margin-right: 5px;
+}
+
+.modal-close {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 26px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  color: white;
+  transform: scale(1.1);
+}
+
+.report-body {
+  padding: 0;
+  flex: 1;
+  overflow: hidden;
+  background: #f9fafc;
+}
+
+.report-content {
+  height: 100%;
+  padding: 25px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.report-footer {
+  padding: 15px 25px;
+  border-top: 1px solid #e6e9f0;
+  background: white;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.footer-note {
+  font-size: 12px;
+  color: #909399;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.btn i {
+  font-size: 14px;
+}
+
+.btn-primary {
+  background: #409eff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #66b1ff;
+}
+
+.btn-print {
+  background: white;
+  color: #606266;
+  border-color: #dcdfe6;
+}
+
+.btn-print:hover {
+  color: #409eff;
+  border-color: #c6e2ff;
+  background: #ecf5ff;
+}
+
+/* 报告内容样式 */
+.report-section {
+  margin-bottom: 30px;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.section-header {
+  padding: 15px 20px;
+  background: #f5f7fa;
+  border-bottom: 1px solid #e6e9f0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.section-header i {
+  color: #409eff;
+  font-size: 18px;
+}
+
+.section-content {
+  padding: 20px;
+}
+
+/* 实验信息部分 */
+.experiment-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.info-item {
+  display: flex;
+  gap: 10px;
+}
+
+.info-label {
+  font-weight: 500;
+  color: #606266;
+  min-width: 80px;
+}
+
+.info-value {
+  color: #303133;
+}
+
+/* 实验步骤样式 */
+.steps-list-report {
+  padding-left: 0;
+  list-style: none;
+}
+
+.step-item-report {
+  padding: 15px 0;
+  border-bottom: 1px dashed #eaecef;
+  position: relative;
+}
+
+.step-item-report:last-child {
+  border-bottom: none;
+}
+
+.step-header-report {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #409eff;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.step-title-report {
+  font-weight: 500;
+  color: #303133;
+}
+
+.step-status {
+  margin-left: auto;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #f0f9eb;
+  color: #67c23a;
+}
+
+.step-description-report {
+  color: #606266;
+  line-height: 1.6;
+  margin-left: 34px;
+  font-size: 14px;
+}
+
+.step-notes-report {
+  margin-top: 10px;
+  margin-left: 34px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-left: 3px solid #409eff;
+  border-radius: 0 4px 4px 0;
+  font-size: 13px;
+  color: #555;
+}
+
+.step-notes-report::before {
+  content: "笔记:";
+  font-weight: 500;
+  color: #409eff;
+  margin-right: 5px;
+}
+
+/* 代码展示样式 */
+.code-section {
+  margin-top: 5px;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.code-language {
+  font-family: monospace;
+  font-size: 13px;
+  color: #409eff;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.code-language i {
+  font-size: 16px;
+}
+
+.code-block {
+  position: relative;
+}
+
+.code-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 1;
+}
+
+.code-toolbar button {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #dcdfe6;
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: #606266;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.code-toolbar button:hover {
+  color: #409eff;
+  border-color: #409eff;
+}
+
+.code-toolbar button i {
+  font-size: 12px;
+}
+
+.final-code {
+  background: #f6f8fa;
+  padding: 15px;
+  border-radius: 4px;
+  border: 1px solid #dfe2e5;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+  position: relative;
+}
+
+/* 执行结果样式 */
+.execution-result {
+  margin-top: 20px;
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.result-status {
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+.result-status.success {
+  background: #f0f9eb;
+  color: #67c23a;
+}
+
+.result-status.error {
+  background: #fef0f0;
+  color: #f56c6c;
+}
+
+.result-time {
+  font-size: 12px;
+  color: #909399;
+}
+
+.result-output {
+  background: #f6f8fa;
+  padding: 12px;
+  border-radius: 4px;
+  border-left: 3px solid #409eff;
+  font-family: monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 时间线样式 */
+.timeline-section {
+  margin-top: 20px;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 25px;
+  margin-bottom: 20px;
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #409eff;
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px #409eff;
+  z-index: 1;
+}
+
+.timeline-item::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 17px;
+  bottom: -20px;
+  width: 2px;
+  background: #e4e7ed;
+}
+
+.timeline-item:last-child::after {
+  display: none;
+}
+
+.timeline-content {
+  background: white;
+  border: 1px solid #e6e9f0;
+  border-radius: 6px;
+  padding: 15px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.timeline-time {
+  font-size: 12px;
+  color: #909399;
+  margin-right: 10px;
+}
+
+.timeline-action {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-right: 10px;
+}
+
+.timeline-action.save {
+  background: #e6f7ff;
+  color: #409eff;
+}
+
+.timeline-action.run {
+  background: #fdf6ec;
+  color: #e6a23c;
+}
+
+.timeline-action.submit {
+  background: #f0f9eb;
+  color: #67c23a;
+}
+
+.timeline-language {
+  font-family: monospace;
+  font-size: 12px;
+  color: #606266;
+}
+
+.timeline-code-preview {
+  margin-top: 10px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 下载报告专用样式 */
+.report-download {
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.6;
+  color: #333;
+}
+
+.download-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px;
+}
+
+.download-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #1976D2;
+}
+
+.download-header h1 {
+  color: #1976D2;
+  font-size: 24px;
+  margin-bottom: 15px;
+}
+
+.report-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+}
+
+.meta-row strong {
+  color: #555;
+}
+
+.download-content {
+  margin: 30px 0;
+}
+
+/* 报告内容区域样式 */
+.section-download {
+  margin-bottom: 30px;
+  page-break-inside: avoid;
+}
+
+.section-title {
+  color: #1976D2;
+  font-size: 18px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+  margin-bottom: 15px;
+}
+
+/* 实验步骤样式 */
+.steps-list-download {
+  padding-left: 20px;
+}
+
+.step-item-download {
+  margin-bottom: 15px;
+  position: relative;
+}
+
+.step-number-download {
+  position: absolute;
+  left: -25px;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  background: #1976D2;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.step-title-download {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.step-desc-download {
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.step-notes-download {
+  background: #f9f9f9;
+  padding: 8px 12px;
+  border-left: 3px solid #1976D2;
+  font-size: 14px;
+  color: #666;
+}
+
+/* 代码块样式 */
+.code-block-download {
+  margin: 15px 0;
+  position: relative;
+}
+
+.code-header-download {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.code-language-download {
+  font-family: monospace;
+  color: #1976D2;
+  font-weight: bold;
+}
+
+.code-content-download {
+  background: #f5f7fa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+/* 执行结果样式 */
+.execution-result-download {
+  margin-top: 20px;
+}
+
+.result-status-download {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.result-status-download.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.result-status-download.error {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.result-output-download {
+  background: #f5f7fa;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+/* 页脚样式 */
+.download-footer {
+  text-align: center;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  color: #777;
+  font-size: 14px;
+}
+
+/* 打印优化 */
+@media print {
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+
+  .download-container {
+    padding: 0;
+  }
+
+  .section-download {
+    margin-bottom: 20pt;
+  }
+
+  .code-content-download {
+    font-size: 10pt;
+  }
+
+  .download-footer {
+    margin-top: 30pt;
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .report-modal {
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    max-width: 100%;
+    border-radius: 0;
+  }
+
+  .report-header {
+    padding: 15px;
+  }
+
+  .report-content {
+    padding: 15px;
+  }
+
+  .experiment-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .footer-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* ================= 编程卡片深度样式 ================= */
 :deep(.programming-question) {
   height: 100% !important;
@@ -929,31 +2027,97 @@ export default {
 }
 
 /* ================= 修复：底部按钮优化 ================= */
+/* 实验控制按钮容器 */
 .experiment-controls {
-  background: white;
-  padding: 20px; /* 增加内边距 */
-  border-radius: 8px;
   display: flex;
-  justify-content: center;
-  gap: 20px; /* 增加按钮间距 */
-  flex-shrink: 0;
-  align-items: center;
+  gap: 15px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.experiment-controls button {
-  padding: 15px 30px; /* 大幅增加按钮内边距 */
-  font-size: 16px; /* 增大字体 */
-  font-weight: 500;
-  min-height: 50px; /* 设置最小高度 */
+/* 基础按钮样式 */
+.btn {
+  padding: 10px 20px;
   border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
   transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  outline: none;
+  position: relative;
+  overflow: hidden;
 }
 
-.btn-large {
-  padding: 18px 35px; /* 特大按钮更大的内边距 */
-  font-size: 18px; /* 更大的字体 */
-  font-weight: 600;
-  min-height: 55px; /* 更大的最小高度 */
+/* 淡绿色完成按钮 */
+.btn-complete {
+  background: linear-gradient(135deg, #81C784, #66BB6A); /* 更淡的绿色渐变 */
+  color: white;
+  box-shadow: 0 2px 8px rgba(129, 199, 132, 0.3); /* 更柔和的阴影 */
+  border: 1px solid rgba(255, 255, 255, 0.2); /* 添加白色边框增强质感 */
+}
+
+.btn-complete:hover:not(:disabled) {
+  background: linear-gradient(135deg, #A5D6A7, #81C784);
+  transform: translateY(-1px); /* 更温和的上浮效果 */
+  box-shadow: 0 3px 10px rgba(129, 199, 132, 0.4);
+}
+
+/* 淡蓝色保存按钮 */
+.btn-save {
+  background: linear-gradient(135deg, #64B5F6, #42A5F5); /* 更淡的蓝色渐变 */
+  color: white;
+  box-shadow: 0 2px 8px rgba(100, 181, 246, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-save:hover:not(:disabled) {
+  background: linear-gradient(135deg, #90CAF9, #64B5F6);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(100, 181, 246, 0.4);
+}
+
+/* 禁用状态优化 */
+.btn:disabled {
+  opacity: 0.5;
+  background: linear-gradient(135deg, #E0E0E0, #BDBDBD) !important;
+  color: #757575 !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+}
+
+/* 更柔和的水波纹效果 */
+.btn::after {
+  background: rgba(255, 255, 255, 0.3); /* 更透明的波纹 */
+}
+
+/* 按钮图标微调 */
+.btn i {
+  margin-right: 8px;
+  font-size: 16px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1); /* 添加轻微文字阴影增强可读性 */
+}
+
+.btn:active:not(:disabled)::after {
+  animation: ripple 0.6s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(20, 20);
+    opacity: 0;
+  }
 }
 
 /* ================= 侧边栏样式 ================= */

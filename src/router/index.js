@@ -28,7 +28,7 @@ function isAuthenticated() {
 const routes = [
   {
     path: '/',
-    redirect: '/exams'
+    redirect: '/experimentList'
   },
   // 来自index.js的路由
   {
