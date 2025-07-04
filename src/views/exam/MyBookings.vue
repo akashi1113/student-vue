@@ -146,7 +146,7 @@
             {{ selectedBooking.examDuration }}分钟
           </el-descriptions-item>
           <el-descriptions-item label="考试时间">
-            {{ formatDate(selectedBooking.slotDate) }} {{ formatTime(selectedBooking.startTime) }} - {{ formatTime(selectedBooking.endTime) }}
+            {{ formatDate(selectedBooking.slotDate) }} {{ selectedBooking.startTime }} - {{ selectedBooking.endTime }}
           </el-descriptions-item>
           <el-descriptions-item label="考试地点">
             {{ selectedBooking.examLocation }}

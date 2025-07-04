@@ -127,10 +127,12 @@
             <!-- 编程题 -->
             <div v-if="currentQuestion.type === 'PROGRAMMING'" class="programming-container">
               <ProgrammingQuestion
+                  :key="`programming-${currentQuestion.id}`"
                   :question="currentQuestion"
                   :questionIndex="currentQuestionIndex"
                   :initialCode="getProgrammingCode(currentQuestion.id)"
                   @save="saveProgrammingAnswer"
+                  @run="onProgrammingRun"
               />
             </div>
           </div>
@@ -322,67 +324,6 @@ export default {
       }
     },
 
-    // 获取编程题代码的辅助方法
-    getProgrammingCode(questionId) {
-      const answer = this.answers[questionId];
-
-      if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
-        return answer.code || '';
-      }
-
-      // 如果答案是字符串（可能是旧格式），直接返回
-      if (typeof answer === 'string') {
-        return answer;
-      }
-
-      return '';
-    },
-
-    saveProgrammingAnswer({ questionId, code, language, isSubmitted }) {
-      console.log('保存编程题答案:', { questionId, code, language, isSubmitted });
-
-      this.answers[questionId] = {
-        code: code || '',  // 确保 code 是字符串
-        language: language || 'java',  // 默认语言改为 java
-        isSubmitted: isSubmitted || false
-      };
-
-      console.log('保存后的答案:', this.answers[questionId]);
-    },
-
-    confirmSubmit() {
-      this.showConfirmDialog = true;
-    },
-
-    // 检查题目是否已回答
-    isQuestionAnswered(questionId) {
-      const answer = this.answers[questionId];
-
-      // 添加调试日志
-      console.log('检查题目答案:', questionId, answer);
-
-      if (answer === null || answer === undefined) return false;
-
-      // 处理编程题（对象类型答案）
-      if (typeof answer === 'object' && !Array.isArray(answer)) {
-        // 确保 answer.code 存在且是字符串
-        if (answer.code !== undefined && answer.code !== null) {
-          // 将 code 转换为字符串再检查
-          const codeStr = String(answer.code);
-          return codeStr.trim() !== '';
-        }
-        return false;
-      }
-
-      // 处理多选题（数组类型答案）
-      if (Array.isArray(answer)) {
-        return answer.length > 0;
-      }
-
-      // 处理其他题型（字符串/布尔值等）
-      return String(answer).trim() !== '';
-    },
-
     // 跳转到指定题目
     goToQuestion(index) {
       if (index >= 0 && index < this.questions.length) {
@@ -414,7 +355,7 @@ export default {
         } else if (question.type === 'PROGRAMMING') {
           answers[question.id] = {
             code: '',
-            language: 'javascript',
+            language: 'java',
             isSubmitted: false
           };
         } else {
@@ -422,6 +363,73 @@ export default {
         }
       });
       this.answers = answers;
+      console.log('答案结构初始化完成:', this.answers);
+    },
+
+    // 保存编程题答案
+    saveProgrammingAnswer({ questionId, code, language, isSubmitted }) {
+      console.log(`保存编程题 ${questionId} 答案:`, {
+        codeLength: code?.length,
+        language,
+        isSubmitted
+      });
+
+      // 确保每次都创建新的对象，避免引用共享
+      this.answers = {
+        ...this.answers,
+        [questionId]: {
+          code: String(code || ''),
+          language: String(language || 'java'),
+          isSubmitted: Boolean(isSubmitted || false)
+        }
+      };
+
+      console.log(`题目 ${questionId} 答案已保存`);
+    },
+
+    // 获取编程题代码
+    getProgrammingCode(questionId) {
+      const answer = this.answers[questionId];
+
+      console.log(`获取题目 ${questionId} 的答案:`, answer);
+
+      if (answer && typeof answer === 'object' && !Array.isArray(answer)) {
+        // 返回深拷贝，避免引用共享
+        return {
+          code: answer.code || '',
+          language: answer.language || 'java',
+          isSubmitted: answer.isSubmitted || false
+        };
+      }
+
+      // 返回默认值
+      return {
+        code: '',
+        language: 'java',
+        isSubmitted: false
+      };
+    },
+
+    // 检查题目是否已回答
+    isQuestionAnswered(questionId) {
+      const answer = this.answers[questionId];
+
+      if (!answer) return false;
+
+      // 编程题检查
+      if (typeof answer === 'object' && !Array.isArray(answer)) {
+        const hasCode = answer.code && String(answer.code).trim() !== '';
+        const hasLanguageChoice = answer.language && answer.language !== 'java';
+        return hasCode || hasLanguageChoice;
+      }
+
+      // 多选题检查
+      if (Array.isArray(answer)) {
+        return answer.length > 0;
+      }
+
+      // 其他题型检查
+      return String(answer).trim() !== '';
     },
 
     // 加载考试数据
@@ -623,16 +631,74 @@ export default {
     },
 
     preventSelection(e) {
-      // 检查是否在编程编辑器中
-      const isProgrammingEditor = e.target.closest('[data-programming-editor]') ||
-          e.target.hasAttribute('data-programming-input') ||
-          e.target.closest('.programming-question');
-
-      if (isProgrammingEditor) {
-        return; // 允许选择文本
+      // 安全检查：确保事件对象和 target 存在
+      if (!e || !e.target) {
+        return;
       }
 
-      e.preventDefault();
+      // 确保 target 是 DOM 元素
+      if (!(e.target instanceof Element)) {
+        return;
+      }
+
+      try {
+        // 检查是否在编程题相关区域
+        const isProgrammingArea = this.checkIfInProgrammingArea(e.target);
+
+        // 检查是否在其他可编辑区域
+        const isEditableArea = this.checkIfInEditableArea(e.target);
+
+        // 如果在允许的区域内，不阻止选择
+        if (isProgrammingArea || isEditableArea) {
+          return;
+        }
+
+        // 阻止文本选择
+        e.preventDefault();
+      } catch (error) {
+        // 静默处理错误
+        console.warn('Text selection prevention error:', error);
+      }
+    },
+
+// 辅助方法：检查是否在编程题区域
+    checkIfInProgrammingArea(target) {
+      const programmingSelectors = [
+        '[data-programming-editor]',
+        '[data-programming-input]',
+        '.programming-question',
+        '.code-editor',
+        '.code-textarea',
+        '.test-input',
+        '.test-panel'
+      ];
+
+      return programmingSelectors.some(selector => {
+        try {
+          return target.closest(selector) !== null;
+        } catch {
+          return false;
+        }
+      }) || target.hasAttribute('data-programming-input');
+    },
+
+    // 辅助方法：检查是否在可编辑区域
+    checkIfInEditableArea(target) {
+      const editableSelectors = [
+        'input',
+        'textarea',
+        'select',
+        '[contenteditable="true"]',
+        '.editable'
+      ];
+
+      return editableSelectors.some(selector => {
+        try {
+          return target.closest(selector) !== null;
+        } catch {
+          return false;
+        }
+      });
     },
 
     preventCopy(e) {
