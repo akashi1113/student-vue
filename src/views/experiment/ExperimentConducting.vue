@@ -106,7 +106,6 @@
               v-if="experimentRecord.status === 'RUNNING'"
               class="btn btn-complete"
               @click="completeExperiment"
-              :disabled="isCompleting"
           >
             <i class="el-icon-check"></i>
             完成实验
