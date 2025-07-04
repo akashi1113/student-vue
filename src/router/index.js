@@ -348,13 +348,15 @@ const routes = [
       title: '日志审计报表',
       requiresAuth: false
     }
+  },
+  {
+    path: '/experiment/:experimentId/reports',
+    name: 'ExperimentReports',
+    component: () => import('@/views/experiment/ReportView.vue'),
+    meta: { title: '实验报告', roles: ['teacher'] },
+    props: true
   }
-  // {
-  //   path: '/reports/generate/:recordId',
-  //   name: 'ReportGenerator',
-  //   component: ReportGenerator,
-  //   props: true
-  // }
+
 ]
 
 const router = createRouter({
