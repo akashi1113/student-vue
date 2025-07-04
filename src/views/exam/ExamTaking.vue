@@ -9,7 +9,7 @@
         </span>
       </div>
 
-      <!-- 优化后的计时器 -->
+      <!-- 计时器 -->
       <div class="timer-container">
         <div class="time-remaining">
           <i class="icon-clock"></i>
@@ -32,116 +32,176 @@
       </div>
     </transition>
 
-    <!-- 题目区域 -->
-    <div class="questions-container">
-      <form @submit.prevent="submitExam">
-        <div v-for="(question, index) in questions" :key="question.id" class="question-card">
-          <div class="question-header">
-            <div class="question-index">题目 {{ index + 1 }}</div>
-            <div class="question-score">{{ question.score }}分</div>
-          </div>
+    <!-- 主内容区域 -->
+    <div class="exam-main-content">
+      <!-- 题目区域（只显示当前题目） -->
+      <div class="questions-container">
+        <form @submit.prevent="submitExam">
+          <div
+              class="question-card"
+              :id="'question-' + currentQuestion.id"
+          >
+            <div class="question-header">
+              <div class="question-index">题目 {{ currentQuestionIndex + 1 }}</div>
+              <div class="question-score">{{ currentQuestion.score }}分</div>
+            </div>
 
-          <div class="question-content">
-            <p>{{ question.content }}</p>
-          </div>
+            <div class="question-content">
+              <p>{{ currentQuestion.content }}</p>
+            </div>
 
-          <!-- 单选题 -->
-          <div v-if="question.type === 'SINGLE'" class="options-container">
-            <div
-                v-for="option in question.options"
-                :key="option.id"
-                class="option-item"
-                :class="{ 'selected': answers[question.id] === option.id }"
-                @click="answers[question.id] = option.id"
-            >
-              <div class="option-radio">
-                <div class="radio-dot" v-show="answers[question.id] === option.id"></div>
+            <!-- 单选题 -->
+            <div v-if="currentQuestion.type === 'SINGLE'" class="options-container">
+              <div
+                  v-for="option in currentQuestion.options"
+                  :key="option.id"
+                  class="option-item"
+                  :class="{ 'selected': answers[currentQuestion.id] === option.id }"
+                  @click="answers[currentQuestion.id] = option.id"
+              >
+                <div class="option-radio">
+                  <div class="radio-dot" v-show="answers[currentQuestion.id] === option.id"></div>
+                </div>
+                <label>
+                  <span class="option-label">{{ option.optionLabel }}.</span>
+                  <span class="option-text">{{ option.content }}</span>
+                </label>
               </div>
-              <label>
-                <span class="option-label">{{ option.optionLabel }}.</span>
-                <span class="option-text">{{ option.content }}</span>
-              </label>
+            </div>
+
+            <!-- 多选题 -->
+            <div v-else-if="currentQuestion.type === 'MULTIPLE'" class="options-container">
+              <div
+                  v-for="option in currentQuestion.options"
+                  :key="option.id"
+                  class="option-item"
+                  :class="{ 'selected': isOptionSelected(currentQuestion.id, option.id) }"
+                  @click="toggleMultiOption(currentQuestion.id, option.id)"
+              >
+                <div class="option-checkbox">
+                  <i
+                      class="icon-check"
+                      v-show="isOptionSelected(currentQuestion.id, option.id)"
+                  ></i>
+                </div>
+                <label>
+                  <span class="option-label">{{ option.optionLabel }}.</span>
+                  <span class="option-text">{{ option.content }}</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- 判断题 -->
+            <div v-else-if="currentQuestion.type === 'JUDGE'" class="judge-container">
+              <div
+                  class="judge-option"
+                  :class="{ 'selected': answers[currentQuestion.id] === 'true' }"
+                  @click="answers[currentQuestion.id] = 'true'"
+              >
+                <div class="judge-radio">
+                  <div class="radio-dot" v-show="answers[currentQuestion.id] === 'true'"></div>
+                </div>
+                <label>正确</label>
+              </div>
+              <div
+                  class="judge-option"
+                  :class="{ 'selected': answers[currentQuestion.id] === 'false' }"
+                  @click="answers[currentQuestion.id] = 'false'"
+              >
+                <div class="judge-radio">
+                  <div class="radio-dot" v-show="answers[currentQuestion.id] === 'false'"></div>
+                </div>
+                <label>错误</label>
+              </div>
+            </div>
+
+            <!-- 简答题 -->
+            <div v-else-if="currentQuestion.type === 'TEXT'" class="text-answer-container">
+              <textarea
+                  v-model="answers[currentQuestion.id]"
+                  placeholder="请输入您的答案..."
+                  rows="4"
+              ></textarea>
+            </div>
+
+            <!-- 编程题 -->
+            <div v-if="currentQuestion.type === 'PROGRAMMING'" class="programming-container">
+              <ProgrammingQuestion
+                  :question="currentQuestion"
+                  :questionIndex="currentQuestionIndex"
+                  :initialCode="getProgrammingCode(currentQuestion.id)"
+                  @save="saveProgrammingAnswer"
+              />
             </div>
           </div>
 
-          <!-- 多选题 -->
-          <div v-else-if="question.type === 'MULTIPLE'" class="options-container">
-            <div
-                v-for="option in question.options"
-                :key="option.id"
-                class="option-item"
-                :class="{ 'selected': isOptionSelected(question.id, option.id) }"
-                @click="toggleMultiOption(question.id, option.id)"
+          <!-- 导航按钮 -->
+          <div class="question-navigation">
+            <button
+                type="button"
+                class="nav-btn prev-btn"
+                :disabled="currentQuestionIndex === 0"
+                @click="goToQuestion(currentQuestionIndex - 1)"
             >
-              <div class="option-checkbox">
-                <i
-                    class="icon-check"
-                    v-show="isOptionSelected(question.id, option.id)"
-                ></i>
-              </div>
-              <label>
-                <span class="option-label">{{ option.optionLabel }}.</span>
-                <span class="option-text">{{ option.content }}</span>
-              </label>
-            </div>
+              <i class="icon-arrow-left"></i> 上一题
+            </button>
+            <button
+                type="button"
+                class="nav-btn next-btn"
+                :disabled="currentQuestionIndex === questions.length - 1"
+                @click="goToQuestion(currentQuestionIndex + 1)"
+            >
+              下一题 <i class="icon-arrow-right"></i>
+            </button>
           </div>
 
-          <!-- 判断题 -->
-          <div v-else-if="question.type === 'JUDGE'" class="judge-container">
-            <div
-                class="judge-option"
-                :class="{ 'selected': answers[question.id] === 'true' }"
-                @click="answers[question.id] = 'true'"
+          <!-- 提交按钮 -->
+          <div class="submit-section">
+            <button
+                type="submit"
+                class="submit-btn"
+                @click.prevent="confirmSubmit"
             >
-              <div class="judge-radio">
-                <div class="radio-dot" v-show="answers[question.id] === 'true'"></div>
-              </div>
-              <label>正确</label>
-            </div>
-            <div
-                class="judge-option"
-                :class="{ 'selected': answers[question.id] === 'false' }"
-                @click="answers[question.id] = 'false'"
-            >
-              <div class="judge-radio">
-                <div class="radio-dot" v-show="answers[question.id] === 'false'"></div>
-              </div>
-              <label>错误</label>
-            </div>
+              <i class="icon-upload"></i>
+              提交试卷
+            </button>
           </div>
+        </form>
+      </div>
 
-          <!-- 简答题 -->
-          <div v-else-if="question.type === 'TEXT'" class="text-answer-container">
-            <textarea
-                v-model="answers[question.id]"
-                placeholder="请输入您的答案..."
-                rows="4"
-            ></textarea>
-          </div>
-
-          <!-- 编程题 -->
-          <div v-if="question.type === 'PROGRAMMING'" class="question-card">
-            <ProgrammingQuestion
-                :question="question"
-                :questionIndex="index"
-                :initialCode="answers[question.id] || ''"
-                @save="saveProgrammingAnswer"
-            />
+      <!-- 题目导航侧边栏 -->
+      <div class="question-sidebar">
+        <div class="sidebar-header">
+          <h3>题目导航</h3>
+          <div class="answered-count">
+            已答: {{ answeredCount }}/{{ questions.length }}
           </div>
         </div>
-
-        <!-- 提交按钮 -->
-        <div class="submit-section">
-          <button
-              type="submit"
-              class="submit-btn"
-              @click.prevent="confirmSubmit"
+        <div class="question-list">
+          <div
+              v-for="(question, index) in questions"
+              :key="question.id"
+              class="question-item"
+              :class="{
+              'current': currentQuestionIndex === index,
+              'answered': isQuestionAnswered(question.id),
+              'marked': markedQuestions.includes(question.id)
+            }"
+              @click="goToQuestion(index)"
           >
-            <i class="icon-upload"></i>
-            提交试卷
+            {{ index + 1 }}
+          </div>
+        </div>
+        <div class="sidebar-footer">
+          <button
+              class="mark-btn"
+              @click="toggleMarkQuestion(currentQuestion.id)"
+          >
+            <i class="icon-mark"></i>
+            {{ markedQuestions.includes(currentQuestion.id) ? '取消标记' : '标记本题' }}
           </button>
         </div>
-      </form>
+      </div>
     </div>
 
     <!-- 确认对话框 -->
@@ -185,8 +245,10 @@ export default {
       examRecord: null,
       showConfirmDialog: false,
       lastViolationTime: 0,
-      violationDebounce: 1000, // 1秒内不重复记录同类型违规
-      isInProgrammingEditor: false // 新增：标记是否在编程编辑器中
+      violationDebounce: 1000,
+      isInProgrammingEditor: false,
+      currentQuestionIndex: 0,
+      markedQuestions: []
     };
   },
   computed: {
@@ -209,6 +271,14 @@ export default {
         width: `${this.timePercentage}%`,
         backgroundColor: color
       };
+    },
+    // 当前显示的题目
+    currentQuestion() {
+      return this.questions[this.currentQuestionIndex] || {};
+    },
+    // 已答题数量
+    answeredCount() {
+      return this.questions.filter(q => this.isQuestionAnswered(q.id)).length;
     }
   },
   methods: {
@@ -252,24 +322,109 @@ export default {
       }
     },
 
+    // 获取编程题代码的辅助方法
+    getProgrammingCode(questionId) {
+      const answer = this.answers[questionId];
+
+      if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+        return answer.code || '';
+      }
+
+      // 如果答案是字符串（可能是旧格式），直接返回
+      if (typeof answer === 'string') {
+        return answer;
+      }
+
+      return '';
+    },
+
     saveProgrammingAnswer({ questionId, code, language, isSubmitted }) {
-      // 保存编程题答案
+      console.log('保存编程题答案:', { questionId, code, language, isSubmitted });
+
       this.answers[questionId] = {
-        code: code,
-        language: language,
+        code: code || '',  // 确保 code 是字符串
+        language: language || 'java',  // 默认语言改为 java
         isSubmitted: isSubmitted || false
       };
 
-      // 如果是最终提交，可以在这里做额外处理
-      if (isSubmitted) {
-        console.log(`编程题 ${questionId} 已提交`, { code, language });
-      }
+      console.log('保存后的答案:', this.answers[questionId]);
     },
 
     confirmSubmit() {
       this.showConfirmDialog = true;
     },
 
+    // 检查题目是否已回答
+    isQuestionAnswered(questionId) {
+      const answer = this.answers[questionId];
+
+      // 添加调试日志
+      console.log('检查题目答案:', questionId, answer);
+
+      if (answer === null || answer === undefined) return false;
+
+      // 处理编程题（对象类型答案）
+      if (typeof answer === 'object' && !Array.isArray(answer)) {
+        // 确保 answer.code 存在且是字符串
+        if (answer.code !== undefined && answer.code !== null) {
+          // 将 code 转换为字符串再检查
+          const codeStr = String(answer.code);
+          return codeStr.trim() !== '';
+        }
+        return false;
+      }
+
+      // 处理多选题（数组类型答案）
+      if (Array.isArray(answer)) {
+        return answer.length > 0;
+      }
+
+      // 处理其他题型（字符串/布尔值等）
+      return String(answer).trim() !== '';
+    },
+
+    // 跳转到指定题目
+    goToQuestion(index) {
+      if (index >= 0 && index < this.questions.length) {
+        this.currentQuestionIndex = index;
+        // 滚动到题目顶部
+        const element = document.getElementById(`question-${this.currentQuestion.id}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    },
+
+    // 标记/取消标记题目
+    toggleMarkQuestion(questionId) {
+      const index = this.markedQuestions.indexOf(questionId);
+      if (index === -1) {
+        this.markedQuestions.push(questionId);
+      } else {
+        this.markedQuestions.splice(index, 1);
+      }
+    },
+
+    // 初始化答案结构
+    initializeAnswers() {
+      const answers = {};
+      this.questions.forEach(question => {
+        if (question.type === 'MULTIPLE') {
+          answers[question.id] = [];
+        } else if (question.type === 'PROGRAMMING') {
+          answers[question.id] = {
+            code: '',
+            language: 'javascript',
+            isSubmitted: false
+          };
+        } else {
+          answers[question.id] = null;
+        }
+      });
+      this.answers = answers;
+    },
+
+    // 加载考试数据
     async loadExamData() {
       try {
         const examResponse = await examApi.getExamById(this.examId);
@@ -282,7 +437,6 @@ export default {
 
         const recordResponse = await examApi.startExam(this.examId);
         if (recordResponse.data.message === "您已经完成该考试，无法再次开始") {
-          // 已经完成考试，跳转到结果页面
           this.$message.warning('您已经完成该考试，正在跳转到结果页面...');
           this.$router.push(`/exams/${this.examId}/result`);
           return;
@@ -293,18 +447,6 @@ export default {
         console.error('加载考试数据失败:', error);
         alert('加载考试数据失败，请刷新页面重试');
       }
-    },
-
-    initializeAnswers() {
-      const answers = {};
-      this.questions.forEach(question => {
-        if (question.type === 'MULTIPLE') {
-          answers[question.id] = [];
-        } else {
-          answers[question.id] = null;
-        }
-      });
-      this.answers = answers;
     },
 
     setupExamTimer() {
@@ -574,6 +716,12 @@ export default {
       }
     }
   },
+  watch: {
+    currentQuestionIndex(newIndex) {
+      // 可以在这里添加滚动到题目的逻辑
+      this.goToQuestion(newIndex);
+    }
+  },
 
   created() {
     this.loadExamData();
@@ -591,35 +739,11 @@ export default {
 <style scoped>
 /* 基础样式 */
 .exam-taking-container {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
   font-family: 'Helvetica Neue', Arial, sans-serif;
-}
-
-/* 图标样式 */
-.icon-clock, .icon-warning, .icon-check, .icon-upload {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  vertical-align: middle;
-  fill: currentColor;
-}
-
-.icon-clock {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z'/%3E%3C/svg%3E") no-repeat center;
-}
-
-.icon-warning {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5zM12 16c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1zm-1-4V8h2v4h-2z'/%3E%3C/svg%3E") no-repeat center;
-}
-
-.icon-check {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z'/%3E%3C/svg%3E") no-repeat center;
-}
-
-.icon-upload {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E") no-repeat center;
+  color: #333;
 }
 
 /* 考试头部样式 */
@@ -642,6 +766,7 @@ export default {
   margin: 0;
   font-size: 24px;
   color: #303133;
+  font-weight: 600;
 }
 
 .status-tag {
@@ -742,13 +867,25 @@ export default {
   100% { opacity: 0.9; }
 }
 
-/* 题目卡片 */
-.question-card {
+/* 主内容区域布局 */
+.exam-main-content {
+  display: flex;
+  gap: 20px;
+}
+
+/* 题目区域 - 修改为单题视图 */
+.questions-container {
+  flex: 1;
+  min-width: 0;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  margin-bottom: 25px;
+  padding: 25px;
+}
+
+/* 题目卡片 - 单题样式 */
+.question-card {
+  width: 100%;
 }
 
 .question-header {
@@ -761,7 +898,7 @@ export default {
 }
 
 .question-index {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #409EFF;
 }
@@ -771,20 +908,21 @@ export default {
   color: white;
   padding: 2px 10px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .question-content p {
-  margin: 0 0 15px 0;
+  margin: 0 0 20px 0;
   line-height: 1.6;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 /* 选项样式 */
 .options-container {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
+  gap: 12px;
+  margin: 20px 0;
 }
 
 .option-item {
@@ -850,23 +988,25 @@ export default {
   font-weight: bold;
   margin-right: 5px;
   color: #409EFF;
+  font-size: 15px;
 }
 
 .option-text {
   color: #606266;
+  font-size: 15px;
 }
 
 /* 判断题样式 */
 .judge-container {
   display: flex;
   gap: 20px;
-  margin-top: 10px;
+  margin: 20px 0;
 }
 
 .judge-option {
   display: flex;
   align-items: center;
-  padding: 10px 20px;
+  padding: 12px 25px;
   border-radius: 6px;
   cursor: pointer;
   border: 1px solid #dcdfe6;
@@ -899,18 +1039,18 @@ export default {
 
 /* 简答题样式 */
 .text-answer-container {
-  margin-top: 15px;
+  margin: 20px 0;
 }
 
 .text-answer-container textarea {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   resize: vertical;
-  min-height: 100px;
+  min-height: 150px;
   transition: border-color 0.3s;
 }
 
@@ -918,6 +1058,181 @@ export default {
   outline: none;
   border-color: #409EFF;
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+/* 题目导航侧边栏 */
+.question-sidebar {
+  width: 250px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #303133;
+}
+
+.answered-count {
+  font-size: 14px;
+  color: #409EFF;
+  font-weight: bold;
+}
+
+.question-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.question-item {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: #f5f7fa;
+  color: #606266;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.question-item:hover {
+  background-color: #e4e7ed;
+}
+
+.question-item.current {
+  background-color: #409EFF;
+  color: white;
+  transform: scale(1.1);
+}
+
+.question-item.answered {
+  background-color: #67C23A;
+  color: white;
+}
+
+.question-item.marked {
+  position: relative;
+}
+
+.question-item.marked::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background-color: #E6A23C;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+.sidebar-footer {
+  padding-top: 15px;
+  border-top: 1px solid #ebeef5;
+}
+
+.mark-btn {
+  width: 100%;
+  padding: 8px;
+  background-color: #fdf6ec;
+  color: #E6A23C;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.3s;
+  font-size: 14px;
+}
+
+.mark-btn:hover {
+  background-color: #faecd8;
+}
+
+/* 导航按钮 */
+.question-navigation {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30px;
+}
+
+.nav-btn {
+  padding: 12px 30px;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  outline: none;
+}
+
+.nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.prev-btn {
+  background-color: #f5f7fa;
+  border: 1px solid #dcdfe6;
+  color: #606266;
+}
+
+.prev-btn:not(:disabled):hover {
+  color: #409EFF;
+  border-color: #c6e2ff;
+}
+
+.next-btn {
+  background-color: #409EFF;
+  color: white;
+  border: none;
+}
+
+.next-btn:not(:disabled):hover {
+  background-color: #66b1ff;
+}
+
+.icon-arrow-left, .icon-arrow-right {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+}
+
+.icon-arrow-left {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z' fill='%23606266'/%3E%3C/svg%3E") no-repeat center;
+}
+
+.next-btn .icon-arrow-right {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z' fill='white'/%3E%3C/svg%3E") no-repeat center;
+}
+
+.prev-btn:hover .icon-arrow-left {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z' fill='%23409EFF'/%3E%3C/svg%3E") no-repeat center;
 }
 
 /* 提交按钮 */
@@ -950,12 +1265,6 @@ export default {
 
 .submit-btn:active {
   transform: translateY(0);
-}
-
-.submit-btn .icon-upload {
-  width: 16px;
-  height: 16px;
-  color: white;
 }
 
 /* 确认对话框 */
@@ -1026,7 +1335,57 @@ export default {
   background: #66b1ff;
 }
 
+/* 图标样式 */
+.icon-clock, .icon-warning, .icon-check, .icon-upload, .icon-mark {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+  fill: currentColor;
+}
+
+.icon-clock {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z'/%3E%3C/svg%3E") no-repeat center;
+}
+
+.icon-warning {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5zM12 16c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1zm-1-4V8h2v4h-2z'/%3E%3C/svg%3E") no-repeat center;
+}
+
+.icon-check {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z'/%3E%3C/svg%3E") no-repeat center;
+}
+
+.icon-upload {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E") no-repeat center;
+}
+
+.icon-mark {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z' fill='%23E6A23C'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* 过渡动画 */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s;
+}
+.fade-enter, .fade-leave-to {
+  opacity: 0;
+}
+
 /* 响应式设计 */
+@media (max-width: 992px) {
+  .exam-main-content {
+    flex-direction: column;
+  }
+
+  .question-sidebar {
+    width: 100%;
+    position: static;
+    order: -1;
+    margin-bottom: 20px;
+  }
+}
+
 @media (max-width: 768px) {
   .exam-header {
     flex-direction: column;
@@ -1046,13 +1405,56 @@ export default {
     flex-direction: column;
     gap: 10px;
   }
+
+  .question-navigation {
+    margin: 20px 0;
+  }
+
+  .nav-btn {
+    padding: 10px 20px;
+  }
+
+  .question-list {
+    grid-template-columns: repeat(auto-fill, minmax(35px, 1fr));
+  }
+
+  .question-item {
+    width: 35px;
+    height: 35px;
+    font-size: 14px;
+  }
+
+  .submit-btn {
+    padding: 10px 30px;
+    font-size: 15px;
+  }
+
+  .questions-container {
+    padding: 15px;
+  }
 }
 
-/* 过渡动画 */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s;
-}
-.fade-enter, .fade-leave-to {
-  opacity: 0;
+@media (max-width: 480px) {
+  .question-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .question-navigation {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .nav-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .question-item {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
 }
 </style>
