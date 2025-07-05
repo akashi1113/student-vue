@@ -48,7 +48,15 @@
               type="button"
           >
             <i class="icon-format"></i>
-            格式化代码
+            格式化
+          </button>
+          <button class="action-btn run-btn" @click="runCode" :disabled="isRunning" type="button">
+            <i class="icon-play"></i>
+            {{ isRunning ? '运行中...' : '运行' }}
+          </button>
+          <button class="action-btn submit-btn" @click="submitCode" :disabled="isSubmitting" type="button">
+            <i class="icon-check"></i>
+            {{ isSubmitting ? '提交中...' : '提交' }}
           </button>
           <button
               class="action-btn syntax-btn"
@@ -57,15 +65,7 @@
               :class="{ active: syntaxHighlightEnabled }"
           >
             <i class="icon-highlight"></i>
-            {{ syntaxHighlightEnabled ? '关闭高亮' : '开启高亮' }}
-          </button>
-          <button class="action-btn run-btn" @click="runCode" :disabled="isRunning" type="button">
-            <i class="icon-play"></i>
-            {{ isRunning ? '运行中...' : '运行代码' }}
-          </button>
-          <button class="action-btn submit-btn" @click="submitCode" :disabled="isSubmitting" type="button">
-            <i class="icon-check"></i>
-            {{ isSubmitting ? '提交中...' : '提交答案' }}
+            {{ syntaxHighlightEnabled ? '高亮开' : '高亮关' }}
           </button>
         </div>
       </div>
@@ -212,7 +212,7 @@ export default {
   data() {
     return {
       // 基本状态
-      selectedLanguage: 'java',
+      selectedLanguage: localStorage.getItem('code-editor-language') || 'java',
       code: '',
       testInput: '',
       activeTab: 'input',
@@ -325,7 +325,7 @@ export default {
       console.log(`初始化题目 ${this.questionId}:`, this.initialCode);
 
       let codeToSet = '';
-      let languageToSet = 'java';
+      let languageToSet = localStorage.getItem('code-editor-language') || 'java'; // 从localStorage加载语言
       let hasValidData = false;
 
       if (this.initialCode) {
@@ -333,7 +333,6 @@ export default {
           try {
             const parsed = JSON.parse(this.initialCode);
             codeToSet = parsed.code || '';
-            languageToSet = parsed.language || 'java';
             hasValidData = !!(parsed.code && parsed.code.trim());
           } catch (e) {
             codeToSet = this.initialCode;
@@ -341,7 +340,6 @@ export default {
           }
         } else if (typeof this.initialCode === 'object') {
           codeToSet = this.initialCode.code || '';
-          languageToSet = this.initialCode.language || 'java';
           hasValidData = !!(this.initialCode.code && this.initialCode.code.trim());
         }
       }
@@ -746,6 +744,7 @@ int main() {
     onLanguageChange() {
       const oldLanguage = this.selectedLanguage;
       console.log(`题目 ${this.questionId} 语言切换: ${oldLanguage} -> ${this.selectedLanguage}`);
+      localStorage.setItem('code-editor-language', this.selectedLanguage);
 
       const newTemplate = this.getCodeTemplate();
 
@@ -1185,6 +1184,11 @@ int main() {
     // 加载用户偏好设置
     this.loadUserPreferences();
 
+    const savedLanguage = localStorage.getItem('code-editor-language');
+    if (savedLanguage) {
+      this.selectedLanguage = savedLanguage;
+    }
+
     this.$nextTick(() => {
       const textarea = this.$refs.codeEditor;
       if (textarea) {
@@ -1321,39 +1325,52 @@ int main() {
 
 .editor-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .action-btn {
-  padding: 10px 20px;
-  border: 1px solid #dcdfe6;
-  background: white;
-  color: #606266;
-  border-radius: 4px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: all 0.2s;
-  font-size: 14px;
+  transition: all 0.2s ease;
+  font-size: 13px;
   font-weight: 500;
-  min-width: 110px;
+  min-width: 80px;
   justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
 }
 
 .action-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .action-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none !important;
 }
 
+.action-btn i {
+  font-size: 14px;
+}
+
+/* 格式化按钮样式 */
 .format-btn {
-  border-color: #67c23a;
+  background: #f0f9eb;
   color: #67c23a;
+  border: 1px solid #e1f3d8;
 }
 
 .format-btn:hover:not(:disabled) {
@@ -1361,9 +1378,35 @@ int main() {
   color: white;
 }
 
+/* 运行按钮样式 */
+.run-btn {
+  background: #ecf5ff;
+  color: #409eff;
+  border: 1px solid #d9ecff;
+}
+
+.run-btn:hover:not(:disabled) {
+  background: #409eff;
+  color: white;
+}
+
+/* 提交按钮样式 */
+.submit-btn {
+  background: #fef0f0;
+  color: #f56c6c;
+  border: 1px solid #fde2e2;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: #f56c6c;
+  color: white;
+}
+
+/* 语法高亮按钮样式 */
 .syntax-btn {
-  border-color: #e6a23c;
+  background: #fdf6ec;
   color: #e6a23c;
+  border: 1px solid #faecd8;
 }
 
 .syntax-btn:hover:not(:disabled) {
@@ -1376,24 +1419,21 @@ int main() {
   color: white;
 }
 
-.run-btn {
-  border-color: #409eff;
-  color: #409eff;
+/* 加载动画效果 */
+.action-btn:disabled::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.3);
+  animation: shimmer 1.5s infinite;
 }
 
-.run-btn:hover:not(:disabled) {
-  background: #409eff;
-  color: white;
-}
-
-.submit-btn {
-  border-color: #f56c6c;
-  color: #f56c6c;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background: #f56c6c;
-  color: white;
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* ==================== 代码编辑器容器 ==================== */
