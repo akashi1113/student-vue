@@ -29,6 +29,11 @@ const routes = [
   {
     path: '/',
     redirect: '/exams'
+    // redirect: '/homework'
+    // redirect: '/exam-booking/notifications'
+    // redirect: '/exam-booking/time-slot-management'
+    // redirect: '/exam-booking/booking-management'
+    // redirect: '/experimentList'
   },
   // 来自index.js的路由
   {

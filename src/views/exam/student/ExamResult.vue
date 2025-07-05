@@ -120,7 +120,7 @@
               <div class="section-header">
                 <i class="icon-ai"></i>
                 <h4>AI反馈</h4>
-                <span v-if="item.aiScoreRatio" class="score-ratio">匹配度: {{ item.aiScoreRatio }}%</span>
+                <span v-if="item.aiScoreRatio" class="score-ratio">匹配度: {{ item.aiScoreRatio*100 }}%</span>
               </div>
               <div class="section-content">{{ item.aiFeedback }}</div>
             </div>

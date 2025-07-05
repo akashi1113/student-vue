@@ -162,7 +162,6 @@
             <button
                 type="submit"
                 class="submit-btn"
-                @click.prevent="confirmSubmit"
             >
               <i class="icon-upload"></i>
               提交试卷
@@ -217,6 +216,35 @@
         </div>
       </div>
     </div>
+
+    <!-- 在确认对话框后添加等待提示 -->
+    <div v-if="isSubmitting" class="submitting-mask">
+      <div class="submitting-container">
+        <div class="loading-spinner"></div>
+        <h3>试卷提交中，请稍候...</h3>
+        <p>请不要关闭页面或刷新浏览器</p>
+      </div>
+    </div>
+
+    <div v-if="isAiGrading" class="ai-grading-mask">
+      <div class="ai-grading-container">
+        <div class="ai-processing-animation">
+          <div class="ai-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"></path>
+            </svg>
+          </div>
+          <div class="ai-dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        </div>
+        <h3>AI正在判卷中</h3>
+        <p>这可能需要一些时间，请耐心等待...</p>
+        <div class="progress-text" v-if="gradingProgress">{{ gradingProgress }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -250,7 +278,11 @@ export default {
       violationDebounce: 1000,
       isInProgrammingEditor: false,
       currentQuestionIndex: 0,
-      markedQuestions: []
+      markedQuestions: [],
+      isSubmitting: false,
+      isAiGrading: false,
+      gradingProgress: '',
+      progressInterval: null
     };
   },
   computed: {
@@ -356,7 +388,6 @@ export default {
           answers[question.id] = {
             code: '',
             language: 'java',
-            isSubmitted: false
           };
         } else {
           answers[question.id] = null;
@@ -380,7 +411,6 @@ export default {
         [questionId]: {
           code: String(code || ''),
           language: String(language || 'java'),
-          isSubmitted: Boolean(isSubmitted || false)
         }
       };
 
@@ -476,14 +506,68 @@ export default {
 
     async submitExam() {
       this.showConfirmDialog = false;
+      this.isSubmitting = true;
+      this.cleanupViolationDetection();
+
       try {
         const answers = this.prepareAnswersForSubmit();
-        await examApi.submitExam(this.examId, answers);
+        const response = await examApi.submitExam(this.examId, answers);
+
+        // 开始显示AI判卷提示
+        this.isSubmitting = false;
+        this.isAiGrading = true;
+
+        // 模拟进度更新
+        this.startProgressSimulation();
+
+        // 这里假设API会返回一个可以轮询的状态
+        await this.waitForGradingCompletion(response.data.data.recordId);
+
+        // 判卷完成后跳转
         this.$router.push(`/exams/${this.examId}/result`);
       } catch (error) {
         console.error('提交考试失败:', error);
-        alert('提交考试失败，请重试');
+        this.isSubmitting = false;
+        this.isAiGrading = false;
+        this.$message.error('提交考试失败，请重试');
       }
+    },
+
+    startProgressSimulation() {
+      let progress = 0;
+      const messages = [
+        "正在分析选择题答案...",
+        "检查编程题代码结构...",
+        "评估简答题内容...",
+        "进行最终评分计算...",
+        "即将完成..."
+      ];
+
+      this.progressInterval = setInterval(() => {
+        progress += 20;
+        if (progress > 100) progress = 100;
+
+        const messageIndex = Math.min(
+            Math.floor(progress / 20),
+            messages.length - 1
+        );
+        this.gradingProgress = messages[messageIndex];
+
+        if (progress >= 100) {
+          clearInterval(this.progressInterval);
+        }
+      }, 1500);
+    },
+
+    async waitForGradingCompletion(recordId) {
+      // 实际实现中，这里应该轮询服务器获取判卷状态
+      // 这里使用setTimeout模拟等待
+      return new Promise(resolve => {
+        setTimeout(() => {
+          clearInterval(this.progressInterval);
+          resolve();
+        }, 8000);
+      });
     },
 
     prepareAnswersForSubmit() {
@@ -796,8 +880,10 @@ export default {
   },
 
   beforeUnmount() {
-    clearInterval(this.timer);
-    this.cleanupViolationDetection();
+    // 清除定时器
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+    }
   }
 };
 </script>
@@ -1436,6 +1522,106 @@ export default {
 }
 .fade-enter, .fade-leave-to {
   opacity: 0;
+}
+
+/* 提交中遮罩 */
+.submitting-mask, .ai-grading-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  flex-direction: column;
+}
+
+.submitting-container, .ai-grading-container {
+  text-align: center;
+  max-width: 500px;
+  padding: 30px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* 加载动画 */
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #409EFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* AI判卷动画 */
+.ai-processing-animation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 25px;
+}
+
+.ai-icon svg {
+  width: 60px;
+  height: 60px;
+  fill: #409EFF;
+  animation: pulse 1.5s infinite;
+}
+
+.ai-dots {
+  display: flex;
+  align-items: center;
+  margin-left: 15px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  background: #409EFF;
+  border-radius: 50%;
+  margin: 0 4px;
+  opacity: 0.6;
+}
+
+.dot:nth-child(1) {
+  animation: dotPulse 1.5s infinite;
+}
+.dot:nth-child(2) {
+  animation: dotPulse 1.5s infinite 0.2s;
+}
+.dot:nth-child(3) {
+  animation: dotPulse 1.5s infinite 0.4s;
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
+.progress-text {
+  margin-top: 20px;
+  padding: 10px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  color: #606266;
+  font-size: 14px;
 }
 
 /* 响应式设计 */

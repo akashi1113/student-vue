@@ -166,7 +166,7 @@ export default {
     },
 
     onRoleChange() {
-      this.userId = this.userRole === 'student' ? 2 : 1;
+      this.userId = this.userRole === 'student' ? 2 : 5;
       this.loadHomework();
     },
 
