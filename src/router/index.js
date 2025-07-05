@@ -28,12 +28,12 @@ function isAuthenticated() {
 const routes = [
   {
     path: '/',
-    redirect: '/exams'
-    // redirect: '/homework'
-    // redirect: '/exam-booking/notifications'
+    // redirect: '/exams'
+    // redirect: '/teacher/exams/create'
     // redirect: '/exam-booking/time-slot-management'
     // redirect: '/exam-booking/booking-management'
     // redirect: '/experimentList'
+    // redirect: '/homework'
   },
   // 来自index.js的路由
   {
@@ -187,6 +187,39 @@ const routes = [
       roles: ['TEACHER', 'ADMIN']
     }
   },
+
+  // 在现有路由中添加教师考试管理路由
+  // {
+  //   path: '/teacher/exams',
+  //   name: 'TeacherExamManagement',
+  //   component: () => import('@/views/exam/teacher/ExamManagement.vue'),
+  //   meta: {
+  //     title: '考试管理',
+  //     requiresAuth: true,
+  //     roles: ['TEACHER', 'ADMIN']
+  //   }
+  // },
+  {
+    path: '/teacher/exams/create',
+    name: 'ExamCreate',
+    component: () => import('@/views/exam/teacher/ExamCreate.vue'),
+    meta: {
+      title: '创建考试',
+      requiresAuth: true,
+      roles: ['TEACHER', 'ADMIN']
+    }
+  },
+  // {
+  //   path: '/teacher/exams/:examId/edit',
+  //   name: 'ExamEdit',
+  //   component: () => import('@/views/exam/teacher/ExamEdit.vue'),
+  //   props: true,
+  //   meta: {
+  //     title: '编辑考试',
+  //     requiresAuth: true,
+  //     roles: ['TEACHER', 'ADMIN']
+  //   }
+  // },
 
   // ============================== 原有路由继续 ==============================
 

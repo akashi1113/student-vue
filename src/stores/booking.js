@@ -15,6 +15,10 @@ export const useBookingStore = defineStore('booking', () => {
         return notifications.value.filter(n => n.sendStatus !== 'READ')
     })
 
+    const unreadCount = computed(() => {
+        return unreadNotifications.value.length
+    })
+
     const activeBookings = computed(() => {
         return userBookings.value.filter(b =>
             ['BOOKED', 'CONFIRMED'].includes(b.bookingStatus)
@@ -51,6 +55,7 @@ export const useBookingStore = defineStore('booking', () => {
             return response
         } catch (error) {
             console.error('获取通知失败:', error)
+            throw error
         }
     }
 
@@ -94,6 +99,23 @@ export const useBookingStore = defineStore('booking', () => {
             }
         } catch (error) {
             console.error('标记已读失败:', error)
+            throw error
+        }
+    }
+
+    const batchMarkAsRead = async (notificationIds) => {
+        try {
+            await bookingApi.batchMarkNotificationsAsRead(notificationIds)
+            // 更新本地状态
+            notifications.value.forEach(notification => {
+                if (notificationIds.includes(notification.id)) {
+                    notification.sendStatus = 'READ'
+                    notification.readTime = new Date().toISOString()
+                }
+            })
+        } catch (error) {
+            console.error('批量标记已读失败:', error)
+            throw error
         }
     }
 
@@ -104,15 +126,19 @@ export const useBookingStore = defineStore('booking', () => {
         notifications,
         loading,
         currentBooking,
+
         // 计算属性
         unreadNotifications,
+        unreadCount,
         activeBookings,
+
         // 方法
         fetchAvailableTimeSlots,
         fetchUserBookings,
         fetchUserNotifications,
         bookExam,
         cancelBooking,
-        markAsRead
+        markAsRead,
+        batchMarkAsRead
     }
 })

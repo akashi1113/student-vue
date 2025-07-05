@@ -255,6 +255,33 @@
           </el-result>
         </div>
       </el-tab-pane>
+
+      <el-tab-pane label="消息通知" name="notifications">
+        <template #label>
+          <span class="tab-label">
+            <el-icon><Bell /></el-icon>
+            消息通知
+            <el-badge
+                :value="unreadCount"
+                :max="99"
+                :hidden="unreadCount === 0"
+                class="notification-badge"
+            />
+          </span>
+        </template>
+
+        <div class="redirect-message">
+          <el-result
+              icon="info"
+              title="正在跳转到消息通知"
+              sub-title="请稍候..."
+          >
+            <template #extra>
+              <el-button type="primary" @click="goToNotifications">立即跳转</el-button>
+            </template>
+          </el-result>
+        </div>
+      </el-tab-pane>
     </el-tabs>
 
     <!-- 时间段预约区域 -->
@@ -438,11 +465,13 @@ import {
   User as UserIcon,
   Monitor as MonitorIcon,
   Document as DocumentIcon,
-  SuccessFilled as SuccessFilledIcon
+  SuccessFilled as SuccessFilledIcon,
+  Bell as BellIcon
 } from '@element-plus/icons-vue'
 import { formatDate, formatTime, formatDateTime } from '@/utils/dateUtils'
 import examApi from '@/api/exam'
 import examBookingApi from '@/api/examBooking'
+import { useBookingStore } from '@/stores/booking'
 
 export default {
   name: 'ExamBookingCenter',
@@ -488,6 +517,9 @@ export default {
         return [...this.onlineExams, ...this.offlineExams]
       }
       return []
+    },
+    unreadCount() {
+      return useBookingStore().unreadCount
     }
   },
   watch: {
@@ -504,6 +536,13 @@ export default {
     if (!this.dataLoaded) {
       this.loadCurrentTabData()
     }
+    useBookingStore().fetchUserNotifications(this.getCurrentUserId())
+    this.refreshInterval = setInterval(() => {
+      useBookingStore().fetchUserNotifications(this.getCurrentUserId())
+    }, 300000)
+  },
+  beforeUnmount() {
+    clearInterval(this.refreshInterval)
   },
   methods: {
     async loadCurrentTabData() {
@@ -517,9 +556,14 @@ export default {
     handleTabClick(tab) {
       if (tab.paneName === 'myBookings') {
         this.goToMyBookings()
+      } else if (tab.paneName === 'notifications') {
+        this.goToNotifications()
       } else {
         this.activeTab = tab.paneName
       }
+    },
+    goToNotifications() {
+      this.$router.push('/exam-booking/notifications')
     },
     refreshCurrentTab() {
       this.loadCurrentTabData()
@@ -713,10 +757,10 @@ export default {
           const user = JSON.parse(userInfo)
           return user.id
         } catch (e) {
-          return 3
+          return 1
         }
       }
-      return 3
+      return 1
     },
     goToMyBookings() {
       this.$router.push('/exam-booking/my-bookings')
@@ -769,6 +813,10 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.tab-text {
+  margin-right: 4px; /* 为徽标预留空间 */
 }
 
 .tab-badge {
@@ -1012,6 +1060,20 @@ export default {
   justify-content: center;
   align-items: center;
   min-height: 200px;
+}
+/* 在style部分添加通知标签的特殊样式 */
+.notification-tab {
+  position: relative;
+}
+
+.notification-badge {
+  position: static; /* 改为静态定位 */
+  transform: none; /* 移除可能的变换 */
+  margin-left: 0; /* 重置边距 */
+}
+
+.notification-badge {
+  margin-left: 6px;
 }
 
 @media (max-width: 992px) {
