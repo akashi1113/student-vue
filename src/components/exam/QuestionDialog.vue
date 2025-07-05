@@ -59,6 +59,9 @@ const handleClose = () => {
 }
 
 const handleConfirm = () => {
+  console.log('验证时的questionData:', questionData)
+  console.log('表单中的localQuestion:', questionFormRef.value?.localQuestion)
+
   if (validateQuestion()) {
     emit('confirm', { ...questionData })
     handleClose()
@@ -66,30 +69,36 @@ const handleConfirm = () => {
 }
 
 const validateQuestion = () => {
-  if (!questionData.content.trim()) {
+  // 确保获取最新的数据
+  const currentData = questionFormRef.value ?
+      questionFormRef.value.localQuestion : questionData;
+
+  if (!currentData.content || !currentData.content.trim()) {
     ElMessage.error('请输入题目内容')
     return false
   }
 
-  if (!questionData.score || questionData.score <= 0) {
+  if (!currentData.score || currentData.score <= 0) {
     ElMessage.error('请设置正确的分值')
     return false
   }
 
   // 验证选择题选项
-  if (['SINGLE', 'MULTIPLE'].includes(questionData.type)) {
-    if (questionData.options.length < 2) {
+  if (['SINGLE', 'MULTIPLE'].includes(currentData.type)) {
+    if (currentData.options.length < 2) {
       ElMessage.error('选择题至少需要2个选项')
       return false
     }
 
-    const hasCorrectAnswer = questionData.options.some(option => option.isCorrect)
+    const hasCorrectAnswer = currentData.options.some(option => option.isCorrect)
     if (!hasCorrectAnswer) {
       ElMessage.error('请设置正确答案')
       return false
     }
 
-    const hasContent = questionData.options.every(option => option.content.trim())
+    const hasContent = currentData.options.every(option =>
+        option.content && option.content.trim()
+    )
     if (!hasContent) {
       ElMessage.error('请填写所有选项内容')
       return false

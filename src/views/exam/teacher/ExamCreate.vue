@@ -315,7 +315,6 @@ const addQuestion = () => {
 const handleQuestionAdded = (questionData) => {
   examForm.questions.push({
     ...questionData,
-    id: Date.now() // 临时ID
   })
   activeQuestions.value.push(examForm.questions.length - 1)
 }

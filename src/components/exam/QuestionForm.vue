@@ -1,9 +1,13 @@
 <template>
   <div class="question-form">
-    <el-form :model="localQuestion" label-width="100px">
+    <el-form
+        ref="questionForm"
+        :model="localQuestion"
+        label-width="100px"
+    >
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="题目类型" required>
+        <el-form-item label="题目类型" required>
             <el-select
                 v-model="localQuestion.type"
                 placeholder="请选择题目类型"
@@ -43,6 +47,7 @@
       <el-form-item label="题目内容" required>
         <el-input
             v-model="localQuestion.content"
+            @blur="validateField('content')"
             type="textarea"
             :rows="4"
             placeholder="请输入题目内容"
@@ -133,6 +138,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
+const questionForm = ref(null)
+
 // 本地数据
 const localQuestion = reactive({
   type: 'SINGLE',
@@ -151,6 +158,11 @@ const judgeAnswer = ref(true)
 const isChoiceQuestion = computed(() => {
   return ['SINGLE', 'MULTIPLE'].includes(localQuestion.type)
 })
+
+// 添加验证字段方法
+const validateField = (prop) => {
+  questionForm.value.validateField(prop)
+}
 
 // 监听器
 watch(localQuestion, (newVal) => {
@@ -244,6 +256,12 @@ if (!localQuestion.options.length && isChoiceQuestion.value) {
 } else if (localQuestion.type === 'JUDGE' && !localQuestion.options.length) {
   initJudgeOptions()
 }
+
+// 暴露数据和方法给父组件
+defineExpose({
+  localQuestion,
+  validateField
+})
 </script>
 
 <style scoped>
