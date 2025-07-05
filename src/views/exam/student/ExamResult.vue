@@ -143,8 +143,8 @@
 </template>
 
 <script>
-import examApi from '../../api/exam';
-import questionApi from '../../api/question';
+import examApi from '../../../api/exam';
+import questionApi from '../../../api/question';
 
 export default {
   name: 'ExamResult',

@@ -28,7 +28,7 @@ function isAuthenticated() {
 const routes = [
   {
     path: '/',
-    redirect: '/experimentList'
+    redirect: '/exams'
   },
   // 来自index.js的路由
   {
@@ -90,7 +90,7 @@ const routes = [
   {
     path: '/exams',
     name: 'ExamList',
-    component: () => import('@/views/exam/ExamList.vue'),
+    component: () => import('@/views/exam/student/ExamList.vue'),
     meta: {
       title: '考试列表',
       requiresAuth: true
@@ -109,7 +109,7 @@ const routes = [
   {
     path: '/exams/:examId/take',
     name: 'ExamTaking',
-    component: () => import('@/views/exam/ExamTaking.vue'),
+    component: () => import('@/views/exam/student/ExamTaking.vue'),
     props: true,
     meta: {
       title: '参加考试',
@@ -119,7 +119,7 @@ const routes = [
   {
     path: '/exams/:examId/result',
     name: 'ExamResult',
-    component: () => import('@/views/exam/ExamResult.vue'),
+    component: () => import('@/views/exam/student/ExamResult.vue'),
     props: true,
     meta: {
       title: '考试结果',
@@ -132,7 +132,7 @@ const routes = [
   {
     path: '/exam-booking/my-bookings',
     name: 'MyBookings',
-    component: () => import('@/views/exam/MyBookings.vue'),
+    component: () => import('@/views/exam/student/MyBookings.vue'),
     meta: {
       title: '我的预约',
       requiresAuth: true,
@@ -142,7 +142,7 @@ const routes = [
   {
     path: '/exam-booking/notifications',
     name: 'ExamNotifications',
-    component: () => import('@/views/exam/Notifications.vue'),
+    component: () => import('@/views/exam/student/Notifications.vue'),
     meta: {
       title: '考试通知',
       requiresAuth: true,
@@ -165,7 +165,7 @@ const routes = [
   {
     path: '/exam-booking/time-slot-management',
     name: 'TimeSlotManagement',
-    component: () => import('@/views/exam/TimeSlotManagement.vue'),
+    component: () => import('@/views/exam/teacher/TimeSlotManagement.vue'),
     meta: {
       title: '时间段管理',
       requiresAuth: true,
@@ -175,7 +175,7 @@ const routes = [
   {
     path: '/exam-booking/booking-management',
     name: 'BookingManagement',
-    component: () => import('@/views/exam/BookingManagement.vue'),
+    component: () => import('@/views/exam/teacher/BookingManagement.vue'),
     meta: {
       title: '预约管理',
       requiresAuth: true,
@@ -189,7 +189,7 @@ const routes = [
   {
     path: '/homework',
     name: 'HomeworkList',
-    component: () => import('@/views/homework/HomeworkList.vue'),
+    component: () => import('@/views/homework/student/HomeworkList.vue'),
     meta: {
       title: '作业列表',
       requiresAuth: true
@@ -198,7 +198,7 @@ const routes = [
   {
     path: '/homework/create',
     name: 'HomeworkCreate',
-    component: () => import('@/views/homework/HomeworkCreate.vue'),
+    component: () => import('@/views/homework/teacher/HomeworkCreate.vue'),
     meta: {
       title: '创建作业',
       requiresAuth: true
@@ -207,7 +207,7 @@ const routes = [
   {
     path: '/homework/:homeworkId',
     name: 'HomeworkDetail',
-    component: () => import('@/views/homework/HomeworkDetail.vue'),
+    component: () => import('@/views/homework/student/HomeworkDetail.vue'),
     props: true,
     meta: {
       title: '作业详情',
@@ -217,7 +217,7 @@ const routes = [
   {
     path: '/homework/:homeworkId/submit',
     name: 'HomeworkSubmit',
-    component: () => import('@/views/homework/HomeworkSubmit.vue'),
+    component: () => import('@/views/homework/student/HomeworkSubmit.vue'),
     props: true,
     meta: {
       title: '提交作业',
@@ -227,7 +227,7 @@ const routes = [
   {
     path: '/homework/:homeworkId/submissions',
     name: 'HomeworkSubmissions',
-    component: () => import('@/views/homework/HomeworkSubmissions.vue'),
+    component: () => import('@/views/homework/teacher/HomeworkSubmissions.vue'),
     props: true,
     meta: {
       title: '作业提交情况',
@@ -237,7 +237,7 @@ const routes = [
   {
     path: '/homework/submission/:submissionId/grade',
     name: 'HomeworkGrade',
-    component: () => import('@/views/homework/HomeworkGrade.vue'),
+    component: () => import('@/views/homework/teacher/HomeworkGrade.vue'),
     props: true,
     meta: {
       title: '作业评分',
@@ -247,7 +247,7 @@ const routes = [
   {
     path: '/homework/my-submissions',
     name: 'MySubmissions',
-    component: () => import('@/views/homework/MySubmissions.vue'),
+    component: () => import('@/views/homework/student/MySubmissions.vue'),
     meta: {
       title: '我的提交',
       requiresAuth: true
@@ -256,7 +256,7 @@ const routes = [
   {
     path: '/homework/:homeworkId/submission/student/:userId',
     name: 'StudentSubmissionDetail',
-    component: () => import('@/views/homework/StudentSubmissionDetail.vue'),
+    component: () => import('@/views/homework/student/StudentSubmissionDetail.vue'),
     props: true,
     meta: {
       title: '学生提交详情',
@@ -275,7 +275,7 @@ const routes = [
   {
     path: '/courses/:courseId/homework',
     name: 'CourseHomework',
-    component: () => import('@/views/homework/CourseHomework.vue'),
+    component: () => import('@/views/homework/teacher/CourseHomework.vue'),
     props: true,
     meta: {
       title: '课程作业',
