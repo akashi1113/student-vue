@@ -388,6 +388,7 @@ const routes = [
     }
   },
   {
+<<<<<<< HEAD
     path: '/ai/recommendation-history',
     name: 'RecommendationHistory',
     component: () => import('@/views/ai/RecommendationHistory.vue'),
@@ -404,13 +405,13 @@ const routes = [
       title: '教师分析中心',
       requiresAuth: true
     }
-  },
-  {
+=======
     path: '/experiment/:experimentId/reports',
     name: 'ExperimentReports',
     component: () => import('@/views/experiment/ReportView.vue'),
     meta: { title: '实验报告', roles: ['teacher'] },
     props: true
+>>>>>>> 005d2914a279dae0edda3bb9641268beb870e216
   }
 
 ]
