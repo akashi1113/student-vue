@@ -93,9 +93,9 @@
           </div>
 
           <div class="grade-actions">
-            <button type="button" @click="autoGrade" class="auto-grade-btn">
-              自动评分
-            </button>
+<!--            <button type="button" @click="autoGrade" class="auto-grade-btn">-->
+<!--              自动评分-->
+<!--            </button>-->
             <button type="button" @click="saveDraft" class="save-draft-btn">
               保存草稿
             </button>

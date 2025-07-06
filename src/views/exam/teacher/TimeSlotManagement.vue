@@ -218,7 +218,8 @@ export default {
         examMode: '',
         maxCapacity: 30,
         bookingEndTime: '',
-        requirements: ''
+        requirements: '',
+        createdBy: 5
       },
 
       // 表单验证规则
@@ -279,31 +280,61 @@ export default {
         examMode: row.examMode,
         maxCapacity: row.maxCapacity,
         bookingEndTime: row.bookingEndTime,
-        requirements: row.requirements
+        requirements: row.requirements,
+        createdBy: row.createdBy
       });
       this.dialogVisible = true;
     },
 
     async submitForm() {
       try {
-        await this.$refs.form.validate();
+        await this.$refs.formRef.validate();
+
+        // 添加自定义验证
+        if (this.form.startTime >= this.form.endTime) {
+          this.$message.error('开始时间必须早于结束时间');
+          return;
+        }
+
+        const bookingEnd = new Date(this.form.bookingEndTime);
+        const examDate = new Date(`${this.form.slotDate} ${this.form.startTime}`);
+
+        if (bookingEnd >= examDate) {
+          this.$message.error('预约截止时间必须早于考试开始时间');
+          return;
+        }
+
         this.submitting = true;
 
-        this.form.examId = this.selectedExam;
-
         if (this.isEdit) {
-          await examBookingApi.updateTimeSlot(this.form.id, this.form);
+          // 编辑时包含 id
+          const formData = {
+            ...this.form,
+            examId: this.selectedExam,
+            createdBy: 5
+          };
+          await examBookingApi.updateTimeSlot(this.form.id, formData);
           this.$message.success('更新成功');
         } else {
-          await examBookingApi.createTimeSlot(this.form);
+          // 创建时排除 id 字段
+          const { id, ...formData } = this.form;
+          const createData = {
+            ...formData,
+            examId: this.selectedExam,
+            createdBy: 5
+          };
+          console.log('创建数据:', createData);
+          await examBookingApi.createTimeSlot(createData);
           this.$message.success('创建成功');
         }
 
         this.dialogVisible = false;
         await this.loadTimeSlots();
       } catch (error) {
+        console.error('提交失败:', error);
         if (error !== false) {
-          this.$message.error(this.isEdit ? '更新失败' : '创建失败');
+          const errorMessage = error.response?.data?.message || error.message || '未知错误';
+          this.$message.error(`${this.isEdit ? '更新' : '创建'}失败: ${errorMessage}`);
         }
       } finally {
         this.submitting = false;
@@ -321,7 +352,8 @@ export default {
         examMode: '',
         maxCapacity: 30,
         bookingEndTime: '',
-        requirements: ''
+        requirements: '',
+        createdBy: 5
       });
       if (this.$refs.form) {
         this.$refs.form.resetFields();

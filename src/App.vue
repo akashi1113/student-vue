@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <div class="app-header">
-      <h1>CSU学生管理系统 - 知识库管理</h1>
+      <h1>CSU学生管理系统</h1>
     </div>
     <nav>
       <router-link to="/knowledge">知识库</router-link> |

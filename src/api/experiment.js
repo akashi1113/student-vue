@@ -119,5 +119,22 @@ getExperimentById(id) {
       method: 'get',
       params
     });
+  },
+
+  // 获取学生最后一次提交的实验报告
+  getStudentFinalReport(experimentId, studentId) {
+    return request({
+      url: `/api/experiment/reports/${experimentId}/${studentId}`,
+      method: 'get'
+    })
+  },
+
+  // 获取实验所有学生的报告列表
+  getExperimentReports(experimentId) {
+    return request({
+      url: `/api/experiment/reports//${experimentId}`,
+      method: 'get'
+    })
   }
+
 }
