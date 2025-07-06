@@ -8,6 +8,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AIRecommendation: typeof import('./src/components/AIRecommendation.vue')['default']
+    AnalyticsCard: typeof import('./src/components/analytics/AnalyticsCard.vue')['default']
     BarChart: typeof import('./src/components/common/BarChart.vue')['default']
     BookingCard: typeof import('./src/components/exam/BookingCard.vue')['default']
     CategoryFilter: typeof import('./src/components/CategoryFilter.vue')['default']
@@ -56,6 +58,7 @@ declare module 'vue' {
     ElUpload: typeof import('element-plus/es')['ElUpload']
     ExperimentCard: typeof import('./src/components/ExperimentCard.vue')['default']
     ExperimentScheduler: typeof import('./src/components/ExperimentScheduler.vue')['default']
+    FilterPanel: typeof import('./src/components/analytics/FilterPanel.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
     KnowledgeCard: typeof import('./src/components/KnowledgeCard.vue')['default']
     Loading: typeof import('./src/components/common/Loading.vue')['default']

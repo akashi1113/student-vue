@@ -83,7 +83,7 @@
             </button>
             <span class="page-info">第 {{ examPageNum }} 页，共 {{ examRecords.pages || 1 }} 页</span>
             <button 
-              :disabled="!examRecords.hasNextPage" 
+              :disabled="examPageNum >= (examRecords.pages || 1)" 
               @click="examPageNum++; fetchExamRecords()"
               class="page-btn"
             >

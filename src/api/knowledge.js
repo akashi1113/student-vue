@@ -96,4 +96,45 @@ export function getFavoriteStatus(knowledgeId) {
   })
 }
 
+// AI图书推荐相关接口
+// 生成AI书籍推荐
+export function generateAIRecommendations() {
+  return request({
+    url: '/api/ai/book-recommendations/generate',
+    method: 'post'
+  })
+}
+
+// 获取用户所有书籍推荐
+export function getAIRecommendations() {
+  return request({
+    url: '/api/ai/book-recommendations',
+    method: 'get'
+  })
+}
+
+// 获取特定课程的书籍推荐
+export function getCourseRecommendations(courseId) {
+  return request({
+    url: `/api/ai/book-recommendations/course/${courseId}`,
+    method: 'get'
+  })
+}
+
+// 标记推荐为已读
+export function markRecommendationAsRead(recommendationId) {
+  return request({
+    url: `/api/ai/book-recommendations/${recommendationId}/read`,
+    method: 'post'
+  })
+}
+
+// 删除AI推荐记录
+export function deleteAIRecommendation(id) {
+  return request({
+    url: `/api/ai/book-recommendations/${id}`,
+    method: 'delete'
+  })
+}
+
 

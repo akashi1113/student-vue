@@ -1,4 +1,5 @@
 import axios from 'axios';
+import request from '../utils/request'
 
 const API_URL = 'http://localhost:8080/api/exams';
 
@@ -38,5 +39,12 @@ export default {
         return axios.get(`${API_URL}/check-status`, {
             params: { userId, examId }
         });
+    },
+    // 获取考试列表
+    getExamList() {
+        return request({
+            url: '/api/exams/list',
+            method: 'get'
+        })
     }
 };

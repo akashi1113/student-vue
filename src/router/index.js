@@ -348,6 +348,24 @@ const routes = [
       title: '日志审计报表',
       requiresAuth: false
     }
+  },
+  {
+    path: '/ai/recommendation-history',
+    name: 'RecommendationHistory',
+    component: () => import('@/views/ai/RecommendationHistory.vue'),
+    meta: {
+      title: 'AI推荐历史',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/analytics',
+    name: 'AnalyticsDashboard',
+    component: () => import('@/views/analytics/AnalyticsDashboard.vue'),
+    meta: {
+      title: '教师分析中心',
+      requiresAuth: true
+    }
   }
   // {
   //   path: '/reports/generate/:recordId',

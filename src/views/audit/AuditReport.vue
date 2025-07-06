@@ -82,7 +82,7 @@
       v-model:current-page="pagination.page"
       v-model:page-size="pagination.size"
       :total="pagination.total"
-      @current-change="fetchData"
+      @current-change="handlePageChange"
       @size-change="fetchData"
       layout="total, sizes, prev, pager, next, jumper"
       :page-sizes="[10, 20, 50, 100]"
@@ -322,6 +322,11 @@ function handleReset() {
   fetchData()
 }
 
+function handlePageChange(page) {
+  pagination.page = page
+  fetchData()
+}
+
 onMounted(() => {
   moduleOptions.value = ['成绩管理', '知识库', '考试', '作业', '用户','实验管理','课程管理','学习分析','成绩管理']
   fetchData()
@@ -340,13 +345,15 @@ const pieChartData = computed(() => {
 })
 
 const barChartData = computed(() => {
-  // 统计每个模块出现的条数
-  const moduleCountMap = new Map();
+  const map = new Map()
   tableData.value.forEach(item => {
-    if (!item.module) return;
-    moduleCountMap.set(item.module, (moduleCountMap.get(item.module) || 0) + 1);
-  });
-  return Array.from(moduleCountMap.entries()).map(([module, count]) => ({ module, count }));
+    if (!item.module) return
+    if (!map.has(item.module)) {
+      map.set(item.module, 0)
+    }
+    map.set(item.module, map.get(item.module) + (item.count || 0))
+  })
+  return Array.from(map.entries()).map(([module, count]) => ({ module, count }))
 })
 
 // 添加分组数据计算属性

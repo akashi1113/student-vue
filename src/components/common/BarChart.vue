@@ -33,7 +33,7 @@ const renderChart = () => {
     xAxis: {
       type: 'category',
       data: props.data.map(item => item.module),
-      axisLabel: { fontSize: 14 }
+      axisLabel: { fontSize: 14, interval: 0 }
     },
     yAxis: {
       type: 'value',

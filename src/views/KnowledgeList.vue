@@ -1,5 +1,8 @@
 <template>
   <div class="knowledge-list">
+    <!-- AI推荐组件 -->
+    <AIRecommendation />
+    
     <div class="search-section">
       <SearchBar @search="handleSearch" />
       <CategoryFilter :categories="categories" @filter="handleFilter" />
@@ -54,6 +57,7 @@ import SearchBar from '../components/SearchBar.vue'
 import CategoryFilter from '../components/CategoryFilter.vue'
 import KnowledgeCard from '../components/KnowledgeCard.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import AIRecommendation from '../components/AIRecommendation.vue'
 import { getKnowledgeList, getCategories, getFavoriteList } from '../api/knowledge.js'
 
 export default {
@@ -62,7 +66,8 @@ export default {
     SearchBar,
     CategoryFilter,
     KnowledgeCard,
-    LoadingSpinner
+    LoadingSpinner,
+    AIRecommendation
   },
   data() {
     return {

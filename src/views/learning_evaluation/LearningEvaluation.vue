@@ -19,6 +19,7 @@
         <div class="query-item">
           <label>评价周期：</label>
           <select v-model="timePeriod" @change="updateDateRange">
+            <option value="all">全部时间</option>
             <option value="week">近一周</option>
             <option value="month">近一月</option>
             <option value="quarter">近三个月</option>
@@ -158,7 +159,7 @@
             </button>
             <span class="page-info">第 {{ examPageNum }} 页，共 {{ examRecordsTable.pages || 1 }} 页</span>
             <button 
-              :disabled="!examRecordsTable.hasNextPage" 
+              :disabled="examPageNum >= (examRecordsTable.pages || 1)" 
               @click="examPageNum++; fetchExamRecordsTable()"
               class="page-btn"
             >
@@ -282,7 +283,7 @@ export default {
   data() {
     return {
       userId: '',
-      timePeriod: 'month',
+      timePeriod: 'all',
       startDate: '',
       endDate: '',
       loading: false,
@@ -672,6 +673,10 @@ export default {
       let start = new Date()
       
       switch (this.timePeriod) {
+        case 'all':
+          // 全部时间：设置为很早的日期到现在
+          start = new Date('2020-01-01')
+          break
         case 'week':
           start.setDate(now.getDate() - 7)
           break
@@ -1150,7 +1155,7 @@ export default {
             pages: 1
           }
           this.totalStudyTime = res.data.reduce((sum, item) => sum + (item.duration || 0), 0)
-        } else {
+          } else {
           this.studyRecordsTable = null
           this.totalStudyTime = 0
         }
