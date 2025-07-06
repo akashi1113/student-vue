@@ -5,7 +5,7 @@
     </div>
     <nav>
       <router-link to="/knowledge">知识库</router-link> |
-      <router-link to="/score-manage">成绩管理</router-link> |
+      <router-link to="/score-manage">我的成绩</router-link> |
       <router-link to="/learning-evaluation">学习效果评价</router-link> |
       <router-link to="/ai/recommendation-history">AI推荐历史</router-link> |
       <router-link to="/audit/report">日志审计</router-link> |

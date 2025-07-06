@@ -40,14 +40,13 @@ export default {
             params: { userId, examId }
         });
     },
-<<<<<<< HEAD
     // 获取考试列表
     getExamList() {
         return request({
             url: '/api/exams/list',
             method: 'get'
         })
-=======
+    },
 
     // 教师端接口
     // 创建考试
@@ -90,6 +89,5 @@ export default {
     // 获取题目列表
     getQuestionsByExamId(examId) {
         return axios.get(`${API_URL}/${examId}/questions`);
->>>>>>> 005d2914a279dae0edda3bb9641268beb870e216
     }
 };
