@@ -4,42 +4,41 @@
       <h1>作业管理</h1>
       <div class="controls">
         <div class="user-info">
-          <span class="user-label">教师:</span>
           <span class="user-name">{{ userName || '未登录' }}</span>
         </div>
         <button
             @click="$router.push('/homework/create')"
             class="create-btn"
         >
-          <span class="icon">➕</span> 创建作业
+          创建作业
         </button>
       </div>
     </div>
 
     <div class="stats-cards">
       <div class="stat-card">
-        <div class="stat-icon">📝</div>
+        <div class="stat-icon total-icon"></div>
         <div class="stat-info">
           <div class="stat-number">{{ stats.totalHomework }}</div>
           <div class="stat-label">总作业数</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">📋</div>
+        <div class="stat-icon published-icon"></div>
         <div class="stat-info">
           <div class="stat-number">{{ stats.publishedHomework }}</div>
           <div class="stat-label">已发布</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">✅</div>
+        <div class="stat-icon submissions-icon"></div>
         <div class="stat-info">
           <div class="stat-number">{{ stats.totalSubmissions }}</div>
           <div class="stat-label">提交总数</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">⏰</div>
+        <div class="stat-icon pending-icon"></div>
         <div class="stat-info">
           <div class="stat-number">{{ stats.pendingGrade }}</div>
           <div class="stat-label">待批改</div>
@@ -52,25 +51,25 @@
           :class="{ active: statusFilter === 'all' }"
           @click="filterByStatus('all')"
       >
-        <span class="tab-icon">📋</span> 全部作业
+        全部作业
       </button>
       <button
           :class="{ active: statusFilter === 'DRAFT' }"
           @click="filterByStatus('DRAFT')"
       >
-        <span class="tab-icon">📝</span> 草稿
+        草稿
       </button>
       <button
           :class="{ active: statusFilter === 'PUBLISHED' }"
           @click="filterByStatus('PUBLISHED')"
       >
-        <span class="tab-icon">📤</span> 已发布
+        已发布
       </button>
       <button
           :class="{ active: statusFilter === 'CLOSED' }"
           @click="filterByStatus('CLOSED')"
       >
-        <span class="tab-icon">🔒</span> 已截止
+        已截止
       </button>
     </div>
 
@@ -90,7 +89,7 @@
                 class="action-btn publish-btn"
                 title="发布作业"
             >
-              📤
+              <i class="icon-publish"></i>
             </button>
             <button
                 v-if="homework.status === 'PUBLISHED'"
@@ -98,21 +97,21 @@
                 class="action-btn close-btn"
                 title="关闭作业"
             >
-              🔒
+              <i class="icon-close"></i>
             </button>
             <button
                 @click="editHomework(homework.id)"
                 class="action-btn edit-btn"
                 title="编辑作业"
             >
-              ✏️
+              <i class="icon-edit"></i>
             </button>
             <button
                 @click="deleteHomework(homework.id)"
                 class="action-btn delete-btn"
                 title="删除作业"
             >
-              🗑️
+              <i class="icon-delete"></i>
             </button>
           </div>
         </div>
@@ -124,7 +123,6 @@
         </div>
 
         <p class="course">
-          <span class="icon">📚</span>
           {{ homework.courseTitle || '未指定课程' }}
         </p>
 
@@ -135,21 +133,19 @@
         <div class="homework-meta">
           <span class="type">{{ getTypeText(homework.homeworkType) }}</span>
           <span class="score">
-            <span class="icon">🎯</span>
-            {{ homework.totalScore }}分
+            总分: {{ homework.totalScore }}分
           </span>
         </div>
 
         <div class="homework-time">
-          <p>
-            <span class="icon">🕒</span>
-            <span class="time-label">开始:</span>
+          <div class="time-item">
+            <span class="time-label">开始时间:</span>
             {{ formatDate(homework.startTime) }}
-          </p>
-          <p>
-            <span class="time-label">截止:</span>
+          </div>
+          <div class="time-item">
+            <span class="time-label">截止时间:</span>
             {{ formatDate(homework.endTime) }}
-          </p>
+          </div>
         </div>
 
         <div class="homework-stats">
@@ -168,7 +164,6 @@
               @click="manageSubmissions(homework.id)"
               class="manage-btn"
           >
-            <span class="icon">📊</span>
             管理提交
           </button>
           <button
@@ -176,7 +171,6 @@
               @click="viewStatistics(homework.id)"
               class="stats-btn"
           >
-            <span class="icon">📈</span>
             查看统计
           </button>
         </div>
@@ -189,7 +183,6 @@
     </div>
 
     <div v-if="!loading && filteredHomeworkList.length === 0" class="empty">
-      <div class="empty-icon">📝</div>
       <p>{{ getEmptyMessage() }}</p>
       <button
           @click="$router.push('/homework/create')"
@@ -313,7 +306,7 @@ export default {
       try {
         await homeworkApi.publishHomework(homeworkId);
         this.$message.success('作业发布成功');
-        this.loadHomework(); // 重新加载数据
+        this.loadHomework();
       } catch (error) {
         console.error('发布作业失败:', error);
         this.$message.error('发布作业失败：' + (error.message || '请稍后重试'));
@@ -330,7 +323,7 @@ export default {
 
         await homeworkApi.closeHomework(homeworkId);
         this.$message.success('作业关闭成功');
-        this.loadHomework(); // 重新加载数据
+        this.loadHomework();
       } catch (error) {
         if (error === 'cancel') return;
         console.error('关闭作业失败:', error);
@@ -349,7 +342,7 @@ export default {
         const token = this.getToken();
         await homeworkApi.deleteHomework(homeworkId, token);
         this.$message.success('作业删除成功');
-        this.loadHomework(); // 重新加载数据
+        this.loadHomework();
       } catch (error) {
         if (error === 'cancel') return;
         console.error('删除作业失败:', error);
@@ -395,12 +388,11 @@ export default {
 </script>
 
 <style scoped>
-/* 教师页面专用样式 */
 .homework-list {
   max-width: 1280px;
   margin: 0 auto;
   padding: 24px 20px;
-  background: #f8f9fa;
+  background: #f8fafc;
   min-height: calc(100vh - 48px);
 }
 
@@ -413,16 +405,14 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-left: 4px solid #3b82f6;
 }
 
 .header h1 {
   margin: 0;
   font-size: 24px;
   font-weight: 600;
-  background: linear-gradient(90deg, #007bff, #00b4ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #1e3a8a;
 }
 
 .controls {
@@ -436,37 +426,27 @@ export default {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #f8f9fa;
+  background: #f0f7ff;
   border-radius: 8px;
   font-size: 14px;
-}
-
-.user-label {
-  color: #666;
-}
-
-.user-name {
-  color: #333;
-  font-weight: 500;
+  color: #1e40af;
 }
 
 .create-btn {
   padding: 10px 16px;
-  background: linear-gradient(135deg, #007bff, #0062cc);
+  background: #3b82f6;
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
   transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .create-btn:hover {
+  background: #2563eb;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,123,255,0.2);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 .stats-cards {
@@ -493,14 +473,35 @@ export default {
 }
 
 .stat-icon {
-  font-size: 24px;
   width: 48px;
   height: 48px;
-  background: rgba(0,123,255,0.1);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background-size: 24px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.total-icon {
+  background-color: #e0f2fe;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%230369a1'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.published-icon {
+  background-color: #dbeafe;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231d4ed8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.submissions-icon {
+  background-color: #dcfce7;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23166534'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.pending-icon {
+  background-color: #fef3c7;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23b45309'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'%3E%3C/path%3E%3C/svg%3E");
 }
 
 .stat-info {
@@ -510,13 +511,13 @@ export default {
 .stat-number {
   font-size: 24px;
   font-weight: 600;
-  color: #333;
+  color: #1e3a8a;
   line-height: 1;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #666;
+  color: #475569;
   margin-top: 4px;
 }
 
@@ -538,19 +539,17 @@ export default {
   border-radius: 6px;
   font-weight: 500;
   transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #666;
+  color: #64748b;
 }
 
 .homework-tabs button.active {
-  background: rgba(0,123,255,0.1);
-  color: #007bff;
+  background: #3b82f6;
+  color: white;
 }
 
 .homework-tabs button:hover {
-  background: rgba(0,123,255,0.05);
+  background: #e0e7ff;
+  color: #1e40af;
 }
 
 .homework-grid {
@@ -566,7 +565,7 @@ export default {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  border: 1px solid #f0f0f0;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -574,8 +573,8 @@ export default {
 
 .homework-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-  border-color: #e0e0e0;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.1);
+  border-color: #bfdbfe;
 }
 
 .card-header {
@@ -587,7 +586,7 @@ export default {
 
 .card-header h3 {
   margin: 0;
-  color: #333;
+  color: #1e3a8a;
   font-size: 18px;
   font-weight: 600;
   line-height: 1.4;
@@ -601,36 +600,56 @@ export default {
 }
 
 .action-btn {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
   transition: all 0.3s;
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: #f8fafc;
 }
 
-.publish-btn {
-  background: rgba(40, 167, 69, 0.1);
-  color: #28a745;
+.action-btn i {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-size: contain;
+  background-repeat: no-repeat;
 }
 
-.close-btn {
-  background: rgba(220, 53, 69, 0.1);
-  color: #dc3545;
+.icon-publish {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2328a745'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4'%3E%3C/path%3E%3C/svg%3E");
 }
 
-.edit-btn {
-  background: rgba(255, 193, 7, 0.1);
-  color: #ffc107;
+.icon-close {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23dc3545'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 18L18 6M6 6l12 12'%3E%3C/path%3E%3C/svg%3E");
 }
 
-.delete-btn {
-  background: rgba(108, 117, 125, 0.1);
-  color: #6c757d;
+.icon-edit {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23f59e0b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.icon-delete {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236c757d'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.publish-btn:hover {
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.close-btn:hover {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.edit-btn:hover {
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.delete-btn:hover {
+  background-color: rgba(108, 117, 125, 0.1);
 }
 
 .action-btn:hover {
@@ -642,7 +661,7 @@ export default {
 }
 
 .status {
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
@@ -650,38 +669,35 @@ export default {
 }
 
 .status.draft {
-  background: #fff8e1;
-  color: #ff8f00;
+  background: #e0f2fe;
+  color: #0369a1;
 }
 
 .status.published {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .status.closed {
-  background: #ffebee;
-  color: #c62828;
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .course {
   margin: 6px 0;
-  color: #666;
+  color: #475569;
   font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .divider {
   height: 1px;
-  background: #f0f0f0;
+  background: #f1f5f9;
   margin: 12px 0;
 }
 
 .description {
   margin: 12px 0;
-  color: #666;
+  color: #475569;
   font-size: 14px;
   line-height: 1.6;
   flex-grow: 1;
@@ -700,44 +716,38 @@ export default {
 }
 
 .type, .score {
-  padding: 6px 12px;
-  border-radius: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .type {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: #e0f2fe;
+  color: #0369a1;
 }
 
 .score {
-  background: #f3e5f5;
-  color: #7b1fa2;
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .homework-time {
-  background: #f8f9fa;
+  background: #f8fafc;
   padding: 12px;
   border-radius: 8px;
   margin: 16px 0;
   font-size: 13px;
 }
 
-.homework-time p {
+.time-item {
   margin: 6px 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  color: #475569;
 }
 
 .time-label {
-  margin: 0 6px;
-  color: #888;
-  width: 40px;
+  color: #64748b;
+  margin-right: 8px;
 }
 
 .homework-stats {
@@ -745,7 +755,7 @@ export default {
   gap: 16px;
   margin: 16px 0;
   padding: 12px;
-  background: #f8f9fa;
+  background: #f8fafc;
   border-radius: 8px;
 }
 
@@ -754,17 +764,18 @@ export default {
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  flex: 1;
 }
 
 .stat-number {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: #1e3a8a;
 }
 
 .stat-text {
   font-size: 12px;
-  color: #666;
+  color: #64748b;
 }
 
 .homework-actions {
@@ -775,30 +786,30 @@ export default {
 }
 
 .manage-btn, .stats-btn {
-  padding: 8px 16px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .manage-btn {
-  background: linear-gradient(135deg, #6c757d, #5a6268);
+  background: #3b82f6;
   color: white;
 }
 
 .stats-btn {
-  background: linear-gradient(135deg, #17a2b8, #138496);
+  background: #60a5fa;
   color: white;
 }
 
-.manage-btn:hover, .stats-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.manage-btn:hover {
+  background: #2563eb;
+}
+
+.stats-btn:hover {
+  background: #3b82f6;
 }
 
 .loading, .empty {
@@ -815,9 +826,9 @@ export default {
   width: 40px;
   height: 40px;
   margin: 0 auto 16px;
-  border: 4px solid rgba(0,123,255,0.1);
+  border: 4px solid rgba(59, 130, 246, 0.1);
   border-radius: 50%;
-  border-top-color: #007bff;
+  border-top-color: #3b82f6;
   animation: spin 1s ease-in-out infinite;
 }
 
@@ -825,34 +836,26 @@ export default {
   to { transform: rotate(360deg); }
 }
 
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-}
-
 .empty p {
   font-size: 16px;
-  color: #666;
+  color: #64748b;
   margin-bottom: 16px;
 }
 
 .empty-create-btn {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #007bff, #0062cc);
+  background: #3b82f6;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .empty-create-btn:hover {
+  background: #2563eb;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,123,255,0.2);
-}
-
-.tab-icon, .icon {
-  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 @media (max-width: 768px) {

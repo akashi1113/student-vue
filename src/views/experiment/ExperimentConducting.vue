@@ -274,11 +274,15 @@ export default {
     this.clearAutoSave();
   },
   methods: {
+    getToken() {
+      return localStorage.getItem('token')
+    },
     // 初始化实验
     async initializeExperiment() {
+      const token=this.getToken();
       try {
         // 开始实验
-        const recordResponse = await experimentApi.startExperiment(this.experimentId);
+        const recordResponse = await experimentApi.startExperiment(this.experimentId, token);
         this.experimentRecord = recordResponse.data;
 
         // 获取实验详情

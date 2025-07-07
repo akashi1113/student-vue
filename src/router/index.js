@@ -295,15 +295,6 @@ const routes = [
     }
   },
   {
-    path: '/homework/my-submissions',
-    name: 'MySubmissions',
-    component: () => import('@/views/homework/student/MySubmissions.vue'),
-    meta: {
-      title: '我的提交',
-      requiresAuth: true
-    }
-  },
-  {
     path: '/homework/:homeworkId/submission',
     name: 'StudentSubmissionDetail',
     component: () => import('@/views/homework/student/StudentSubmissionDetail.vue'),
