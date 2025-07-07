@@ -211,7 +211,9 @@ export default {
       statistics: null,
       loading: false,
       isTeacher: false,
-      canSubmit: false
+      isStudent: false,
+      canSubmit: false,
+      userId: null
     };
   },
   async mounted() {
@@ -226,13 +228,42 @@ export default {
     getToken() {
       return localStorage.getItem('token');
     },
+    getUserRole() {
+      try {
+        const role=localStorage.getItem('role');
+        const id=localStorage.getItem('userid');
+        this.isStudent = role === '学生';
+        this.isTeacher = role === '教师';
+        this.userId = id;
+
+        // 调试输出
+        console.log('用户角色信息:', {
+          isStudent: this.isStudent,
+          isTeacher: this.isTeacher,
+          userId: this.userId
+        });
+
+        return role;
+      } catch (error) {
+        console.error('获取用户角色失败:', error);
+        return null;
+      }
+    },
     async loadHomework() {
       this.loading = true;
       try {
-        const response = await homeworkApi.getHomeworkById(this.homeworkId);
+        // 先获取用户角色
+        this.getUserRole();
+
+        const token = this.getToken();
+        const response = await homeworkApi.getHomeworkById(this.homeworkId, token);
         if (response.data.success) {
           this.homework = response.data.data;
-          this.isTeacher = this.userId === this.homework.teacherId;
+
+          // 如果是学生，检查提交权限
+          if (this.isStudent) {
+            await this.checkSubmitPermission();
+          }
         }
       } catch (error) {
         console.error('加载作业详情失败:', error);

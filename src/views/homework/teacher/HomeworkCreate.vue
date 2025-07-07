@@ -21,7 +21,7 @@
 
         <div class="form-group">
           <label>选择课程 *</label>
-          <select v-model="homework.courseId" required @change="loadCourseStudents">
+          <select v-model="homework.courseId">
             <option value="">请选择课程</option>
             <option
                 v-for="course in courseList"
@@ -380,13 +380,17 @@ export default {
       }
     },
     async createHomework() {
+      console.log('开始创建作业，验证数据...');
+
       // 验证数据
       if (!this.homework.title || !this.homework.courseId) {
+        console.error('验证失败: 标题或课程ID为空');
         alert('请填写必填信息');
         return;
       }
 
       if (this.questions.length === 0) {
+        console.error('验证失败: 题目列表为空');
         alert('请至少添加一道题目');
         return;
       }
@@ -395,10 +399,12 @@ export default {
       for (let i = 0; i < this.questions.length; i++) {
         const question = this.questions[i];
         if (!question.questionContent) {
+          console.error(`验证失败: 第${i + 1}题内容为空`);
           alert(`第${i + 1}题的题目内容不能为空`);
           return;
         }
         if (!question.score || question.score <= 0) {
+          console.error(`验证失败: 第${i + 1}题分值无效`);
           alert(`第${i + 1}题的分值必须大于0`);
           return;
         }
@@ -406,44 +412,115 @@ export default {
 
       this.submitting = true;
       try {
-        // 处理题目数据
-        const processedQuestions = this.questions.map(question => {
-          const processed = { ...question };
+        console.log('处理题目数据...');
 
-          // 处理选项
-          if (question.options && question.options.length > 0) {
-            processed.questionOptions = JSON.stringify(question.options.filter(opt => opt.trim()));
+        // 修改数据处理逻辑以匹配后端格式
+        const processedQuestions = this.questions.map((question) => {
+          const processed = {
+            questionType: question.questionType,
+            questionContent: question.questionContent,
+            correctAnswer: question.correctAnswer || '',
+            score: parseFloat(question.score),
+            analysis: question.analysis || ''
+          };
+
+          // 处理选项 - 根据后端期望格式
+          if (question.questionType === 'SINGLE_CHOICE' || question.questionType === 'MULTIPLE_CHOICE') {
+            if (question.options && question.options.length > 0) {
+              // 过滤空选项并转换为JSON字符串
+              const validOptions = question.options
+                  .filter(opt => opt && opt.trim())
+                  .map(opt => String(opt).trim());
+              processed.questionOptions = JSON.stringify(validOptions);
+            } else {
+              processed.questionOptions = "null";
+            }
+          } else {
+            // 对于非选择题，设置为 "null"
+            processed.questionOptions = "null";
           }
-
-          // 移除临时字段
-          delete processed.options;
 
           return processed;
         });
 
         // 更新总分
         this.homework.totalScore = this.calculateTotalScore();
+        console.log('计算总分:', this.homework.totalScore);
+
+        // 修改作业数据结构以匹配后端格式
+        const homeworkData = {
+          title: this.homework.title,
+          description: this.homework.description || '',
+          courseId: parseInt(this.homework.courseId),
+          homeworkType: this.homework.homeworkType,
+          totalScore: parseFloat(this.homework.totalScore),
+          startTime: this.formatDateTimeForBackend(this.homework.startTime),
+          endTime: this.formatDateTimeForBackend(this.homework.endTime),
+          allowResubmit: this.homework.allowResubmit ? 1 : 0, // 转换为数字
+          maxSubmitTimes: parseInt(this.homework.maxSubmitTimes) || 1,
+          status: this.homework.status || 'DRAFT'
+        };
 
         const createData = {
-          homework: this.homework,
+          homework: homeworkData,
           questions: processedQuestions
         };
 
-        const response = await homeworkApi.createHomework(createData,this.getToken());
+        console.log('准备发送的数据:', JSON.stringify(createData, null, 2));
+
+        console.log('调用API创建作业...');
+        const response = await homeworkApi.createHomework(createData, this.getToken());
+        console.log('API响应:', response);
+
         if (response.data.success) {
+          console.log('作业创建成功，响应数据:', response.data);
           // 清除草稿
           const draftKey = `homework_create_draft_${this.homework.teacherId}`;
           localStorage.removeItem(draftKey);
 
           alert('作业创建成功！');
           this.$router.push(`/homework/${response.data.data}`);
+        } else {
+          console.error('API返回失败:', response.data);
+          alert('创建作业失败: ' + (response.data.message || '未知错误'));
         }
       } catch (error) {
         console.error('创建作业失败:', error);
-        alert('创建作业失败: ' + (error.response?.data?.message || error.message));
+        console.error('错误详情:', {
+          message: error.message,
+          response: error.response,
+          stack: error.stack
+        });
+
+        let errorMessage = '创建作业失败: ';
+        if (error.response?.data?.message) {
+          errorMessage += error.response.data.message;
+        } else if (error.message) {
+          errorMessage += error.message;
+        } else {
+          errorMessage += '未知错误';
+        }
+
+        alert(errorMessage);
       } finally {
         this.submitting = false;
       }
+    },
+
+// 添加时间格式转换方法
+    formatDateTimeForBackend(dateTimeString) {
+      if (!dateTimeString) return '';
+
+      // 将 "2025-07-08T18:29" 转换为 "2025-07-08 18:29:00"
+      const date = new Date(dateTimeString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = '00';
+
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
   }
 };

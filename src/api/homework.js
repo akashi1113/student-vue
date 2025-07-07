@@ -68,7 +68,6 @@ export default {
         return axios.get(`${API_URL}/course/${courseId}/students`);
     },
 
-    // 修改：后端路径是 /teacher/courses，需要token
     getCoursesByTeacher(token) {
         return axios.get(`${API_URL}/teacher/courses`, {
             headers: buildAuthHeader(token)

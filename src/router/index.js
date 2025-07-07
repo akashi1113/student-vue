@@ -258,7 +258,7 @@ const routes = [
   {
     path: '/homework/:homeworkId',
     name: 'HomeworkDetail',
-    component: () => import('@/views/homework/student/HomeworkDetail.vue'),
+    component: () => import('@/views/homework/HomeworkDetail.vue'),
     props: true,
     meta: {
       title: '作业详情',

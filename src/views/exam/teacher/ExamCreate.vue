@@ -47,7 +47,7 @@
                   <el-option
                       v-for="course in courseList"
                       :key="course.id"
-                      :label="course.name"
+                      :label="course.title"
                       :value="course.id"
                   />
                 </el-select>
@@ -234,6 +234,7 @@ import { ArrowLeft, Plus, Delete } from '@element-plus/icons-vue'
 import examAPI from '@/api/exam'
 import QuestionForm from '@/components/exam/QuestionForm.vue'
 import QuestionDialog from '@/components/exam/QuestionDialog.vue'
+import homeworkApi from "@/api/homework";
 
 export default {
   name: 'ExamCreate',
@@ -292,18 +293,12 @@ export default {
     },
     async loadCourseList() {
       try {
-        // const response = await courseAPI.getCourseList()
-        // this.courseList = response.data
-
-        // 模拟数据
-        this.courseList = [
-          { id: 1, name: '高等数学' },
-          { id: 2, name: '计算机网络' },
-          { id: 3, name: '数据结构' },
-          { id: 4, name: '操作系统' }
-        ]
+        const response = await homeworkApi.getCoursesByTeacher(this.getToken());
+        if (response.data.success) {
+          this.courseList = response.data.data;
+        }
       } catch (error) {
-        console.error('加载课程列表失败:', error)
+        console.error('加载课程列表失败:', error);
       }
     },
     handleExamModeChange(mode) {

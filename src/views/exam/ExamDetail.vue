@@ -89,7 +89,6 @@ export default {
 
     // 获取用户身份
     const getUserRole = () => {
-      // 这里可以根据实际项目从store或localStorage获取用户角色
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
       isStudent.value = userInfo.role === '学生'
     }
