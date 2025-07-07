@@ -229,174 +229,173 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+<script>
 import { ArrowLeft, Plus, Delete } from '@element-plus/icons-vue'
 import examAPI from '@/api/exam'
 import QuestionForm from '@/components/exam/QuestionForm.vue'
 import QuestionDialog from '@/components/exam/QuestionDialog.vue'
 
-const router = useRouter()
-const examFormRef = ref()
-const submitting = ref(false)
-const questionDialogVisible = ref(false)
-const activeQuestions = ref([])
-const courseList = ref([])
-
-// 表单数据
-const examForm = reactive({
-  title: '',
-  description: '',
-  duration: 120,
-  examMode: 'ONLINE',
-  type: 'QUIZ',
-  passingScore: 60,
-  maxAttempts: 1,
-  totalScore: 100,
-  courseId: null,
-  questions: []
-})
-
-// 表单验证规则
-const examRules = {
-  title: [
-    { required: true, message: '请输入考试标题', trigger: 'blur' },
-    { min: 2, max: 100, message: '标题长度在 2 到 100 个字符', trigger: 'blur' }
-  ],
-  duration: [
-    { required: true, message: '请输入考试时长', trigger: 'blur' },
-    { type: 'number', min: 5, max: 300, message: '考试时长在 5 到 300 分钟之间', trigger: 'blur' }
-  ],
-  examMode: [
-    { required: true, message: '请选择考试模式', trigger: 'change' }
-  ]
-}
-
-// 计算属性
-const totalScore = computed(() => {
-  return examForm.questions.reduce((sum, question) => sum + (question.score || 0), 0)
-})
-
-// 生命周期
-onMounted(() => {
-  loadCourseList()
-})
-
-// 方法
-const loadCourseList = async () => {
-  try {
-    // const response = await courseAPI.getCourseList()
-    // courseList.value = response.data
-
-    // 模拟数据
-    courseList.value = [
-      { id: 1, name: '高等数学' },
-      { id: 2, name: '计算机网络' },
-      { id: 3, name: '数据结构' },
-      { id: 4, name: '操作系统' }
-    ]
-  } catch (error) {
-    console.error('加载课程列表失败:', error)
-  }
-}
-
-const handleExamModeChange = (mode) => {
-  if (mode === 'OFFLINE') {
-    examForm.questions = []
-  }
-}
-
-const addQuestion = () => {
-  questionDialogVisible.value = true
-}
-
-const handleQuestionAdded = (questionData) => {
-  examForm.questions.push({
-    ...questionData,
-  })
-  activeQuestions.value.push(examForm.questions.length - 1)
-}
-
-const removeQuestion = (index) => {
-  examForm.questions.splice(index, 1)
-  // 更新活跃的问题索引
-  activeQuestions.value = activeQuestions.value
-      .filter(i => i !== index)
-      .map(i => i > index ? i - 1 : i)
-}
-
-const updateQuestion = (index, questionData) => {
-  examForm.questions[index] = questionData
-}
-
-const getQuestionTypeLabel = (type) => {
-  const typeMap = {
-    'SINGLE': '单选题',
-    'MULTIPLE': '多选题',
-    'JUDGE': '判断题',
-    'TEXT': '简答题',
-    'FILL': '填空题',
-    'PROGRAMMING': '编程题'
-  }
-  return typeMap[type] || type
-}
-
-const validateForm = async () => {
-  try {
-    await examFormRef.value.validate()
-
-    // 线上考试必须有题目
-    if (examForm.examMode === 'ONLINE' && examForm.questions.length === 0) {
-      ElMessage.error('线上考试必须添加题目')
-      return false
+export default {
+  name: 'ExamCreate',
+  components: {
+    QuestionForm,
+    QuestionDialog,
+    ArrowLeft,
+    Plus,
+    Delete
+  },
+  data() {
+    return {
+      examFormRef: null,
+      submitting: false,
+      questionDialogVisible: false,
+      activeQuestions: [],
+      courseList: [],
+      examForm: {
+        title: '',
+        description: '',
+        duration: 120,
+        examMode: 'ONLINE',
+        type: 'QUIZ',
+        passingScore: 60,
+        maxAttempts: 1,
+        totalScore: 100,
+        courseId: null,
+        questions: []
+      },
+      examRules: {
+        title: [
+          { required: true, message: '请输入考试标题', trigger: 'blur' },
+          { min: 2, max: 100, message: '标题长度在 2 到 100 个字符', trigger: 'blur' }
+        ],
+        duration: [
+          { required: true, message: '请输入考试时长', trigger: 'blur' },
+          { type: 'number', min: 5, max: 300, message: '考试时长在 5 到 300 分钟之间', trigger: 'blur' }
+        ],
+        examMode: [
+          { required: true, message: '请选择考试模式', trigger: 'change' }
+        ]
+      }
     }
-
-    return true
-  } catch (error) {
-    return false
-  }
-}
-
-const submitForm = async (action) => {
-  if (!(await validateForm())) {
-    return
-  }
-
-  submitting.value = true
-
-  try {
-    const submitData = {
-      ...examForm,
-      // 线上考试时自动计算总分
-      totalScore: examForm.examMode === 'ONLINE' ? totalScore.value : examForm.totalScore
+  },
+  computed: {
+    totalScore() {
+      return this.examForm.questions.reduce((sum, question) => sum + (question.score || 0), 0)
     }
+  },
+  mounted() {
+    this.loadCourseList()
+  },
+  methods: {
+    getToken() {
+      return localStorage.getItem('token')
+    },
+    async loadCourseList() {
+      try {
+        // const response = await courseAPI.getCourseList()
+        // this.courseList = response.data
 
-    const response = await examAPI.createExam(submitData)
+        // 模拟数据
+        this.courseList = [
+          { id: 1, name: '高等数学' },
+          { id: 2, name: '计算机网络' },
+          { id: 3, name: '数据结构' },
+          { id: 4, name: '操作系统' }
+        ]
+      } catch (error) {
+        console.error('加载课程列表失败:', error)
+      }
+    },
+    handleExamModeChange(mode) {
+      if (mode === 'OFFLINE') {
+        this.examForm.questions = []
+      }
+    },
+    addQuestion() {
+      this.questionDialogVisible = true
+    },
+    handleQuestionAdded(questionData) {
+      this.examForm.questions.push({
+        ...questionData,
+      })
+      this.activeQuestions.push(this.examForm.questions.length - 1)
+    },
+    removeQuestion(index) {
+      this.examForm.questions.splice(index, 1)
+      // 更新活跃的问题索引
+      this.activeQuestions = this.activeQuestions
+          .filter(i => i !== index)
+          .map(i => i > index ? i - 1 : i)
+    },
+    updateQuestion(index, questionData) {
+      this.examForm.questions[index] = questionData
+    },
+    getQuestionTypeLabel(type) {
+      const typeMap = {
+        'SINGLE': '单选题',
+        'MULTIPLE': '多选题',
+        'JUDGE': '判断题',
+        'TEXT': '简答题',
+        'FILL': '填空题',
+        'PROGRAMMING': '编程题'
+      }
+      return typeMap[type] || type
+    },
+    async validateForm() {
+      try {
+        await this.$refs.examFormRef.validate()
 
-    if (response.data.success) {
-      ElMessage.success('考试创建成功')
-
-      // 如果选择发布，则立即发布
-      if (action === 'publish') {
-        try {
-          await examAPI.publishExam(response.data.data.id)
-          ElMessage.success('考试已发布')
-        } catch (error) {
-          ElMessage.warning('考试创建成功，但发布失败，请手动发布')
+        // 线上考试必须有题目
+        if (this.examForm.examMode === 'ONLINE' && this.examForm.questions.length === 0) {
+          this.$message.error('线上考试必须添加题目')
+          return false
         }
+
+        return true
+      } catch (error) {
+        return false
+      }
+    },
+    async submitForm(action) {
+      if (!(await this.validateForm())) {
+        return
       }
 
-      router.push('/teacher/exams')
-    } else {
-      ElMessage.error(response.data.message || '创建失败')
+      this.submitting = true
+
+      try {
+        const submitData = {
+          ...this.examForm,
+          // 线上考试时自动计算总分
+          totalScore: this.examForm.examMode === 'ONLINE' ? this.totalScore : this.examForm.totalScore
+        }
+
+        const response = await examAPI.createExam(submitData,this.getToken())
+
+        if (response) {
+          this.$message.success('考试创建成功')
+
+          // 如果选择发布，则立即发布
+          if (action === 'publish') {
+            try {
+              await examAPI.publishExam(response.id,this.getToken())
+              this.$message.success('考试已发布')
+            } catch (error) {
+              this.$message.warning('考试创建成功，但发布失败，请手动发布')
+            }
+          }
+
+          this.$router.push('/teacher/exams')
+        } else {
+          this.$message.error(response.message || '创建失败')
+        }
+      } catch (error) {
+        console.error('创建考试失败:', error)
+        this.$message.error('创建考试失败: ' + (error.response?.data?.message || error.message))
+      } finally {
+        this.submitting = false
+      }
     }
-  } catch (error) {
-    console.error('创建考试失败:', error)
-    ElMessage.error('创建考试失败: ' + (error.response?.data?.message || error.message))
-  } finally {
-    submitting.value = false
   }
 }
 </script>
