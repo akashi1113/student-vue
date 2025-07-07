@@ -49,6 +49,7 @@
         style="margin-top: 20px; text-align: center;"
       />
     </el-dialog>
+    <DogAssistant />
   </div>
 </template>
 
@@ -58,6 +59,7 @@ import CategoryFilter from '../components/CategoryFilter.vue'
 import KnowledgeCard from '../components/KnowledgeCard.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import AIRecommendation from '../components/AIRecommendation.vue'
+import DogAssistant from '@/components/DogAssistant.vue'
 import { getKnowledgeList, getCategories, getFavoriteList } from '../api/knowledge.js'
 
 export default {
@@ -67,7 +69,8 @@ export default {
     CategoryFilter,
     KnowledgeCard,
     LoadingSpinner,
-    AIRecommendation
+    AIRecommendation,
+    DogAssistant
   },
   data() {
     return {

@@ -62,8 +62,8 @@
                 </td>
                 <td>{{ item.startTime ? item.startTime.replace('T', ' ') : '无' }}</td>
                 <td>
-                  <span class="status" :class="item.status">
-                    {{ getStatusText(item.status) }}
+                  <span class="status">
+                    {{ item.statusText || '未知' }}
                   </span>
                 </td>
               </tr>
@@ -231,6 +231,10 @@ export default {
         console.log('考试记录返回数据:', res)
         if (res.code === 200) {
           this.examRecords = res.data
+          // 调试：输出第一条考试记录的原始数据
+          if (res.data && res.data.list && res.data.list.length > 0) {
+            console.log('考试记录原始数据:', res.data.list[0]);
+          }
         } else {
           this.examRecords = null
           this.$message.error('获取考试记录失败')
@@ -252,7 +256,7 @@ export default {
         if (res.code === 200) {
           this.studyRecords = res.data
           // 统计总学习时长
-          this.totalStudyTime = (res.data.records || []).reduce((sum, item) => sum + (item.duration || 0), 0)
+          this.totalStudyTime = (res.data.records || []).reduce((sum, item) => sum + (item.progress || 0), 0)
         } else {
           this.studyRecords = null
           this.totalStudyTime = 0
@@ -340,15 +344,6 @@ export default {
       return 'poor'
     },
     
-    getStatusText(status) {
-      const statusMap = {
-        completed: '已完成',
-        in_progress: '进行中',
-        not_started: '未开始'
-      }
-      return statusMap[status] || '未知'
-    },
-    
     formatDate(dateStr) {
       if (!dateStr) return '无'
       const date = new Date(dateStr)
@@ -360,9 +355,12 @@ export default {
 
 <style scoped>
 .score-manage {
+  background: #f9f9f9;
+  min-height: 100vh;
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
 }
 
 .header {
@@ -371,20 +369,24 @@ export default {
 }
 
 .header h1 {
-  color: #333;
+  color: #303133;
+  font-size: 2.2rem;
+  font-weight: 700;
   margin-bottom: 10px;
 }
 
 .header p {
-  color: #666;
-  font-size: 14px;
+  color: #606266;
+  font-size: 15px;
+  margin: 0;
 }
 
 .query-panel {
-  background: #f8f9fa;
+  background: #fff;
   padding: 20px;
   border-radius: 8px;
   margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .query-row {
@@ -402,13 +404,13 @@ export default {
 
 .query-item label {
   font-weight: 500;
-  color: #333;
+  color: #303133;
   white-space: nowrap;
 }
 
 .query-item input {
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid #e4e7ed;
   border-radius: 4px;
   font-size: 14px;
 }
@@ -453,7 +455,7 @@ export default {
 }
 
 .card {
-  background: white;
+  background: #fff;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -462,7 +464,7 @@ export default {
 
 .card h3 {
   margin: 0 0 10px 0;
-  color: #666;
+  color: #606266;
   font-size: 14px;
 }
 
@@ -473,7 +475,7 @@ export default {
 }
 
 .chart-section, .records-section {
-  background: white;
+  background: #fff;
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 30px;
@@ -491,42 +493,7 @@ export default {
 
 .section-header h2 {
   margin: 0;
-  color: #333;
-}
-
-.chart-selector {
-  padding: 6px 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.chart-container {
-  min-height: 300px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.chart-placeholder {
-  text-align: center;
-  width: 100%;
-}
-
-.chart-json {
-  background: #f5f5f5;
-  padding: 15px;
-  border-radius: 4px;
-  text-align: left;
-  font-size: 12px;
-  max-height: 300px;
-  overflow-y: auto;
-  margin: 15px 0;
-}
-
-.chart-tip {
-  color: #409eff;
-  font-size: 14px;
-  margin-top: 10px;
+  color: #303133;
 }
 
 .records-table {
@@ -548,7 +515,17 @@ export default {
 .records-table th {
   background: #f8f9fa;
   font-weight: 500;
-  color: #333;
+  color: #303133;
+}
+
+.records-table td {
+  color: #303133;
+  font-size: 15px;
+  background: #fff;
+}
+
+.records-table tr:hover {
+  background: #f0f7ff;
 }
 
 .score {
@@ -559,7 +536,7 @@ export default {
 
 .score.excellent {
   background: #f0f9ff;
-  color: #1890ff;
+  color: #409eff;
 }
 
 .score.good {
@@ -581,29 +558,8 @@ export default {
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
-}
-
-.progress-bar {
-  position: relative;
-  height: 20px;
-  background: #f0f0f0;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #409eff, #66b1ff);
-  transition: width 0.3s;
-}
-
-.progress-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 12px;
-  color: #333;
+  color: #409eff;
+  background: #f0f9ff;
   font-weight: 500;
 }
 
@@ -617,7 +573,7 @@ export default {
 
 .page-btn {
   padding: 6px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid #e4e7ed;
   background: white;
   border-radius: 4px;
   cursor: pointer;
@@ -636,13 +592,13 @@ export default {
 }
 
 .page-info {
-  color: #666;
+  color: #606266;
   font-size: 14px;
 }
 
 .loading {
   text-align: center;
-  color: #666;
+  color: #606266;
   padding: 40px;
 }
 
@@ -663,16 +619,16 @@ export default {
 }
 
 .empty-state h3, .initial-state h3 {
-  color: #333;
+  color: #303133;
   margin-bottom: 10px;
 }
 
 .empty-state p, .initial-state p {
-  color: #666;
+  color: #606266;
 }
 
 .record-stats {
-  color: #666;
+  color: #606266;
   font-size: 14px;
 }
 
@@ -687,11 +643,11 @@ export default {
 }
 
 .loading-state h3 {
-  color: #333;
+  color: #303133;
   margin-bottom: 10px;
 }
 
 .loading-state p {
-  color: #666;
+  color: #606266;
 }
 </style>
