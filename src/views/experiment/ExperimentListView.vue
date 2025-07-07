@@ -36,6 +36,8 @@
           v-for="experiment in filteredExperiments"
           :key="experiment.id"
           :experiment="experiment"
+          :booking-id="experiment.id"
+          :statu="experiment.status"
           @book="openBookingDialog(experiment)"
         />
       </div>
@@ -53,11 +55,12 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, toRaw } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { useExperimentStore } from '@/store/experiment'
 import { ElMessage, ElSkeleton, ElEmpty } from 'element-plus'
-import { useRoute } from 'vue-router';
+import { useRoute } from 'vue-router'
+
 import ExperimentCard from '@/components/ExperimentCard.vue'
 import ExperimentScheduler from '@/components/ExperimentScheduler.vue'
 
@@ -71,7 +74,7 @@ export default {
   },
   setup() {
     const experimentStore = useExperimentStore()
-    const route = useRoute();
+    const route = useRoute()
     const searchQuery = ref('')
     const subjectFilter = ref('')
     const bookingDialogVisible = ref(false)
@@ -80,56 +83,49 @@ export default {
     const subjects = [
       { value: 'c++', label: 'C++' },
       { value: 'java', label: 'JAVA' },
-      { value: 'bianyi', label: '编译原理 ' },
+      { value: 'bianyi', label: '编译原理' },
       { value: 'ssd1', label: 'SSD1' },
       { value: 'database', label: '数据库' }
     ]
 
-//     onMounted(async () => {
-//   try {
-//     console.log('开始获取实验数据...') // 调试
-//     await experimentStore.fetchExperiments()
-//     console.log('获取到的实验数据:', experimentStore.experiments) // 调试
-//     // 清除可能存在的旧bookingId
-//     experimentStore.clearCurrentBookingId();
-//   } catch (error) {
-//     console.error('获取实验数据错误:', error) // 调试
-//     ElMessage.error(`加载实验数据失败: ${error.message}`)
-//   }
-// })
-
     onMounted(async () => {
-  await experimentStore.fetchExperiments();
-  
-  // 如果是从预约页跳转回来且预约成功，更新对应实验状态
-  if (route.query.booked) {
-    const bookedExperimentId = route.params.id || experimentStore.currentBooking?.experimentId;
-    const index = experimentStore.experiments.findIndex(e => e.id === bookedExperimentId);
-    if (index !== -1) {
-      experimentStore.experiments[index].status = 0; // 设为已预约
-    }
-  }
-});
+      console.log(experimentStore,'-----------------');
+      
+      try {
+        await experimentStore.fetchExperiments()
+        console.log('Store数据加载完成:', toRaw(experimentStore.experiments))
+        
+        if (route.query.booked) {
+          const bookedExperimentId = route.params.id || experimentStore.currentBooking?.experimentId
+          const index = experimentStore.experiments.findIndex(e => e.id === bookedExperimentId)
+          if (index !== -1) {
+            experimentStore.experiments[index].status = 0
+          }
+        }
+      } catch (error) {
+        ElMessage.error(`加载实验数据失败: ${error.message}`)
+      }
+    })
 
     const filteredExperiments = computed(() => {
-      if (!Array.isArray(experimentStore.experiments)) {
-        console.warn('experimentStore.experiments is not an array:', experimentStore.experiments)
-        return []
-      }
+  const rawExperiments = toRaw(experimentStore.experiments) || []
+  console.log('原始实验数据:', rawExperiments)
 
-      return experimentStore.experiments.filter((experiment) => {
-        const matchesSearch = searchQuery.value 
-          ? (experiment.name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-             experiment.description?.toLowerCase().includes(searchQuery.value.toLowerCase()))
-          : true
-        
-        const matchesSubject = subjectFilter.value 
-          ? experiment.subject === subjectFilter.value 
-          : true
-        
-        return matchesSearch && matchesSubject
-      })
+  return rawExperiments
+    .filter(experiment => experiment.isPublished !== 0) // 只过滤未发布的实验
+    .filter(experiment => {
+      const matchesSearch = searchQuery.value
+        ? (experiment.name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+           experiment.description?.toLowerCase().includes(searchQuery.value.toLowerCase()))
+        : true
+      
+      const matchesSubject = subjectFilter.value
+        ? experiment.subject === subjectFilter.value
+        : true
+      
+      return matchesSearch && matchesSubject
     })
+})
 
     const openBookingDialog = (experiment) => {
       selectedExperiment.value = experiment
@@ -149,7 +145,7 @@ export default {
         ElMessage.error(`预约失败: ${error.message}`)
       }
     }
-
+    
     return {
       searchQuery,
       subjectFilter,

@@ -5,18 +5,28 @@
         <el-input :value="experimentName" disabled />
       </el-form-item>
       
-      <el-form-item label="预约时间" required>
-        <el-date-picker
-          v-model="timeRange"
-          type="datetimerange"
-          range-separator="至"
-          start-placeholder="开始时间"
-          end-placeholder="结束时间"
-          :disabled-date="disabledDate"
-          :disabled-hours="disabledHours"
-          :disabled-minutes="disabledMinutes"
-          :default-time="defaultTime"
-        />
+      <el-form-item label="选择时间段" required>
+        <el-select 
+          v-model="selectedSlotId" 
+          placeholder="请选择预约时间段"
+          class="time-slot-select"
+        >
+          <el-option
+            v-for="slot in availableSlots"
+            :key="slot.id"
+            :label="formatSlotTime(slot)"
+            :value="slot.id"
+          >
+            <div class="slot-option">
+              <span>{{ formatDate(slot.startTime) }}</span>
+              <!-- <span>{{ formatTime(slot.startTime) }} - {{ formatTime(slot.endTime) }}</span> -->
+              <el-tag size="small" :type="slot.status ? 'success' : 'danger'">
+                {{ slot.status ? '可预约' : '已满' }}
+              </el-tag>
+              <span>剩余: {{ slot.maxCapacity - slot.currentCapacity }}个名额</span>
+            </div>
+          </el-option>
+        </el-select>
       </el-form-item>
       
       <el-form-item label="备注">
@@ -31,101 +41,114 @@
     
     <div class="actions">
       <el-button @click="$emit('cancel')">取消</el-button>
-      <el-button type="primary" @click="submitBooking">确认预约</el-button>
+      <el-button 
+        type="primary" 
+        :disabled="!selectedSlotId" 
+        @click="submitBooking"
+      >
+        确认预约
+      </el-button>
+
     </div>
   </div>
 </template>
 
 <script>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import experimentApi from '@/api/experiment'
 
 export default {
   props: {
     experiment: {
       type: Object,
       required: true,
-      default: () => ({ name: '' }) // 添加默认对象
+      default: () => ({ name: '' })
     }
   },
-  emits: ['update:modelValue', 'submit', 'cancel'],
+  emits: ['submit', 'cancel'],
   setup(props, { emit }) {
     const localExperiment = ref({...props.modelValue})
     const experimentName = computed(() => props.experiment?.name || '未命名实验')
     const timeRange = ref([])
     const notes = ref('')
+    const selectedSlotId = ref(null)
+    const availableSlots = ref([])
 
     watch(() => props.modelValue, (newVal) => {
       localExperiment.value = {...newVal}
       experimentName.value = newVal?.name || '未命名实验'
     }, { immediate: true })
 
-    const defaultTime = computed(() => {
-      const now = new Date()
-      const nextHour = new Date(now)
-      nextHour.setHours(nextHour.getHours() + 1)
-      nextHour.setMinutes(0, 0, 0)
-      return [nextHour, nextHour]
-    })
-
-    const disabledDate = (time) => {
-      return time.getDay() === 0 || time.getDay() === 6
+    // 获取可用时间段
+    const fetchAvailableSlots = async () => {
+  try {
+    const response = await experimentApi.getAvailableTimeSlots(props.experiment.id)
+    console.log('完整响应:', response) // 调试日志
+    
+    // 确保我们操作的是数组数据
+    const slotsData = Array.isArray(response) ? response : response.data || []
+    
+    availableSlots.value = slotsData.filter(slot => 
+      slot.status === 1 && slot.currentCapacity < slot.maxCapacity
+    )
+    
+    if (availableSlots.value.length === 0) {
+      ElMessage.warning('该实验暂无可用时间段')
     }
+  } catch (error) {
+    console.error('获取可用时间段失败:', error)
+    ElMessage.error('获取可用时间段失败: ' + error.message)
+  }
+}
 
-    const disabledHours = () => {
-      return [...Array(24).keys()].filter(h => h < 8 || h >= 20)
+    // 格式化日期
+    const formatDate = (dateStr) => {
+      const date = new Date(dateStr)
+      return `${date.getMonth() + 1}月${date.getDate()}日`
     }
-
-    const disabledMinutes = (hour) => {
-      return [...Array(60).keys()].filter(m => m % 30 !== 0)
+    
+    // 格式化时间
+    const formatTime = (dateStr) => {
+      const date = new Date(dateStr)
+      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+    }
+    
+    // 格式化时间段显示
+    const formatSlotTime = (slot) => {
+      return `${formatDate(slot.startTime)} ${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`
     }
 
     const submitBooking = () => {
-      if (!timeRange.value || timeRange.value.length !== 2) {
-        ElMessage.warning('请选择预约时间范围')
+      if (!selectedSlotId.value) {
+        ElMessage.warning('请选择预约时间段')
         return
       }
       
-      const [startTime, endTime] = timeRange.value
-      const duration = (endTime - startTime) / (1000 * 60) // 分钟
+      const selectedSlot = availableSlots.value.find(slot => slot.id === selectedSlotId.value)
       
-      if (duration < 30) {
-        ElMessage.warning('预约时间至少30分钟')
-        return
-      }
-      
-      if (duration > 240) {
-        ElMessage.warning('单次预约时间不超过4小时')
-        return
-      }
-      
-      // 更新本地数据并通知父组件
-      const updatedData = {
-        ...localExperiment.value,
-        startTime,
-        endTime,
-        notes: notes.value
-      }
-      
-      emit('update:modelValue', updatedData)
       emit('submit', {
-        experimentId: localExperiment.value.id,
+        experimentId: props.experiment.id,
         experimentName: experimentName.value,
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
-        notes: notes.value
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
+        notes: notes.value,
+        timeSlotId: selectedSlotId.value
       })
     }
+
+    onMounted(fetchAvailableSlots)
     
     return {
       localExperiment,
       experimentName,
       timeRange,
+      selectedSlotId,
       notes,
-      defaultTime,
-      disabledDate,
-      disabledHours,
-      disabledMinutes,
+      availableSlots,
+      formatDate,
+      formatTime,
+      formatSlotTime,
       submitBooking
     }
   }
@@ -142,6 +165,21 @@ export default {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
+}
+
+.time-slot-select {
+  width: 100%;
+}
+
+.slot-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.slot-option > span {
+  margin-right: 10px;
 }
 
 :deep(.el-form-item__label) {

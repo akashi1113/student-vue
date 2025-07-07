@@ -112,7 +112,7 @@ export default {
     const router = useRouter()
     const experimentStore = useExperimentStore()
     const experiment = ref(null)
-    const id = route.params.id // 确保能获取到参数
+    // const id = route.params.id // 确保能获取到参数
 
     const subjects = [
       { value: 'c++', label: 'C++' },
@@ -148,7 +148,8 @@ export default {
     
     console.log('正在获取实验ID:', id) // 调试输出
     
-    experiment.value = await experimentStore.getExperimentById(id)
+    const response = await experimentStore.getExperimentById(id)
+    experiment.value = response
     
     // 确保数据结构完整
     if (!experiment.value.steps) {
@@ -204,11 +205,27 @@ export default {
     }
 
     const handleBook = () => {
-      router.push({
-        path: `/booking/${experiment.value.id}`,
-        query: { from: route.fullPath }
-      })
+  try {
+    if (!experiment.value || !experiment.value.id) {
+      throw new Error('实验信息不完整')
     }
+    
+    // 调试日志
+    console.log('跳转前实验数据:', experiment.value)
+    
+    router.push({
+      name: 'ExperimentBooking', // 使用命名路由更可靠
+      params: { id: experiment.value.id },
+      query: { 
+        from: route.fullPath,
+        experimentData: JSON.stringify(experiment.value)
+      }
+    })
+  } catch (error) {
+    console.error('预约跳转失败:', error)
+    ElMessage.error(`预约跳转失败: ${error.message}`)
+  }
+}
 
     const goBack = () => {
       if (route.query.from) {
