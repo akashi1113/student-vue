@@ -10,7 +10,7 @@
             style="width: 150px; margin-right: 16px;"
             @change="loadBookings"
         >
-          <el-option label="全部" value="" />
+          <el-option label="全部" value="null" />
           <el-option label="已预约" value="BOOKED" />
           <el-option label="已确认" value="CONFIRMED" />
           <el-option label="已取消" value="CANCELLED" />
@@ -269,10 +269,13 @@ export default {
           this.$router.push('/login')
           return
         }
-        const status = this.selectedStatus === null ? '' : this.selectedStatus
-
+        const status = this.selectedStatus === "null" ? null : this.selectedStatus
         console.log('Loading user bookings with token:', token)
-        const response = await examBookingApi.getUserBookings(token, this.selectedStatus)
+        console.log('Request parameters:', {
+          token: token,
+          status: status
+        })
+        const response = await examBookingApi.getUserBookings(token, status)
         console.log('User bookings response:', response)
 
         const data = this.extractData(response)
