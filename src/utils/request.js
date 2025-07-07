@@ -14,15 +14,23 @@ const axiosInstance = axios.create({
   }
 });
 
-// 请求拦截器：强制清理头字段
+// 请求拦截器：自动加token
 axiosInstance.interceptors.request.use(config => {
+  // 自动加token
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers['Authorization'] = 'Bearer ' + token
+  }
   config.headers = {
-    // 只保留这两个基础头，其他全部丢弃
-    'Content-Type': 'application/json',
-    ...(config.headers.Authorization ? { 
-      'Authorization': config.headers.Authorization 
+    ...(config.headers || {}),
+    ...(config.headers.Authorization ? {
+      'Authorization': config.headers.Authorization
     } : {})
   };
+  // 如果没有手动设置Content-Type，才默认application/json
+  if (!config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/json';
+  }
   return config;
 });
 
@@ -43,6 +51,7 @@ function fetchRequest(options) {
     });
     const queryString = searchParams.toString();
     if (queryString) {
+
       fullUrl += `?${queryString}`;
     }
   }
@@ -55,6 +64,12 @@ function fetchRequest(options) {
     },
     credentials: 'include' // 支持跨域携带cookie，用于session认证
   };
+  
+  // 自动加token
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers['Authorization'] = 'Bearer ' + token
+  }
   
   // 处理FormData（用于登录等接口）
   if (data instanceof FormData) {

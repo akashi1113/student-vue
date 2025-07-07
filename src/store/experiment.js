@@ -52,6 +52,7 @@ async bookExperiment(bookingData) {
           response.data.approvalStatus ?? 
           0;
         console.log('更新后的状态:', this.experiments[index]); // 调试
+
       }
       return response.data;
     }

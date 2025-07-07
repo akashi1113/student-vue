@@ -1,21 +1,13 @@
 <template>
   <div class="score-manage">
     <div class="header">
-      <h1>成绩管理</h1>
-      <p>查看和分析学生的考试成绩及学习记录</p>
+      <h1>我的成绩管理</h1>
+      <p>查看和分析您的考试成绩及学习记录</p>
     </div>
 
     <!-- 查询条件 -->
     <div class="query-panel">
       <div class="query-row">
-        <div class="query-item">
-          <label>用户ID：</label>
-          <input 
-            v-model="userId" 
-            placeholder="请输入用户ID" 
-            @keyup.enter="handleQuery"
-          />
-        </div>
         <div class="query-item">
           <label>开始日期：</label>
           <input 
@@ -31,7 +23,7 @@
           />
         </div>
         <div class="query-item">
-          <button @click="handleQuery" :disabled="!userId || loading" class="query-btn">
+          <button @click="handleQuery" :disabled="loading" class="query-btn">
             {{ loading ? '查询中...' : '查询' }}
           </button>
           <button @click="handleReset" class="reset-btn">重置</button>
@@ -40,7 +32,7 @@
     </div>
 
     <!-- 数据展示区域 -->
-    <div v-if="userId && hasData" class="content-area">
+    <div v-if="hasData" class="content-area">
       <!-- 只保留考试记录 -->
       <div class="records-section">
         <div class="section-header">
@@ -87,7 +79,7 @@
             </button>
             <span class="page-info">第 {{ examPageNum }} 页，共 {{ examRecords.pages || 1 }} 页</span>
             <button 
-              :disabled="!examRecords.hasNextPage" 
+              :disabled="examPageNum >= (examRecords.pages || 1)" 
               @click="examPageNum++; fetchExamRecords()"
               class="page-btn"
             >
@@ -100,34 +92,34 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="userId && !loading && !hasData" class="empty-state">
+    <div v-else-if="!loading && !hasData" class="empty-state">
       <div class="empty-icon">📊</div>
       <h3>暂无数据</h3>
-      <p>请检查用户ID是否正确，或者该用户暂无相关记录</p>
+      <p>您暂无相关考试记录，请先参加考试</p>
     </div>
 
-    <!-- 初始状态 -->
-    <div v-else-if="!userId" class="initial-state">
-      <div class="initial-icon">🎯</div>
-      <h3>欢迎使用成绩管理系统</h3>
-      <p>请输入用户ID开始查询成绩和学习记录</p>
+    <!-- 加载状态 -->
+    <div v-else-if="loading" class="loading-state">
+      <div class="loading-icon">⏳</div>
+      <h3>加载中...</h3>
+      <p>正在获取您的成绩数据</p>
     </div>
   </div>
 </template>
 
 <script>
 import {
-  getUserExamRecords,
-  getUserStudyRecords,
-  getUserAnalysis,
-  getChartData
+  getMyExamRecords,
+  getMyStudyRecords,
+  getMyAnalysis,
+  getMyChartData
 } from '../../api/gradeAnalysis'
+import { isAuthenticated, getUserId } from '../../utils/auth'
 
 export default {
   name: 'ScoreManage',
   data() {
     return {
-      userId: '',
       startDate: '',
       endDate: '',
       loading: false,
@@ -161,17 +153,28 @@ export default {
       return (total / this.examRecords.list.length).toFixed(1)
     }
   },
+  created() {
+    // 检查用户是否已登录
+    if (!isAuthenticated()) {
+      this.$message.error('请先登录')
+      this.$router.push('/login')
+      return
+    }
+    
+    // 自动加载数据
+    this.handleQuery()
+  },
   methods: {
     async handleQuery() {
-      if (!this.userId.trim()) {
-        alert('请输入用户ID')
+      if (!isAuthenticated()) {
+        this.$message.error('请先登录')
+        this.$router.push('/login')
         return
       }
       
       this.loading = true
       this.hasData = false
       this.resetPages()
-      
       try {
         await Promise.all([
           this.fetchExamRecords(),
@@ -182,18 +185,18 @@ export default {
         this.hasData = true
       } catch (error) {
         console.error('查询失败:', error)
-        alert('查询失败，请检查网络连接或联系管理员')
+        this.handleApiError(error)
       } finally {
         this.loading = false
       }
     },
     
     handleReset() {
-      this.userId = ''
       this.startDate = ''
       this.endDate = ''
       this.resetData()
       this.resetPages()
+      this.handleQuery()
     },
     
     resetPages() {
@@ -219,31 +222,31 @@ export default {
     },
     
     async fetchExamRecords() {
-      if (!this.userId) return
       try {
-        const res = await getUserExamRecords(this.userId, {
+        const res = await getMyExamRecords({
           pageNum: this.examPageNum,
-          pageSize: this.examPageSize
+          pageSize: this.examPageSize,
+          ...this.getQueryParams()
         })
         console.log('考试记录返回数据:', res)
         if (res.code === 200) {
           this.examRecords = res.data
         } else {
           this.examRecords = null
-          alert('获取考试记录失败')
+          this.$message.error('获取考试记录失败')
         }
       } catch (e) {
         console.error('获取考试记录失败:', e)
-        alert('获取考试记录失败')
+        this.handleApiError(e)
       }
     },
     
     async fetchStudyRecords() {
-      if (!this.userId) return
       try {
-        const res = await getUserStudyRecords(this.userId, {
+        const res = await getMyStudyRecords({
           pageNum: this.studyPageNum,
-          pageSize: this.studyPageSize
+          pageSize: this.studyPageSize,
+          ...this.getQueryParams()
         })
         console.log('学习记录返回数据:', res)
         if (res.code === 200) {
@@ -253,50 +256,70 @@ export default {
         } else {
           this.studyRecords = null
           this.totalStudyTime = 0
-          alert('获取学习记录失败')
+          this.$message.error('获取学习记录失败')
         }
       } catch (e) {
         console.error('获取学习记录失败:', e)
         this.totalStudyTime = 0
-        alert('获取学习记录失败')
+        this.handleApiError(e)
       }
     },
     
     async fetchAnalysis() {
-      if (!this.userId) return
-      
       try {
         const params = {}
         if (this.startDate) params.startDate = this.startDate.replace('T', ' ') + ':00'
         if (this.endDate) params.endDate = this.endDate.replace('T', ' ') + ':00'
         
-        const res = await getUserAnalysis(this.userId, params)
+        const res = await getMyAnalysis(params)
         if (res.code === 200) {
           this.analysis = res.data
         }
       } catch (error) {
         console.error('获取综合分析失败:', error)
+        this.handleApiError(error)
       }
     },
     
     async fetchChartData() {
-      if (!this.userId) return
-      
       this.chartLoading = true
       try {
         const params = { type: this.chartType }
         if (this.startDate) params.startDate = this.startDate.replace('T', ' ') + ':00'
         if (this.endDate) params.endDate = this.endDate.replace('T', ' ') + ':00'
         
-        const res = await getChartData(this.userId, params)
+        const res = await getMyChartData(params)
         if (res.code === 200) {
           this.chartData = res.data
         }
       } catch (error) {
         console.error('获取图表数据失败:', error)
+        this.handleApiError(error)
       } finally {
         this.chartLoading = false
       }
+    },
+    
+    // 统一的错误处理函数
+    handleApiError(error) {
+      if (error.errorCode === 'USER_NOT_LOGGED_IN' || error.code === 401) {
+        // 用户未登录，清除本地存储并跳转到登录页面
+        localStorage.removeItem('token')
+        sessionStorage.removeItem('token')
+        localStorage.removeItem('userInfo')
+        this.$message.error('登录已过期，请重新登录')
+        this.$router.push('/login')
+        return
+      }
+      
+      if (error.errorCode === 'PERMISSION_DENIED' || error.code === 403) {
+        // 权限不足
+        this.$message.error('权限不足，无法访问此功能')
+        return
+      }
+      
+      // 其他错误
+      this.$message.error(error.message || '操作失败，请稍后重试')
     },
     
     getChartTitle() {
@@ -651,5 +674,24 @@ export default {
 .record-stats {
   color: #666;
   font-size: 14px;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.loading-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.loading-state h3 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.loading-state p {
+  color: #666;
 }
 </style>

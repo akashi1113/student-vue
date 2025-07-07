@@ -41,8 +41,9 @@
           :disabled="!canStartExam"
           class="start-btn"
           :icon="canStartExam ? 'el-icon-arrow-right' : 'el-icon-warning-outline'"
+          :loading="startingExam"
       >
-        {{ canStartExam ? '开始考试' : '考试未开放' }}
+        {{ startingExam ? '正在开始...' : (canStartExam ? '开始考试' : '考试未开放') }}
       </el-button>
       <el-button
           size="large"
@@ -59,7 +60,7 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import examApi from '@/api/exam'
 
 export default {
@@ -82,14 +83,61 @@ export default {
       questions: []
     })
 
+    const startingExam = ref(false)
+
+    // 获取token的统一方法
+    const getToken = () => {
+      return localStorage.getItem('token')
+    }
+
+    // 统一处理API响应的方法
+    const extractData = (response) => {
+      console.log('API Response:', response)
+
+      // 如果response直接是数据
+      if (response && typeof response === 'object' && !response.data) {
+        return response
+      }
+
+      // 如果response有data属性
+      if (response && response.data) {
+        // 如果是{success: true, data: {...}}格式
+        if (response.data.success && response.data.data) {
+          return response.data.data
+        }
+        // 如果data直接是对象
+        if (typeof response.data === 'object') {
+          return response.data
+        }
+        return response.data
+      }
+
+      // 兜底返回原始response
+      return response
+    }
+
     // 获取考试详情
     const fetchExamDetail = async () => {
       try {
+        console.log('Fetching exam detail for ID:', route.params.examId)
         const response = await examApi.getExamById(route.params.examId)
-        exam.value = response.data.data
+        console.log('Exam detail response:', response)
+
+        const data = extractData(response)
+        exam.value = {
+          ...exam.value,
+          ...data
+        }
+
+        console.log('Processed exam data:', exam.value)
       } catch (error) {
-        ElMessage.error('获取考试详情失败')
-        console.error(error)
+        console.error('Failed to fetch exam detail:', error)
+        ElMessage.error('获取考试详情失败：' + (error.message || '请稍后重试'))
+
+        // 如果是认证错误，跳转到登录页
+        if (error.message && error.message.includes('认证')) {
+          router.push('/login')
+        }
       }
     }
 
@@ -127,8 +175,69 @@ export default {
     })
 
     // 开始考试
-    const startExam = () => {
-      router.push(`/exams/${route.params.examId}/take`)
+    const startExam = async () => {
+      try {
+        const token = getToken()
+        if (!token) {
+          ElMessage.error('未找到认证信息，请重新登录')
+          router.push('/login')
+          return
+        }
+
+        // 确认开始考试
+        await ElMessageBox.confirm(
+            '确定要开始考试吗？考试开始后将无法退出。',
+            '开始考试',
+            {
+              confirmButtonText: '开始考试',
+              cancelButtonText: '取消',
+              type: 'warning',
+            }
+        )
+
+        startingExam.value = true
+
+        // 调用开始考试API
+        console.log('Starting exam with ID:', route.params.examId)
+        const response = await examApi.startExam(route.params.examId, token)
+        console.log('Start exam response:', response)
+
+        const examRecord = extractData(response)
+
+        if (examRecord && examRecord.id) {
+          ElMessage.success('考试已开始，正在跳转...')
+          // 跳转到考试页面
+          router.push(`/exams/${route.params.examId}/take`)
+        } else {
+          throw new Error('开始考试失败，未返回考试记录')
+        }
+
+      } catch (error) {
+        console.error('Failed to start exam:', error)
+
+        if (error === 'cancel') {
+          // 用户取消，不显示错误信息
+          return
+        }
+
+        // 处理特殊的错误信息
+        let errorMessage = '开始考试失败'
+        if (error.message) {
+          if (error.message.includes('已经完成')) {
+            errorMessage = '您已经完成该考试，无法再次开始'
+          } else if (error.message.includes('认证')) {
+            errorMessage = '认证失败，请重新登录'
+            router.push('/login')
+            return
+          } else {
+            errorMessage = error.message
+          }
+        }
+
+        ElMessage.error(errorMessage)
+      } finally {
+        startingExam.value = false
+      }
     }
 
     // 返回列表
@@ -190,6 +299,7 @@ export default {
 
     return {
       exam,
+      startingExam,
       formatTime,
       formatStatus,
       getStatusTagType,
@@ -348,12 +458,12 @@ export default {
   border-radius: 8px;
 }
 
-.start-btn:hover {
+.start-btn:hover:not(.is-disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
 }
 
-.start-btn:active {
+.start-btn:active:not(.is-disabled) {
   transform: translateY(0);
 }
 
@@ -406,12 +516,12 @@ export default {
 }
 
 .stat-item:nth-child(5) .stat-icon {
-  color: #9B59B6; /* 填空题 */
+  color: #9B59B6;
   background: rgba(155, 89, 182, 0.1);
 }
 
 .stat-item:nth-child(6) .stat-icon {
-  color: #2ECC71; /* 编程题 */
+  color: #2ECC71;
   background: rgba(46, 204, 113, 0.1);
 }
 </style>

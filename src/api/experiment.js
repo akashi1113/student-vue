@@ -34,9 +34,6 @@ getExperimentById(id) {
   })
 },
 
-//   getBooking(bookingId) {
-//     return axios.get(`${API_URL}/bookings/${bookingId}`)
-//   },
   
   // 预约实验
   // 修改后的 bookExperiment 方法
@@ -54,67 +51,8 @@ bookExperiment(data) {
     }
   });
 },
-  
-  // 开始实验
-  // startExperiment(bookingId) {
-  //   return request({
-  //     url: `/api/experiment/start/${bookingId}`,
-  //     method: 'post'
-  //   })
-  // },
-  
-  // 保存实验记录
-  saveExperimentRecord(data) {
-    return request({
-      url: '/api/experiment/save-record',
-      method: 'post',
-      data
-    })
-  },
-  
-  // 结束实验
-  endExperiment(recordId) {
-    return request({
-      url: `/api/experiment/end/${recordId}`,
-      method: 'post'
-    })
-  },
-  
-  // 生成报告
-  generateReport(data) {
-    return request({
-      url: '/api/experiment/generate-report',
-      method: 'post',
-      data
-    })
-  },
-  
-  // 导出报告
-  exportReport(reportId, format) {
-    return request({
-      url: '/api/experiment/export-report',
-      method: 'post',
-      params: {
-        reportId,
-        format
-      }
-    })
-  },
-  
-  // 导入实验数据
-  importExperimentData(recordId, file) {
-    const formData = new FormData()
-    formData.append('file', file)
-    return request({
-      url: `/api/experiment/import-data?recordId=${recordId}`,
-      method: 'post',
-      data: formData,
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-  },
-  
+
+
   // 获取预约详情
 getBooking(bookingId) {
   return request({
@@ -139,10 +77,82 @@ getBooking(bookingId) {
   });
 },
   
-  // 获取实验记录
-  getRecord(recordId) {
+
+  
+
+  // 开始实验
+  startExperiment(experimentId) {
+
     return request({
-      url: `/api/experiment/records/${recordId}`,
+      url: `/api/experiment/${experimentId}/start`,
+      method: 'post'
+    });
+  },
+
+  // 获取实验详情
+  getExperimentDetail(experimentRecordId) {
+    return request({
+      url: `/api/experiment/record/${experimentRecordId}/detail`,
+      method: 'get'
+    });
+  },
+
+  // 保存代码历史
+  saveCodeHistory(data) {
+    return request({
+      url: '/api/experiment/code-history',
+      method: 'post',
+      data
+    });
+  },
+
+  // 获取代码历史
+  getCodeHistory(experimentRecordId) {
+    return request({
+      url: `/api/experiment/record/${experimentRecordId}/code-history`,
+      method: 'get'
+    });
+  },
+
+  // 更新步骤记录
+  updateStepRecord(data) {
+    return request({
+      url: '/api/experiment/step-record',
+      method: 'put',
+      data
+    });
+  },
+
+  // 完成实验
+  completeExperiment(data) {
+    return request({
+      url: '/api/experiment/complete',
+      method: 'post',
+      data
+    });
+  },
+
+  // 生成报告
+  generateReport(experimentRecordId) {
+    return request({
+      url: `/api/experiment/record/${experimentRecordId}/report`,
+      method: 'get'
+    });
+  },
+
+  // 获取用户实验记录
+  getUserExperimentRecords(params) {
+    return request({
+      url: '/api/experiment/user-records',
+      method: 'get',
+      params
+    });
+  },
+
+  // 获取学生最后一次提交的实验报告
+  getStudentFinalReport(experimentId, studentId) {
+    return request({
+      url: `/api/experiment/reports/${experimentId}/${studentId}`,
       method: 'get'
     })
   },
@@ -189,7 +199,14 @@ getBooking(bookingId) {
   });
 },
 
-  getAllExperiments() {
-    return axios.get(API_URL)
+  
+  // 获取实验所有学生的报告列表
+  getExperimentReports(experimentId) {
+    return request({
+      url: `/api/experiment/reports//${experimentId}`,
+      method: 'get'
+    })
   }
+
+  
 }

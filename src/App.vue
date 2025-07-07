@@ -1,13 +1,19 @@
 <template>
   <div id="app">
     <div class="app-header">
-      <h1>CSU学生管理系统 - 知识库管理</h1>
+      <h1>CSU学生管理系统</h1>
     </div>
     <nav>
+      <router-link to="/exams">考试中心</router-link> |
+      <router-link to="/exam-booking/my-bookings">我的预约</router-link> |
+      <router-link to="/homework">作业中心</router-link> |
+      <router-link to="/experimentList">实验中心</router-link> |
       <router-link to="/knowledge">知识库</router-link> |
-      <router-link to="/score-manage">成绩管理</router-link> |
-      <router-link to="/learning-evaluation">学习效果评价</router-link>
-      <router-link to="/audit/report">日志审计</router-link>
+      <router-link to="/score-manage">我的成绩</router-link> |
+      <router-link to="/learning-evaluation">学习效果评价</router-link> |
+      <router-link to="/ai/recommendation-history">AI推荐历史</router-link> |
+      <router-link to="/audit/report">日志审计</router-link> |
+      <router-link to="/analytics">教师分析</router-link>
     </nav>
     <div class="app-main">
       <router-view />

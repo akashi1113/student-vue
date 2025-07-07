@@ -4,10 +4,10 @@
       <h3>{{ experiment.name }}</h3>
       <el-tag :type="statusTagType">{{ getSubjectName(experiment.subject) }}</el-tag>
     </div>
-    
+
     <div class="card-content">
       <p class="description">{{ experiment.description }}</p>
-      
+
       <div class="meta-info">
         <span class="duration">
           <el-icon><Timer /></el-icon>
@@ -21,9 +21,10 @@
         <span class="approval-status" :class="'approval-status-' + approvalStatus">
           {{ getApprovalStatusText(approvalStatus) }}
         </span>
+
       </div>
     </div>
-    
+
     <div class="card-actions">
       <!-- <el-button 
         type="primary" 
@@ -55,6 +56,7 @@ import { ref } from 'vue'
 import { getPublishedExperiments } from '@/api/experiment'
 import ExperimentConducting from '@/views/experiment/ExperimentConducting.vue'
 
+
 export default {
   name: 'ExperimentCard',
   components: {
@@ -81,6 +83,7 @@ export default {
     const router = useRouter()
     const experimentStore = useExperimentStore()
     const experiments = ref([])
+
 
     const subjects = [
       { value: 'c++', label: 'C++' },
@@ -157,11 +160,37 @@ export default {
       router.push({
         name: 'ExperimentDetail', 
         params: { 
+
           id: props.experiment.id
         }
       }).catch(err => {
         console.error('路由跳转失败:', err)
         ElMessage.error('无法跳转到详情页')
+
+      })
+    }
+
+    const handleStartExperiment = () => {
+      if (!props.experiment?.id) {
+        ElMessage.error('无效的实验ID')
+        return
+      }
+
+      if (props.experiment.status !== 1) {
+        ElMessage.warning(`当前实验状态为 ${getStatusText(props.experiment.status)}，无法进行`)
+        return
+      }
+
+      console.log('正在跳转到实验页面，ID:', props.experiment.id)
+
+      router.push({
+        name: 'ExperimentConducting',
+        params: {
+          experimentId: props.experiment.id
+        }
+      }).catch(err => {
+        console.error('路由跳转失败:', err)
+        ElMessage.error(`无法跳转到实验界面: ${err.message}`)
       })
     }
 
@@ -215,7 +244,9 @@ export default {
       approvalStatus,
       isBookable,
       canStartExperiment,
-      getButtonText
+      getButtonText,
+      handleStartExperiment
+
     }
   }
 }
@@ -298,33 +329,30 @@ export default {
   font-size: 13px;
 }
 
-.status-available {
+.status-1 {
   color: #67c23a;
 }
 
-.status-full {
+.status-2 {
+  color: #f56c6c;
+}
+
+.status-0 {
   color: #e6a23c;
 }
 
-.status-closed {
-  color: #f56c6c;
+.status-3 {
+  color: #909399;
 }
 
 .el-icon {
   vertical-align: middle;
 }
 
-.status-0 {
-  color: #e6a23c; /* 已预约 - 黄色 */
-}
-.status-1 {
-  color: #67c23a; /* 可预约 - 绿色 */
-}
-.status-2 {
-  color: #f56c6c; /* 已满额 - 红色 */
-}
-.status-3 {
-  color: #909399; /* 已关闭 - 灰色 */
+/* 禁用按钮样式 */
+.el-button.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .approval-status {
