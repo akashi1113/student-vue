@@ -366,7 +366,7 @@ export default {
       ElMessage.success('登录成功！')
       // 存储token，确保后续接口能自动带token
       if (userData.token) {
-        localStorage.setItem('token', userData.token)
+        localStorage.setItem('token', userData.token.trim())
       }
       // 兼容后端返回userId但没有id的情况
       if (userData.userId && !userData.id) {

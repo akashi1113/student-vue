@@ -4,6 +4,10 @@
       <h1>CSU学生管理系统</h1>
     </div>
     <nav>
+      <router-link to="/exams">考试中心</router-link> |
+      <router-link to="/exam-booking/my-bookings">我的预约</router-link> |
+      <router-link to="/homework">作业中心</router-link> |
+      <router-link to="/experimentList">实验中心</router-link> |
       <router-link to="/knowledge">知识库</router-link> |
       <router-link to="/score-manage">我的成绩</router-link> |
       <router-link to="/learning-evaluation">学习效果评价</router-link> |

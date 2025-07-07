@@ -8,6 +8,7 @@ export const useBookingStore = defineStore('booking', () => {
     const userBookings = ref([])
     const notifications = ref([])
     const loading = ref(false)
+    const error = ref(null)
     const currentBooking = ref(null)
 
     // 计算属性
@@ -15,9 +16,7 @@ export const useBookingStore = defineStore('booking', () => {
         return notifications.value.filter(n => n.sendStatus !== 'READ')
     })
 
-    const unreadCount = computed(() => {
-        return unreadNotifications.value.length
-    })
+    const unreadCount = computed(() => unreadNotifications.value.length)
 
     const activeBookings = computed(() => {
         return userBookings.value.filter(b =>
@@ -25,72 +24,124 @@ export const useBookingStore = defineStore('booking', () => {
         )
     })
 
-    // 方法
-    const fetchAvailableTimeSlots = async (examId) => {
-        loading.value = true
-        try {
-            const response = await bookingApi.getAvailableTimeSlots(examId)
-            timeSlots.value = response.data.data || []
-            return response
-        } finally {
-            loading.value = false
-        }
+    // 获取token的辅助函数
+    const getToken = () => {
+        return localStorage.getItem('token') || sessionStorage.getItem('token')
     }
 
-    const fetchUserBookings = async (userId, status = null) => {
+    // 通用请求处理函数
+    const handleApiRequest = async (apiCall, successCallback) => {
         loading.value = true
+        error.value = null
         try {
-            const response = await bookingApi.getUserBookings(userId, status)
-            userBookings.value = response.data.data || []
-            return response
-        } finally {
-            loading.value = false
-        }
-    }
+            const response = await apiCall()
+            // 安全地处理响应数据
+            let data = []
+            if (response && response.data) {
+                if (response.data.success && Array.isArray(response.data.data)) {
+                    data = response.data.data
+                } else if (Array.isArray(response.data)) {
+                    data = response.data
+                } else if (response.data.data) {
+                    data = response.data.data
+                }
+            }
 
-    const fetchUserNotifications = async (userId) => {
-        try {
-            const response = await bookingApi.getUserNotifications(userId)
-            notifications.value = response.data.data || []
-            return response
-        } catch (error) {
-            console.error('获取通知失败:', error)
-            throw error
-        }
-    }
-
-    const bookExam = async (bookingData) => {
-        loading.value = true
-        try {
-            const response = await bookingApi.bookExam(bookingData)
-            // 刷新用户预约列表
-            if (bookingData.userId) {
-                await fetchUserBookings(bookingData.userId)
+            if (successCallback) {
+                successCallback(data)
             }
             return response
+        } catch (err) {
+            error.value = err.message || '请求失败'
+            console.error('API请求错误:', err)
+            throw err
         } finally {
             loading.value = false
         }
     }
 
-    const cancelBooking = async (bookingId, userId, cancelReason) => {
-        loading.value = true
-        try {
-            const response = await bookingApi.cancelBooking(bookingId, {
-                userId,
-                cancelReason
-            })
-            // 刷新用户预约列表
-            await fetchUserBookings(userId)
-            return response
-        } finally {
-            loading.value = false
-        }
+    // 方法
+    const fetchAvailableTimeSlots = async (examId, token = null) => {
+        const authToken = token || getToken()
+        return handleApiRequest(
+            () => bookingApi.getAvailableTimeSlots(examId, authToken),
+            (data) => { timeSlots.value = data }
+        )
     }
 
-    const markAsRead = async (notificationId) => {
+    const fetchTimeSlotsByDate = async (date, examMode, token = null) => {
+        const authToken = token || getToken()
+        return handleApiRequest(
+            () => bookingApi.getTimeSlotsByDate(date, examMode, authToken),
+            (data) => { timeSlots.value = data }
+        )
+    }
+
+    const fetchUserBookings = async (token = null, status = null) => {
+        const authToken = token || getToken()
+        return handleApiRequest(
+            () => bookingApi.getUserBookings(authToken, status),
+            (data) => { userBookings.value = data }
+        )
+    }
+
+    const fetchUserNotifications = async (token = null) => {
+        const authToken = token || getToken()
+        return handleApiRequest(
+            () => bookingApi.getUserNotifications(authToken),
+            (data) => { notifications.value = data }
+        )
+    }
+
+    const fetchUnreadNotifications = async (token = null) => {
+        const authToken = token || getToken()
+        return handleApiRequest(
+            () => bookingApi.getUnreadNotifications(authToken),
+            (data) => { notifications.value = data }
+        )
+    }
+
+    const bookExam = async (bookingData, token = null) => {
+        const authToken = token || getToken()
+        return handleApiRequest(
+            () => bookingApi.bookExam(bookingData, authToken),
+            async () => {
+                // 刷新用户预约列表
+                await fetchUserBookings(authToken)
+            }
+        )
+    }
+
+    const cancelBooking = async (bookingId, cancelData, token = null) => {
+        const authToken = token || getToken()
+        return handleApiRequest(
+            () => bookingApi.cancelBooking(bookingId, cancelData, authToken),
+            async () => {
+                // 刷新用户预约列表
+                await fetchUserBookings(authToken)
+            }
+        )
+    }
+
+    const confirmBooking = async (bookingId, token = null) => {
+        const authToken = token || getToken()
+        return handleApiRequest(
+            () => bookingApi.confirmBooking(bookingId, authToken)
+        )
+    }
+
+    const getBookingDetails = async (bookingId, token = null) => {
+        const authToken = token || getToken()
+        return handleApiRequest(
+            () => bookingApi.getBookingDetails(bookingId, authToken),
+            (data) => { currentBooking.value = data }
+        )
+    }
+
+    const markAsRead = async (notificationId, token = null) => {
+        const authToken = token || getToken()
         try {
-            await bookingApi.markNotificationAsRead(notificationId)
+            await bookingApi.markNotificationAsRead(notificationId, authToken)
             // 更新本地状态
             const notification = notifications.value.find(n => n.id === notificationId)
             if (notification) {
@@ -103,13 +154,14 @@ export const useBookingStore = defineStore('booking', () => {
         }
     }
 
-    const batchMarkAsRead = async (notificationIds) => {
+    const batchMarkAsRead = async (notificationIds, token = null) => {
+        const authToken = token || getToken()
         try {
-            await bookingApi.batchMarkNotificationsAsRead(notificationIds)
+            await bookingApi.batchMarkAsRead(notificationIds, authToken)
             // 更新本地状态
             notifications.value.forEach(notification => {
                 if (notificationIds.includes(notification.id)) {
-                    notification.sendStatus = 'READ'
+                    notification.sendStatus = 'read'
                     notification.readTime = new Date().toISOString()
                 }
             })
@@ -119,12 +171,27 @@ export const useBookingStore = defineStore('booking', () => {
         }
     }
 
+    const checkIn = async (bookingId, checkInData, token = null) => {
+        const authToken = token || getToken()
+        return handleApiRequest(
+            () => bookingApi.checkIn(bookingId, checkInData, authToken)
+        )
+    }
+
+    const getBookingStats = async (params = {}, token = null) => {
+        const authToken = token || getToken()
+        return handleApiRequest(
+            () => bookingApi.getBookingStats(params, authToken)
+        )
+    }
+
     return {
         // 状态
         timeSlots,
         userBookings,
         notifications,
         loading,
+        error,
         currentBooking,
 
         // 计算属性
@@ -134,11 +201,20 @@ export const useBookingStore = defineStore('booking', () => {
 
         // 方法
         fetchAvailableTimeSlots,
+        fetchTimeSlotsByDate,
         fetchUserBookings,
         fetchUserNotifications,
+        fetchUnreadNotifications,
         bookExam,
         cancelBooking,
+        confirmBooking,
+        getBookingDetails,
         markAsRead,
-        batchMarkAsRead
+        batchMarkAsRead,
+        checkIn,
+        getBookingStats,
+
+        // 工具方法
+        getToken
     }
 })

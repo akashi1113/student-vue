@@ -28,12 +28,7 @@ function isAuthenticated() {
 const routes = [
   {
     path: '/',
-    // redirect: '/exams'
-    // redirect: '/teacher/exams/create'
-    // redirect: '/exam-booking/time-slot-management'
-    // redirect: '/exam-booking/booking-management'
-    // redirect: '/experimentList'
-    // redirect: '/homework'
+    redirect: '/login',
   },
   // 来自index.js的路由
   {

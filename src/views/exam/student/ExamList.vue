@@ -536,15 +536,50 @@ export default {
     if (!this.dataLoaded) {
       this.loadCurrentTabData()
     }
-    useBookingStore().fetchUserNotifications(this.getCurrentUserId())
-    this.refreshInterval = setInterval(() => {
-      useBookingStore().fetchUserNotifications(this.getCurrentUserId())
-    }, 300000)
+    const token = this.getToken()
+    if (token) {
+      useBookingStore().fetchUserNotifications(token)
+      this.refreshInterval = setInterval(() => {
+        useBookingStore().fetchUserNotifications(token)
+      }, 300000)
+    }
   },
   beforeUnmount() {
     clearInterval(this.refreshInterval)
   },
   methods: {
+    // 获取 token 的统一方法
+    getToken() {
+      return localStorage.getItem('token')
+    },
+
+    // 统一处理API响应的方法
+    extractData(response) {
+      console.log('API Response:', response) // 用于调试
+
+      // 如果response直接是数据
+      if (Array.isArray(response)) {
+        return response
+      }
+
+      // 如果response有data属性
+      if (response && response.data) {
+        // 如果是{success: true, data: [...]}格式
+        if (response.data.success && response.data.data) {
+          return response.data.data
+        }
+        // 如果data直接是数组
+        if (Array.isArray(response.data)) {
+          return response.data
+        }
+        // 如果data是对象但不是预期格式
+        return response.data
+      }
+
+      // 兜底返回空数组
+      return []
+    },
+
     async loadCurrentTabData() {
       if (this.activeTab === 'bookable') {
         await this.loadBookableExams()
@@ -553,6 +588,7 @@ export default {
       }
       this.dataLoaded = true
     },
+
     handleTabClick(tab) {
       if (tab.paneName === 'myBookings') {
         this.goToMyBookings()
@@ -562,61 +598,95 @@ export default {
         this.activeTab = tab.paneName
       }
     },
+
     goToNotifications() {
       this.$router.push('/exam-booking/notifications')
     },
+
     refreshCurrentTab() {
       this.loadCurrentTabData()
     },
+
     async loadBookableExams() {
       this.loading = true
       try {
+        console.log('Loading bookable exams...')
         const response = await examApi.getBookableExams()
-        const data = response.data?.data || response.data || []
+        console.log('Bookable exams response:', response)
+
+        const data = this.extractData(response)
         this.bookableExams = data.map(exam => ({
           ...exam,
           allowBooking: true
         }))
+
+        console.log('Processed bookable exams:', this.bookableExams)
       } catch (error) {
         console.error('Failed to load bookable exams:', error)
         this.$message.error('加载可预约考试失败：' + (error.message || '请稍后重试'))
+        this.bookableExams = []
       } finally {
         this.loading = false
       }
     },
+
     async loadBookedExams() {
       this.loading = true
       try {
-        const response = await examApi.getBookedExams()
-        const data = response.data?.data || []
+        const token = this.getToken()
+        if (!token) {
+          throw new Error('未找到认证信息，请重新登录')
+        }
+
+        console.log('Loading booked exams with token:', token)
+        const response = await examApi.getBookedExams(token)
+        console.log('Booked exams response:', response)
+
+        const data = this.extractData(response)
+
         this.onlineExams = data.filter(exam => exam.examMode === 'ONLINE')
         this.offlineExams = data.filter(exam => exam.examMode === 'OFFLINE')
+
+        console.log('Online exams:', this.onlineExams)
+        console.log('Offline exams:', this.offlineExams)
       } catch (error) {
         console.error('Failed to load booked exams:', error)
         this.$message.error('加载已预约考试失败：' + (error.message || '请稍后重试'))
+        this.onlineExams = []
+        this.offlineExams = []
       } finally {
         this.loading = false
       }
     },
+
     async showTimeSlots(exam) {
       this.selectedExam = exam
       this.loadingSlots = true
       this.timeSlotsError = null
       try {
+        console.log('Loading time slots for exam:', exam.id)
         const response = await examBookingApi.getAvailableTimeSlots(exam.id)
-        this.timeSlots = response.data?.data || response.data || []
+        console.log('Time slots response:', response)
+
+        const data = this.extractData(response)
+        this.timeSlots = data
+
+        console.log('Processed time slots:', this.timeSlots)
       } catch (err) {
         console.error('Failed to load time slots:', err)
         this.timeSlotsError = err.message || '加载时间段失败'
+        this.timeSlots = []
       } finally {
         this.loadingSlots = false
       }
     },
+
     closeTimeSlots() {
       this.selectedExam = null
       this.timeSlots = []
       this.selectedTimeSlot = null
     },
+
     selectTimeSlot(slot) {
       if (slot.status !== 'AVAILABLE') {
         this.$message.warning('该时间段已满，无法预约')
@@ -626,40 +696,41 @@ export default {
       this.bookingForm.timeSlotId = slot.id
       this.bookingDialogVisible = true
     },
+
     async confirmBooking() {
       try {
         await this.$refs.bookingFormRef.validate()
         this.bookingLoading = true
 
+        const token = this.getToken()
+        if (!token) {
+          throw new Error('未找到认证信息，请重新登录')
+        }
+
         const bookingData = {
           ...this.bookingForm,
-          examId: this.selectedExam.id,
-          userId: this.getCurrentUserId()
+          examId: this.selectedExam.id
         }
 
-        const response = await examBookingApi.bookExam(bookingData)
+        console.log('Booking data:', bookingData)
+        const response = await examBookingApi.bookExam(bookingData, token)
+        console.log('Booking response:', response)
 
-        if (!response.data || !response.data.success) {
-          throw new Error(response.data?.message || '预约失败')
-        }
-
-        if (!response.data.data?.id) {
-          throw new Error('未返回预约ID')
-        }
-
-        this.$message.success('预约成功！ID: ' + response.data.data.id)
+        this.$message.success('预约成功！')
         this.bookingDialogVisible = false
 
+        // 刷新相关数据
         await this.showTimeSlots(this.selectedExam)
         await this.loadBookableExams()
 
       } catch (error) {
-        console.error('预约失败详情:', error.response || error)
+        console.error('预约失败详情:', error)
         this.$message.error(`预约失败: ${error.message}`)
       } finally {
         this.bookingLoading = false
       }
     },
+
     resetBookingForm() {
       this.bookingForm = {
         timeSlotId: null,
@@ -671,6 +742,7 @@ export default {
         this.$refs.bookingFormRef.resetFields()
       }
     },
+
     async startExam(examId) {
       try {
         await this.$confirm(
@@ -687,15 +759,24 @@ export default {
         // 用户取消
       }
     },
+
     viewExamDetail(examId) {
       this.$router.push(`/exams/${examId}`)
     },
+
     async viewBookingDetails(examId) {
       try {
-        const userId = this.getCurrentUserId()
         this.loadingBookingDetails = true
-        const bookingResponse = await examBookingApi.getBookingIdByUserAndExam(userId, examId)
-        const bookingId = bookingResponse.data?.data || bookingResponse.data
+        const token = this.getToken()
+        if (!token) {
+          throw new Error('未找到认证信息，请重新登录')
+        }
+
+        console.log('Getting booking details for exam:', examId)
+        const response = await examBookingApi.getBookingIdByUserAndExam(examId, token)
+        console.log('Booking ID response:', response)
+
+        const bookingId = this.extractData(response)
 
         if (!bookingId) {
           this.$message.error('未找到预约记录')
@@ -710,9 +791,11 @@ export default {
         this.loadingBookingDetails = false
       }
     },
+
     viewExamResult(examId) {
       this.$router.push(`/exams/${examId}/result`)
     },
+
     canStartExam(exam) {
       if (!exam.bookingInfo || exam.examMode !== 'ONLINE') return false
 
@@ -722,9 +805,11 @@ export default {
 
       return timeDiff <= 30 * 60 * 1000 && timeDiff >= -exam.duration * 60 * 1000
     },
+
     canShowStartButton(exam) {
       return exam.status === 'PUBLISHED'
     },
+
     getExamStatusText(status) {
       const statusMap = {
         'DRAFT': '草稿',
@@ -734,6 +819,7 @@ export default {
       }
       return statusMap[status] || status
     },
+
     getExamModeText(mode) {
       const modes = {
         'ONLINE': '线上考试',
@@ -742,14 +828,17 @@ export default {
       }
       return modes[mode] || mode
     },
+
     getExamModeTagType(mode) {
       return mode === 'ONLINE' ? 'primary' : 'warning'
     },
+
     getProgressColor(percentage) {
       if (percentage < 0.5) return '#67c23a'
       if (percentage < 0.8) return '#e6a23c'
       return '#f56c6c'
     },
+
     getCurrentUserId() {
       const userInfo = localStorage.getItem('userInfo')
       if (userInfo) {
@@ -762,9 +851,11 @@ export default {
       }
       return 1
     },
+
     goToMyBookings() {
       this.$router.push('/exam-booking/my-bookings')
     },
+
     formatDate,
     formatTime,
     formatDateTime

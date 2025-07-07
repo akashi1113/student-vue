@@ -207,6 +207,7 @@ export default {
       cancelling: false,
       checkingIn: false,
       selectedStatus: null,
+      bookings: [], // 直接管理预约数据
       stats: {
         total_bookings: 0,
         active_bookings: 0,
@@ -216,14 +217,10 @@ export default {
       cancelDialogVisible: false,
       checkInDialogVisible: false,
       detailsDialogVisible: false,
-      selectedBooking: null,
-      currentUserId: 1 // 实际项目中应该从用户状态获取
+      selectedBooking: null
     }
   },
   computed: {
-    bookings() {
-      return useBookingStore().userBookings
-    },
     bookingStore() {
       return useBookingStore()
     }
@@ -233,12 +230,63 @@ export default {
     this.loadStats()
   },
   methods: {
+    // 获取token的统一方法
+    getToken() {
+      return localStorage.getItem('token')
+    },
+
+    // 统一处理API响应的方法
+    extractData(response) {
+      console.log('API Response:', response)
+
+      // 如果response直接是数据
+      if (Array.isArray(response)) {
+        return response
+      }
+
+      // 如果response有data属性
+      if (response && response.data) {
+        // 如果是{success: true, data: [...]}格式
+        if (response.data.success && response.data.data) {
+          return response.data.data
+        }
+        // 如果data直接是数组或对象
+        if (Array.isArray(response.data) || typeof response.data === 'object') {
+          return response.data
+        }
+        return response.data
+      }
+
+      return response
+    },
+
     async loadBookings() {
       this.loading = true
       try {
-        await this.bookingStore.fetchUserBookings(this.currentUserId, this.selectedStatus)
+        const token = this.getToken()
+        if (!token) {
+          this.$message.error('未找到认证信息，请重新登录')
+          this.$router.push('/login')
+          return
+        }
+        const status = this.selectedStatus === null ? '' : this.selectedStatus
+
+        console.log('Loading user bookings with token:', token)
+        const response = await examBookingApi.getUserBookings(token, this.selectedStatus)
+        console.log('User bookings response:', response)
+
+        const data = this.extractData(response)
+        this.bookings = Array.isArray(data) ? data : []
+
+        console.log('Processed bookings:', this.bookings)
       } catch (error) {
-        this.$message.error('加载预约列表失败')
+        console.error('Failed to load bookings:', error)
+        this.$message.error('加载预约列表失败：' + (error.message || '请稍后重试'))
+
+        // 如果是认证错误，跳转到登录页
+        if (error.message && error.message.includes('认证')) {
+          this.$router.push('/login')
+        }
       } finally {
         this.loading = false
       }
@@ -246,10 +294,23 @@ export default {
 
     async loadStats() {
       try {
-        const response = await examBookingApi.getUserBookingStats(this.currentUserId)
-        Object.assign(this.stats, response.data.data)
+        const token = this.getToken()
+        if (!token) {
+          console.warn('No token found, skipping stats loading')
+          return
+        }
+
+        console.log('Loading user booking stats with token:', token)
+        const response = await examBookingApi.getUserBookingStats(token)
+        console.log('User booking stats response:', response)
+
+        const data = this.extractData(response)
+        Object.assign(this.stats, data)
+
+        console.log('Processed stats:', this.stats)
       } catch (error) {
-        console.error('加载统计数据失败:', error)
+        console.error('Failed to load stats:', error)
+        // 统计数据加载失败不影响主要功能，只记录错误
       }
     },
 
@@ -266,16 +327,32 @@ export default {
 
       this.cancelling = true
       try {
-        await this.bookingStore.cancelBooking(
+        const token = this.getToken()
+        if (!token) {
+          throw new Error('未找到认证信息，请重新登录')
+        }
+
+        const cancelData = {
+          cancelReason: cancelReason.trim()
+        }
+
+        console.log('Cancelling booking:', this.selectedBooking.bookingId, cancelData)
+        const response = await examBookingApi.cancelBooking(
             this.selectedBooking.bookingId,
-            this.currentUserId,
-            cancelReason
+            cancelData,
+            token
         )
+        console.log('Cancel booking response:', response)
+
         this.$message.success('预约已取消')
         this.cancelDialogVisible = false
-        await this.loadStats() // 重新加载统计数据
+
+        // 重新加载数据
+        await this.loadBookings()
+        await this.loadStats()
       } catch (error) {
-        this.$message.error(error.message || '取消预约失败')
+        console.error('Failed to cancel booking:', error)
+        this.$message.error('取消预约失败：' + (error.message || '请稍后重试'))
       } finally {
         this.cancelling = false
       }
@@ -289,14 +366,22 @@ export default {
     async confirmCheckIn() {
       this.checkingIn = true
       try {
-        await examBookingApi.checkIn(this.selectedBooking.bookingId, {
+        const checkInData = {
           checkInStatus: 'CHECKED_IN'
-        })
+        }
+
+        console.log('Checking in booking:', this.selectedBooking.bookingId, checkInData)
+        const response = await examBookingApi.checkIn(this.selectedBooking.bookingId, checkInData)
+        console.log('Check in response:', response)
+
         this.$message.success('签到成功')
         this.checkInDialogVisible = false
-        await this.loadBookings() // 重新加载预约列表
+
+        // 重新加载预约列表
+        await this.loadBookings()
       } catch (error) {
-        this.$message.error(error.message || '签到失败')
+        console.error('Failed to check in:', error)
+        this.$message.error('签到失败：' + (error.message || '请稍后重试'))
       } finally {
         this.checkingIn = false
       }

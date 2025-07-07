@@ -53,7 +53,7 @@
               :key="notification.id"
               class="notification-item"
               :class="{
-              'unread': notification.sendStatus !== 'READ',
+              'unread': notification.sendStatus !== 'read',
               'selected': selectedNotifications.includes(notification.id)
             }"
               @click="handleNotificationClick(notification)"
@@ -71,7 +71,7 @@
                 <div class="notification-title">
                   <span class="title-text">{{ notification.title }}</span>
                   <el-tag
-                      v-if="notification.sendStatus !== 'READ'"
+                      v-if="notification.sendStatus !== 'read'"
                       type="danger"
                       size="small"
                       effect="plain"
@@ -102,7 +102,7 @@
 
             <div class="notification-actions">
               <el-button
-                  v-if="notification.sendStatus !== 'READ'"
+                  v-if="notification.sendStatus !== 'read'"
                   size="small"
                   @click.stop="markAsRead(notification.id)"
               >
@@ -164,6 +164,9 @@ import { formatDateTime } from '@/utils/dateUtils'
 
 export default {
   name: 'NotificationsPage',
+  components: {
+    Refresh
+  },
   data() {
     return {
       loading: false,
@@ -172,8 +175,7 @@ export default {
       selectedNotifications: [],
       selectAll: false,
       detailDialogVisible: false,
-      selectedNotification: null,
-      currentUserId: 1 // 实际项目中应该从用户状态获取
+      selectedNotification: null
     }
   },
   computed: {
@@ -208,12 +210,26 @@ export default {
     this.loadNotifications()
   },
   methods: {
+    // 检查用户是否已登录
+    checkAuth() {
+      const token = this.bookingStore.getToken()
+      if (!token) {
+        this.$message.error('请先登录')
+        this.$router.push('/login')
+        return false
+      }
+      return true
+    },
+
     async loadNotifications() {
+      if (!this.checkAuth()) return
+
       this.loading = true
       try {
-        await this.bookingStore.fetchUserNotifications(this.currentUserId)
+        await this.bookingStore.fetchUserNotifications()
       } catch (error) {
-        this.$message.error('加载通知失败')
+        this.$message.error('加载通知失败: ' + (error.message || '请稍后重试'))
+        console.error('加载通知失败:', error)
       } finally {
         this.loading = false
       }
@@ -228,20 +244,26 @@ export default {
       this.detailDialogVisible = true
 
       // 如果是未读通知，自动标记为已读
-      if (notification.sendStatus !== 'READ') {
+      if (notification.sendStatus !== 'read') {
         this.markAsRead(notification.id)
       }
     },
 
     async markAsRead(notificationId) {
+      if (!this.checkAuth()) return
+
       try {
         await this.bookingStore.markAsRead(notificationId)
+        this.$message.success('已标记为已读')
       } catch (error) {
-        this.$message.error('标记已读失败')
+        this.$message.error('标记已读失败: ' + (error.message || '请稍后重试'))
+        console.error('标记已读失败:', error)
       }
     },
 
     async batchMarkAsRead() {
+      if (!this.checkAuth()) return
+
       if (this.selectedNotifications.length === 0) {
         this.$message.warning('请选择要标记的通知')
         return
@@ -249,25 +271,34 @@ export default {
 
       this.batchReading = true
       try {
-        await this.bookingStore.batchMarkAsRead(this.currentUserId, this.selectedNotifications)
+        await this.bookingStore.batchMarkAsRead(this.selectedNotifications)
         this.selectedNotifications = []
         this.selectAll = false
         this.$message.success('批量标记成功')
       } catch (error) {
-        this.$message.error('批量标记失败')
+        this.$message.error('批量标记失败: ' + (error.message || '请稍后重试'))
+        console.error('批量标记失败:', error)
       } finally {
         this.batchReading = false
       }
     },
 
     async markAllAsRead() {
+      if (!this.checkAuth()) return
+
       this.markingAll = true
       try {
         const unreadIds = this.unreadNotifications.map(n => n.id)
-        await this.bookingStore.batchMarkAsRead(this.currentUserId, unreadIds)
+        if (unreadIds.length === 0) {
+          this.$message.info('没有未读通知')
+          return
+        }
+
+        await this.bookingStore.batchMarkAsRead(unreadIds)
         this.$message.success('全部标记为已读')
       } catch (error) {
-        this.$message.error('标记失败')
+        this.$message.error('标记失败: ' + (error.message || '请稍后重试'))
+        console.error('标记失败:', error)
       } finally {
         this.markingAll = false
       }

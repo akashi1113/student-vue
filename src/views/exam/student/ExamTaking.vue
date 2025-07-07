@@ -36,7 +36,7 @@
     <div class="exam-main-content">
       <!-- 题目区域（只显示当前题目） -->
       <div class="questions-container">
-        <form @submit.prevent="submitExam">
+        <form @submit.prevent="confirmSubmit">
           <div
               class="question-card"
               :id="'question-' + currentQuestion.id"
@@ -316,6 +316,37 @@ export default {
     }
   },
   methods: {
+    // 获取token的统一方法
+    getToken() {
+      return localStorage.getItem('token');
+    },
+
+    // 统一处理API响应的方法
+    extractData(response) {
+      console.log('API Response:', response);
+
+      // 如果response直接是数据
+      if (response && typeof response === 'object' && !response.data) {
+        return response;
+      }
+
+      // 如果response有data属性
+      if (response && response.data) {
+        // 如果是{success: true, data: {...}}格式
+        if (response.data.success && response.data.data) {
+          return response.data.data;
+        }
+        // 如果data直接是对象
+        if (typeof response.data === 'object') {
+          return response.data;
+        }
+        return response.data;
+      }
+
+      // 兜底返回原始response
+      return response;
+    },
+
     // 格式化状态显示
     formatStatus(status) {
       const statusMap = {
@@ -465,25 +496,52 @@ export default {
     // 加载考试数据
     async loadExamData() {
       try {
+        const token = this.getToken();
+        if (!token) {
+          this.$message.error('未找到认证信息，请重新登录');
+          this.$router.push('/login');
+          return;
+        }
+
+        console.log('Loading exam data for exam ID:', this.examId);
+
+        // 获取考试详情
         const examResponse = await examApi.getExamById(this.examId);
-        this.exam = examResponse.data.data;
+        console.log('Exam response:', examResponse);
+        this.exam = this.extractData(examResponse);
         this.timeLeft = this.exam.duration * 60;
 
+        // 获取题目列表
         const questionsResponse = await questionApi.getQuestionsByExamId(this.examId);
-        this.questions = questionsResponse.data.data;
+        console.log('Questions response:', questionsResponse);
+        this.questions = this.extractData(questionsResponse) || [];
         this.initializeAnswers();
 
-        const recordResponse = await examApi.startExam(this.examId);
-        if (recordResponse.data.message === "您已经完成该考试，无法再次开始") {
+        // 开始考试
+        const recordResponse = await examApi.startExam(this.examId, token);
+        console.log('Start exam response:', recordResponse);
+
+        const recordData = this.extractData(recordResponse);
+
+        if (recordData && recordData.message === "您已经完成该考试，无法再次开始") {
           this.$message.warning('您已经完成该考试，正在跳转到结果页面...');
           this.$router.push(`/exams/${this.examId}/result`);
           return;
         }
-        this.examRecord = recordResponse.data.data;
-        this.violationCount = this.examRecord.violationCount || 0;
+
+        this.examRecord = recordData;
+        this.violationCount = this.examRecord?.violationCount || 0;
+
+        console.log('Exam data loaded successfully');
       } catch (error) {
         console.error('加载考试数据失败:', error);
-        alert('加载考试数据失败，请刷新页面重试');
+
+        if (error.message && error.message.includes('认证')) {
+          this.$message.error('认证失败，请重新登录');
+          this.$router.push('/login');
+        } else {
+          this.$message.error('加载考试数据失败：' + (error.message || '请稍后重试'));
+        }
       }
     },
 
@@ -504,14 +562,28 @@ export default {
       }, 1000);
     },
 
+    // 显示确认对话框
+    confirmSubmit() {
+      this.showConfirmDialog = true;
+    },
+
     async submitExam() {
       this.showConfirmDialog = false;
       this.isSubmitting = true;
       this.cleanupViolationDetection();
 
       try {
+        const token = this.getToken();
+        if (!token) {
+          throw new Error('未找到认证信息，请重新登录');
+        }
+
         const answers = this.prepareAnswersForSubmit();
-        const response = await examApi.submitExam(this.examId, answers);
+        console.log('Submitting exam with answers:', answers);
+
+        // 直接发送答案数组，而不是包装在对象中
+        const response = await examApi.submitExam(this.examId, answers, token);
+        console.log('Submit exam response:', response);
 
         // 开始显示AI判卷提示
         this.isSubmitting = false;
@@ -521,7 +593,8 @@ export default {
         this.startProgressSimulation();
 
         // 这里假设API会返回一个可以轮询的状态
-        await this.waitForGradingCompletion(response.data.data.recordId);
+        const result = this.extractData(response);
+        await this.waitForGradingCompletion(result.recordId || result.id);
 
         // 判卷完成后跳转
         this.$router.push(`/exams/${this.examId}/result`);
@@ -529,7 +602,7 @@ export default {
         console.error('提交考试失败:', error);
         this.isSubmitting = false;
         this.isAiGrading = false;
-        this.$message.error('提交考试失败，请重试');
+        this.$message.error('提交考试失败：' + (error.message || '请重试'));
       }
     },
 
@@ -571,38 +644,51 @@ export default {
     },
 
     prepareAnswersForSubmit() {
-      return this.questions.map(question => {
+      const answers = this.questions.map(question => {
         let answer = this.answers[question.id];
 
         if (question.type === 'PROGRAMMING') {
           // 编程题特殊处理
-          answer = typeof answer === 'object' ? JSON.stringify(answer) : answer;
+          if (typeof answer === 'object' && answer !== null) {
+            answer = JSON.stringify(answer);
+          }
         } else if (question.type === 'MULTIPLE' && Array.isArray(answer)) {
+          // 多选题处理
           answer = answer.length > 0 ? answer.join(',') : null;
         }
 
         return {
           questionId: question.id,
-          answer: answer
+          answer: answer || null // 确保空答案为null而不是undefined
         };
       });
+
+      console.log('Prepared answers for submission:', answers);
+      return answers;
     },
 
     async handleTimeout() {
       alert('考试时间已到，系统将自动提交！');
       try {
-        const response = await examApi.handleTimeout(this.examId);
+        const token = this.getToken();
+        if (!token) {
+          throw new Error('未找到认证信息');
+        }
+
+        const response = await examApi.handleTimeout(this.examId, token);
+        const result = this.extractData(response);
+
         this.$router.push({
           name: 'ExamResult',
           params: { examId: this.examId },
           query: {
-            recordId: response.data.data.examRecordId,
+            recordId: result.examRecordId || result.id,
             timeout: true
           }
         });
       } catch (error) {
         console.error('处理考试超时失败:', error);
-        alert('处理考试超时失败');
+        this.$message.error('处理考试超时失败：' + (error.message || '请稍后重试'));
       }
     },
 
@@ -668,7 +754,6 @@ export default {
       }
     },
 
-// 在 ExamTaking 组件的 methods 中修改
     handleKeyDown(e) {
       // 检查是否在编程编辑器相关元素中
       const target = e.target;
@@ -745,7 +830,7 @@ export default {
       }
     },
 
-// 辅助方法：检查是否在编程题区域
+    // 辅助方法：检查是否在编程题区域
     checkIfInProgrammingArea(target) {
       const programmingSelectors = [
         '[data-programming-editor]',
@@ -808,6 +893,12 @@ export default {
         }
         this.lastViolationTime = now;
 
+        const token = this.getToken();
+        if (!token) {
+          console.warn('No token found for violation recording');
+          return;
+        }
+
         const answers = this.prepareAnswersForSubmit();
         const payload = {
           type: type,
@@ -815,16 +906,17 @@ export default {
           answers: answers
         };
 
+        console.log('Recording violation:', payload);
         const response = await examApi.recordViolation(
             this.examId,
             JSON.stringify(payload),
-            { headers: { 'Content-Type': 'application/json' } }
+            token
         );
+        console.log('Violation response:', response);
 
         // 从响应或重新获取最新状态
-        this.violationCount = response.data?.data?.violationCount ||
-            response.data?.violationCount ||
-            this.violationCount + 1;
+        const result = this.extractData(response);
+        this.violationCount = result?.violationCount || this.violationCount + 1;
 
         // 自动提交逻辑
         if (this.violationCount >= 3) {
@@ -838,21 +930,30 @@ export default {
 
     async forceSubmitExam(reason) {
       try {
-        const answers = this.prepareAnswersForSubmit();
-        console.log('自动提交数据:', { answers }); // 调试用
+        const token = this.getToken();
+        if (!token) {
+          throw new Error('未找到认证信息');
+        }
 
-        const response = await examApi.submitExam(this.examId, {
-          answers,
+        const answers = this.prepareAnswersForSubmit();
+        console.log('自动提交数据:', answers); // 调试用
+
+        // 修改：对于强制提交，可能需要额外的参数，但答案仍然是数组
+        const submitData = {
+          answers: answers,
           submitType: 'AUTO',
-          reason
-        });
+          reason: reason
+        };
+
+        const response = await examApi.submitExam(this.examId, submitData, token);
+        const result = this.extractData(response);
 
         // 确保跳转前请求完成
         this.$router.push({
           name: 'ExamResult',
           params: {
             examId: this.examId,
-            recordId: response.data.recordId
+            recordId: result.recordId || result.id
           },
           query: {
             autoSubmitted: true,
@@ -861,7 +962,7 @@ export default {
         });
       } catch (error) {
         console.error('强制提交失败:', error);
-        alert('系统即将强制结束考试');
+        this.$message.error('系统即将强制结束考试');
         window.location.href = `/exams/${this.examId}/result?force=1`; // 后备方案
       }
     }
@@ -881,9 +982,14 @@ export default {
 
   beforeUnmount() {
     // 清除定时器
+    if (this.timer) {
+      clearInterval(this.timer);
+    }
     if (this.progressInterval) {
       clearInterval(this.progressInterval);
     }
+    // 清理违规检测
+    this.cleanupViolationDetection();
   }
 };
 </script>

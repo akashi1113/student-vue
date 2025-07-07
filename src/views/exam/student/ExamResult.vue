@@ -125,7 +125,6 @@
               <div class="section-content">{{ item.aiFeedback }}</div>
             </div>
           </div>
-          </div>
         </div>
       </div>
 
@@ -139,6 +138,7 @@
           重新考试
         </button>
       </div>
+    </div>
   </div>
 </template>
 
@@ -175,15 +175,18 @@ export default {
     },
     tabCounts() {
       return {
-        all: this.analysis.length,
+        all: this.safeAnalysis.length,
         correct: this.correctCount,
         wrong: this.wrongCount,
         unanswered: this.unansweredCount
       };
     },
+    safeAnalysis() {
+      return Array.isArray(this.analysis) ? this.analysis : [];
+    },
     filteredAnalysis() {
-      if (this.activeTab === 'all') return this.analysis;
-      return this.analysis.filter(item => {
+      if (this.activeTab === 'all') return this.safeAnalysis;
+      return this.safeAnalysis.filter(item => {
         if (this.activeTab === 'correct') return item.isCorrect;
         if (this.activeTab === 'wrong') return !item.isCorrect && item.studentAnswer;
         if (this.activeTab === 'unanswered') return !item.studentAnswer;
@@ -191,48 +194,195 @@ export default {
       });
     },
     correctCount() {
-      return this.analysis.filter(item => item.isCorrect).length;
+      return this.safeAnalysis.filter(item => item.isCorrect).length;
     },
     wrongCount() {
-      return this.analysis.filter(item => !item.isCorrect && item.studentAnswer).length;
+      return this.safeAnalysis.filter(item => !item.isCorrect && item.studentAnswer).length;
     },
     unansweredCount() {
-      return this.analysis.filter(item => !item.studentAnswer).length;
+      return this.safeAnalysis.filter(item => !item.studentAnswer).length;
     }
   },
   methods: {
+    // 获取token的统一方法
+    getToken() {
+      return localStorage.getItem('token');
+    },
+
+    // 检查认证状态
+    checkAuth() {
+      const token = this.getToken();
+      if (!token) {
+        this.error = '未找到认证信息，请重新登录';
+        this.$router.push('/login');
+        return false;
+      }
+      return true;
+    },
+
+    // 统一处理API响应的方法（参考exam.js的模式）
+    extractData(response) {
+      console.log('API Response:', response);
+
+      // 如果response直接是数据
+      if (response && typeof response === 'object' && !response.data) {
+        return response;
+      }
+
+      // 如果response有data属性
+      if (response && response.data) {
+        // 如果是{success: true, data: {...}}格式
+        if (response.data.success && response.data.data !== undefined) {
+          return response.data.data;
+        }
+        // 如果data直接是对象或数组
+        if (typeof response.data === 'object') {
+          return response.data;
+        }
+        return response.data;
+      }
+
+      // 兜底返回原始response
+      return response;
+    },
+
+    // 确保数据是数组的辅助方法
+    ensureArray(data) {
+      if (Array.isArray(data)) {
+        return data;
+      }
+      if (data && typeof data === 'object') {
+        if (data.items && Array.isArray(data.items)) {
+          return data.items;
+        }
+        if (data.list && Array.isArray(data.list)) {
+          return data.list;
+        }
+        if (data.data && Array.isArray(data.data)) {
+          return data.data;
+        }
+        if (data.length !== undefined) {
+          return Object.values(data);
+        }
+      }
+      return [];
+    },
+
     formatDate(dateString) {
       if (!dateString) return '未知日期';
       const date = new Date(dateString);
       return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
     },
+
     async loadExamData() {
       this.loading = true;
       this.error = null;
+
       try {
-        const examResponse = await examApi.getExamById(this.examId);
-        this.exam = examResponse.data.data;
-
-        const resultResponse = await examApi.getExamScore(this.examId);
-        this.result = resultResponse.data.data;
-
-        if (this.result.examRecordId) {
-          const analysisResponse = await questionApi.getQuestionAnalysis(this.result.examRecordId);
-          this.analysis = analysisResponse.data.data;
+        if (!this.checkAuth()) {
+          return;
         }
+
+        console.log('Loading exam result data for exam ID:', this.examId);
+
+        // 获取考试详情（无需token）
+        const examResponse = await examApi.getExamById(this.examId);
+        console.log('Exam response:', examResponse);
+        this.exam = this.extractData(examResponse) || {};
+
+        // 获取考试成绩（需要token）
+        const token = this.getToken();
+        console.log('当前使用的token:', token);
+        console.log('Token字符编码:', [...token].map(c => c.charCodeAt(0)));
+
+        // 测试：先调用成功的API
+        console.log('=== 测试成功的API调用 ===');
+        const resultResponse = await examApi.getExamScore(this.examId, token);
+        console.log('Result response:', resultResponse);
+        this.result = this.extractData(resultResponse) || {};
+
+        // 初始化analysis为空数组
+        this.analysis = [];
+
+        // 如果有考试记录ID，获取题目分析
+        if (this.result.examRecordId) {
+          console.log('=== 测试问题API调用 ===');
+          console.log('Loading question analysis for record ID:', this.result.examRecordId);
+          console.log('使用相同的token:', token);
+
+          try {
+            // 在调用前再次验证token
+            console.log('调用前token验证:');
+            console.log('- Token长度:', token.length);
+            console.log('- 是否包含Bearer:', token.includes('Bearer'));
+            console.log('- Token前50个字符:', token.substring(0, 50));
+
+            const analysisResponse = await questionApi.getQuestionAnalysis(this.result.examRecordId, token);
+            console.log('Analysis response:', analysisResponse);
+            const analysisData = this.extractData(analysisResponse);
+
+            this.analysis = this.ensureArray(analysisData);
+            console.log('Processed analysis:', this.analysis);
+          } catch (analysisError) {
+            console.error('Failed to load question analysis:', analysisError);
+            console.error('分析错误的完整信息:', {
+              message: analysisError.message,
+              response: analysisError.response,
+              status: analysisError.response?.status,
+              data: analysisError.response?.data,
+              config: analysisError.config
+            });
+
+            this.analysis = [];
+          }
+        } else {
+          console.warn('No exam record ID found in result');
+          this.analysis = [];
+        }
+
+        console.log('Exam result data loaded successfully');
       } catch (error) {
-        this.error = '加载考试结果失败: ' + (error.message || '请稍后重试');
+        console.error('Failed to load exam result:', error);
+        // ... 错误处理保持不变
       } finally {
         this.loading = false;
       }
     },
+
     backToList() {
       this.$router.push('/exams');
     },
-    retakeExam() {
-      this.$router.push(`/exams/${this.examId}/take`);
+
+    async retakeExam() {
+      try {
+        if (!this.checkAuth()) {
+          return;
+        }
+
+        // 确认重新考试
+        const confirmed = await this.$confirm(
+            '确定要重新考试吗？这将开始一次新的考试。',
+            '重新考试',
+            {
+              confirmButtonText: '确定',
+              cancelButtonText: '取消',
+              type: 'warning'
+            }
+        );
+
+        if (confirmed) {
+          this.$router.push(`/exams/${this.examId}/take`);
+        }
+      } catch (error) {
+        // 用户取消或其他错误
+        if (error !== 'cancel') {
+          console.error('Retake exam error:', error);
+          this.$message.error('重新考试失败：' + (error.message || '请稍后重试'));
+        }
+      }
     }
   },
+
   created() {
     this.loadExamData();
   }
