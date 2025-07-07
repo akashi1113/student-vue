@@ -35,6 +35,7 @@
 
     <div class="action-buttons">
       <el-button
+          v-if="isStudent"
           type="primary"
           size="large"
           @click="startExam"
@@ -51,7 +52,7 @@
           class="back-btn"
           icon="el-icon-arrow-left"
       >
-        返回列表
+        返回
       </el-button>
     </div>
   </div>
@@ -84,6 +85,14 @@ export default {
     })
 
     const startingExam = ref(false)
+    const isStudent = ref(false)
+
+    // 获取用户身份
+    const getUserRole = () => {
+      // 这里可以根据实际项目从store或localStorage获取用户角色
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      isStudent.value = userInfo.role === '学生'
+    }
 
     // 获取token的统一方法
     const getToken = () => {
@@ -94,25 +103,20 @@ export default {
     const extractData = (response) => {
       console.log('API Response:', response)
 
-      // 如果response直接是数据
       if (response && typeof response === 'object' && !response.data) {
         return response
       }
 
-      // 如果response有data属性
       if (response && response.data) {
-        // 如果是{success: true, data: {...}}格式
         if (response.data.success && response.data.data) {
           return response.data.data
         }
-        // 如果data直接是对象
         if (typeof response.data === 'object') {
           return response.data
         }
         return response.data
       }
 
-      // 兜底返回原始response
       return response
     }
 
@@ -131,10 +135,9 @@ export default {
 
         console.log('Processed exam data:', exam.value)
       } catch (error) {
-        console.error('Failed to fetch exam detail:', error)
+        console.error('获取考试详情失败:', error)
         ElMessage.error('获取考试详情失败：' + (error.message || '请稍后重试'))
 
-        // 如果是认证错误，跳转到登录页
         if (error.message && error.message.includes('认证')) {
           router.push('/login')
         }
@@ -184,7 +187,6 @@ export default {
           return
         }
 
-        // 确认开始考试
         await ElMessageBox.confirm(
             '确定要开始考试吗？考试开始后将无法退出。',
             '开始考试',
@@ -197,7 +199,6 @@ export default {
 
         startingExam.value = true
 
-        // 调用开始考试API
         console.log('Starting exam with ID:', route.params.examId)
         const response = await examApi.startExam(route.params.examId, token)
         console.log('Start exam response:', response)
@@ -206,21 +207,18 @@ export default {
 
         if (examRecord && examRecord.id) {
           ElMessage.success('考试已开始，正在跳转...')
-          // 跳转到考试页面
           router.push(`/exams/${route.params.examId}/take`)
         } else {
           throw new Error('开始考试失败，未返回考试记录')
         }
 
       } catch (error) {
-        console.error('Failed to start exam:', error)
+        console.error('开始考试失败:', error)
 
         if (error === 'cancel') {
-          // 用户取消，不显示错误信息
           return
         }
 
-        // 处理特殊的错误信息
         let errorMessage = '开始考试失败'
         if (error.message) {
           if (error.message.includes('已经完成')) {
@@ -240,9 +238,9 @@ export default {
       }
     }
 
-    // 返回列表
+    // 返回上一页
     const goBack = () => {
-      router.push('/exams')
+      router.go(-1)
     }
 
     // 计算各种题型的数量
@@ -294,12 +292,14 @@ export default {
     }
 
     onMounted(() => {
+      getUserRole()
       fetchExamDetail()
     })
 
     return {
       exam,
       startingExam,
+      isStudent,
       formatTime,
       formatStatus,
       getStatusTagType,
@@ -373,7 +373,6 @@ export default {
   padding-left: 10px;
 }
 
-/* 优化后的题目统计样式 */
 .question-statistics {
   margin: 30px 0;
 }
@@ -439,7 +438,6 @@ export default {
   color: #909399;
 }
 
-/* 按钮样式 */
 .action-buttons {
   margin-top: 40px;
   text-align: center;
@@ -494,7 +492,6 @@ export default {
   color: #3a8ee6;
 }
 
-/* 不同类型颜色 */
 .stat-item:nth-child(1) .stat-icon {
   color: #409EFF;
   background: rgba(64, 158, 255, 0.1);

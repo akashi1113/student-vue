@@ -100,13 +100,6 @@
               <i class="icon-close"></i>
             </button>
             <button
-                @click="editHomework(homework.id)"
-                class="action-btn edit-btn"
-                title="编辑作业"
-            >
-              <i class="icon-edit"></i>
-            </button>
-            <button
                 @click="deleteHomework(homework.id)"
                 class="action-btn delete-btn"
                 title="删除作业"
@@ -149,11 +142,15 @@
         </div>
 
         <div class="homework-stats">
-          <div class="stat-item">
+          <div class="stat-item" @click.stop="manageSubmissions(homework.id)">
             <span class="stat-number">{{ homework.submissionCount || 0 }}</span>
             <span class="stat-text">提交数</span>
           </div>
-          <div class="stat-item">
+          <div class="stat-item" v-if="homework.avgScore !== undefined">
+            <span class="stat-number">{{ homework.avgScore.toFixed(1) }}</span>
+            <span class="stat-text">平均分</span>
+          </div>
+          <div class="stat-item" @click.stop="viewGradedSubmissions(homework.id)">
             <span class="stat-number">{{ homework.gradedCount || 0 }}</span>
             <span class="stat-text">已批改</span>
           </div>
@@ -165,13 +162,6 @@
               class="manage-btn"
           >
             管理提交
-          </button>
-          <button
-              v-if="homework.status === 'PUBLISHED'"
-              @click="viewStatistics(homework.id)"
-              class="stats-btn"
-          >
-            查看统计
           </button>
         </div>
       </div>
@@ -260,6 +250,9 @@ export default {
 
         if (response && response.data && response.data.success) {
           this.homeworkList = response.data.data || [];
+
+          // 为每个作业加载统计信息
+          await this.loadHomeworkStatistics();
           this.calculateStats();
         } else {
           throw new Error('数据格式错误');
@@ -267,14 +260,32 @@ export default {
       } catch (error) {
         console.error('加载作业失败:', error);
         this.$message.error('加载作业失败，请稍后重试');
-
-        if (error.response?.status === 401) {
-          this.$message.error('登录已过期，请重新登录');
-          this.$router.push('/login');
-        }
       } finally {
         this.loading = false;
       }
+    },
+
+    // 加载作业统计信息
+    async loadHomeworkStatistics() {
+      const promises = this.homeworkList.map(async homework => {
+        try {
+          const response = await homeworkApi.getHomeworkStatistics(homework.id);
+          if (response.data && response.data.success) {
+            const stats = response.data.data;
+            homework.submissionCount = stats.submitted_count || 0;
+            homework.avgScore = stats.avg_score || 0;
+            homework.gradedCount = stats.graded_count || 0;
+          }
+        } catch (error) {
+          console.error(`获取作业 ${homework.id} 统计信息失败:`, error);
+          homework.submissionCount = 0;
+          homework.avgScore = 0;
+          homework.gradedCount = 0;
+        }
+        return homework;
+      });
+
+      await Promise.all(promises);
     },
 
     calculateStats() {
@@ -286,16 +297,28 @@ export default {
       };
     },
 
+    // 查看已批改的作业
+    viewGradedSubmissions(homeworkId) {
+      this.$router.push({
+        path: `/homework/${homeworkId}/submissions`,
+        query: { status: 'GRADED' }
+      });
+    },
+
+    // 管理所有提交
+    manageSubmissions(homeworkId) {
+      this.$router.push({
+        path: `/homework/${homeworkId}/submissions`,
+        query: { status: 'ALL' }
+      });
+    },
+
     viewHomework(homeworkId) {
       this.$router.push(`/homework/${homeworkId}`);
     },
 
     editHomework(homeworkId) {
       this.$router.push(`/homework/${homeworkId}/edit`);
-    },
-
-    manageSubmissions(homeworkId) {
-      this.$router.push(`/homework/${homeworkId}/submissions`);
     },
 
     viewStatistics(homeworkId) {
@@ -926,5 +949,21 @@ export default {
     flex-direction: row;
     justify-content: space-between;
   }
+}
+
+.homework-stats .stat-item {
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.homework-stats .stat-item:hover {
+  background-color: #f0f7ff;
+  transform: translateY(-2px);
+}
+
+.homework-stats .stat-item:active {
+  transform: translateY(0);
 }
 </style>

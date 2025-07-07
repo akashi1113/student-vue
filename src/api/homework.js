@@ -141,7 +141,6 @@ export default {
         return axios.get(`${API_URL}/${homeworkId}/statistics`);
     },
 
-    // 修改：后端路径是 /student/progress，需要token
     getStudentProgress(token) {
         return axios.get(`${API_URL}/student/progress`, {
             headers: buildAuthHeader(token)
