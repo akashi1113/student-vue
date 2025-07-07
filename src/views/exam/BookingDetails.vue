@@ -23,12 +23,9 @@
       <template v-if="!loading && booking.bookingId">
         <!-- PDF标题（只在PDF中显示） -->
         <div class="pdf-only pdf-header">
-          <h1 style="text-align: center; margin-bottom: 30px; color: #409EFF;">
-            {{ booking.examTitle }} - 预约详情
-          </h1>
-          <div style="text-align: center; margin-bottom: 20px; color: #666;">
-            预约号：{{ booking.bookingNumber }} |
-            导出时间：{{ formatDateTime(new Date()) }}
+          <h1>{{ booking.examTitle }} - 预约详情</h1>
+          <div class="pdf-meta">
+            预约号：{{ booking.bookingNumber }} | 导出时间：{{ formatDateTime(new Date()) }}
           </div>
         </div>
 
@@ -73,7 +70,7 @@
             </el-card>
 
             <!-- 考试信息卡片 -->
-            <el-card class="info-card" shadow="hover" style="margin-top: 24px;">
+            <el-card class="info-card" shadow="hover">
               <template #header>
                 <div class="card-header">
                   <div class="card-title">
@@ -112,7 +109,7 @@
             </el-card>
 
             <!-- 附加信息卡片 -->
-            <el-card v-if="booking.specialRequirements || booking.remarks" class="info-card" shadow="hover" style="margin-top: 24px;">
+            <el-card v-if="booking.specialRequirements || booking.remarks" class="info-card" shadow="hover">
               <template #header>
                 <div class="card-header">
                   <div class="card-title">
@@ -135,11 +132,8 @@
               </el-descriptions>
             </el-card>
 
-            <!-- PDF分页符 -->
-            <div class="page-break-before pdf-only"></div>
-
             <!-- 操作记录（PDF中显示） -->
-            <el-card class="timeline-card pdf-only" shadow="hover" style="margin-top: 24px;">
+            <el-card class="timeline-card pdf-only" shadow="hover">
               <template #header>
                 <div class="card-header">
                   <div class="card-title">
@@ -192,7 +186,6 @@
                     size="large"
                     @click="confirmBooking"
                     :loading="confirming"
-                    style="width: 100%; margin-bottom: 16px;"
                 >
                   <el-icon><CircleCheck /></el-icon>
                   确认预约
@@ -203,7 +196,6 @@
                     type="danger"
                     size="large"
                     @click="showCancelDialog"
-                    style="width: 100%; margin-bottom: 16px;"
                 >
                   <el-icon><CircleClose /></el-icon>
                   取消预约
@@ -214,7 +206,6 @@
                     type="primary"
                     size="large"
                     @click="checkIn"
-                    style="width: 100%; margin-bottom: 16px;"
                 >
                   <el-icon><Checked /></el-icon>
                   签到
@@ -224,7 +215,6 @@
                     size="large"
                     @click="exportPDF"
                     :loading="exporting"
-                    style="width: 100%; margin-bottom: 16px;"
                 >
                   <el-icon><DocumentCopy /></el-icon>
                   导出PDF
@@ -233,7 +223,7 @@
             </el-card>
 
             <!-- 操作记录卡片 -->
-            <el-card class="timeline-card" shadow="hover" style="margin-top: 24px;">
+            <el-card class="timeline-card" shadow="hover">
               <template #header>
                 <div class="card-header">
                   <div class="card-title">
@@ -385,12 +375,10 @@ export default {
     }
   },
   methods: {
-    // 添加获取token的方法
     getToken() {
       return localStorage.getItem('token') || sessionStorage.getItem('token')
     },
 
-    // 检查认证状态
     checkAuth() {
       const token = this.getToken()
       if (!token) {
@@ -400,8 +388,8 @@ export default {
       }
       return true
     },
+
     async loadBookingDetails() {
-      // 检查认证状态
       if (!this.checkAuth()) return
 
       this.loading = true;
@@ -409,18 +397,13 @@ export default {
 
       try {
         const bookingId = this.$route.params.bookingId;
-        const token = this.getToken(); // 获取token
-
-        console.log('加载预约详情，ID:', bookingId, 'Token:', token ? '存在' : '不存在');
+        const token = this.getToken();
 
         const response = await examBookingApi.getBookingDetails(bookingId);
-
-        console.log('预约详情响应:', response);
 
         if (response) {
           this.booking = response;
 
-          // 处理操作记录
           this.operationRecords = this.booking.operationRecords || [
             {
               id: 1,
@@ -449,7 +432,6 @@ export default {
         this.error = '加载预约详情失败: ' + (error.message || '请稍后重试');
         this.$message.error(this.error);
 
-        // 如果是认证错误，跳转到登录页
         if (error.response?.status === 401) {
           this.$message.error('登录已过期，请重新登录');
           this.$router.push('/login');
@@ -574,76 +556,109 @@ export default {
       this.$message.info('编辑预约功能待实现');
     },
 
-    /**
-     * 导出PDF
-     */
     async exportPDF() {
       try {
         this.exporting = true;
-
-        // 获取要导出的DOM元素
         const element = this.$refs.pdfContent;
         if (!element) {
           this.$message.error('未找到要导出的内容');
           return;
         }
 
-        // 预处理元素
-        const processedElement = this.preprocessElementForPDF(element);
+        // 克隆元素并预处理
+        const clonedElement = element.cloneNode(true);
+        clonedElement.className += ' pdf-export';
 
-        // 生成文件名
-        const filename = `预约详情_${this.booking.bookingNumber}_${this.formatDate(new Date())}.pdf`;
+        // 移除不需要的元素
+        const elementsToRemove = clonedElement.querySelectorAll('.pdf-exclude, .el-button, .action-buttons, .header-actions');
+        elementsToRemove.forEach(el => el.remove());
+
+        // 显示PDF专用元素
+        const pdfOnlyElements = clonedElement.querySelectorAll('.pdf-only');
+        pdfOnlyElements.forEach(el => el.style.display = 'block');
+
+        // 调整布局
+        const rows = clonedElement.querySelectorAll('.el-row');
+        rows.forEach(row => {
+          row.style.display = 'block';
+          const cols = row.querySelectorAll('.el-col');
+          cols.forEach(col => {
+            col.style.width = '100%';
+            col.style.maxWidth = '100%';
+            col.style.flex = 'none';
+          });
+        });
+
+        // 添加样式
+        const style = document.createElement('style');
+        style.textContent = `
+          .pdf-export {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 12px;
+            padding: 10px;
+          }
+          .pdf-export .pdf-header {
+            text-align: center;
+            margin-bottom: 15px;
+          }
+          .pdf-export .pdf-header h1 {
+            color: #409EFF;
+            font-size: 18px;
+            margin-bottom: 5px;
+          }
+          .pdf-export .pdf-meta {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 15px;
+          }
+          .pdf-export .el-card {
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+          }
+          .pdf-export .el-card__header {
+            padding: 10px 15px;
+          }
+          .pdf-export .el-card__body {
+            padding: 15px;
+          }
+          .pdf-export .el-descriptions {
+            margin-top: 10px;
+          }
+          .pdf-export .el-timeline-item {
+            page-break-inside: avoid;
+          }
+          @page {
+            margin: 10mm;
+          }
+        `;
+        clonedElement.appendChild(style);
 
         // PDF配置
         const opt = {
-          margin: [0.5, 0.5, 0.5, 0.5],
-          filename: filename,
-          image: {
-            type: 'jpeg',
-            quality: 0.95
-          },
+          margin: [10, 15],
+          filename: `预约详情_${this.booking.bookingNumber}_${this.formatDate(new Date())}.pdf`,
+          image: { type: 'jpeg', quality: 0.95 },
           html2canvas: {
-            scale: 1.5,
+            scale: 2,
             useCORS: true,
             letterRendering: true,
             allowTaint: false,
-            backgroundColor: '#ffffff',
-            logging: false,
-            width: 794,
-            height: undefined,
-            scrollX: 0,
-            scrollY: 0,
-            windowWidth: 794,
-            windowHeight: window.innerHeight
+            backgroundColor: '#FFFFFF'
           },
           jsPDF: {
-            unit: 'pt',
+            unit: 'mm',
             format: 'a4',
-            orientation: 'portrait',
-            compress: true,
-            precision: 2
+            orientation: 'portrait'
           },
           pagebreak: {
             mode: ['avoid-all', 'css'],
-            before: '.page-break-before',
-            after: '.page-break-after',
-            avoid: ['.el-card', '.timeline-content']
+            avoid: ['.el-card', '.el-timeline-item']
           }
         };
 
         // 生成PDF
-        await html2pdf().set(opt).from(processedElement).save();
-
+        await html2pdf().set(opt).from(clonedElement).save();
         this.$message.success('PDF导出成功');
-
-        // 记录操作日志
-        this.operationRecords.unshift({
-          id: Date.now(),
-          operationType: '导出PDF',
-          description: `导出预约详情PDF文件: ${filename}`,
-          operatorName: '用户',
-          operationTime: new Date().toISOString()
-        });
 
       } catch (error) {
         console.error('PDF导出失败:', error);
@@ -651,224 +666,6 @@ export default {
       } finally {
         this.exporting = false;
       }
-    },
-
-    /**
-     * 预处理DOM元素用于PDF导出
-     */
-    preprocessElementForPDF(element) {
-      // 克隆元素避免影响原始页面
-      const clonedElement = element.cloneNode(true);
-
-      // 添加PDF导出样式类
-      clonedElement.className += ' pdf-export-container';
-
-      // 移除不需要的元素
-      const elementsToRemove = [
-        '.pdf-exclude',
-        '.el-button',
-        '.action-buttons',
-        '.header-actions'
-      ];
-
-      elementsToRemove.forEach(selector => {
-        const elements = clonedElement.querySelectorAll(selector);
-        elements.forEach(el => el.remove());
-      });
-
-      // 调整布局 - 将所有内容放在单列中
-      const rows = clonedElement.querySelectorAll('.el-row');
-      rows.forEach(row => {
-        const cols = row.querySelectorAll('.el-col');
-        cols.forEach(col => {
-          col.style.width = '100%';
-          col.style.maxWidth = '100%';
-          col.style.flex = '0 0 100%';
-        });
-      });
-
-      // 调整样式
-      this.adjustStylesForPDF(clonedElement);
-
-      return clonedElement;
-    },
-
-    /**
-     * 调整PDF导出样式
-     */
-    adjustStylesForPDF(element) {
-      const style = document.createElement('style');
-      style.textContent = `
-        .pdf-export-container {
-          font-family: 'Microsoft YaHei', Arial, sans-serif;
-          font-size: 12px;
-          line-height: 1.4;
-          color: #333;
-          background: #fff;
-          padding: 15px;
-          width: 100%;
-        }
-
-        .pdf-export-container .pdf-only {
-          display: block !important;
-        }
-
-        .pdf-export-container .pdf-exclude {
-          display: none !important;
-        }
-
-        .pdf-export-container .el-card {
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          margin-bottom: 20px;
-          box-shadow: none;
-          width: 100%;
-        }
-
-        .pdf-export-container .el-card__header {
-          background: #f8f9fa;
-          border-bottom: 1px solid #ddd;
-          padding: 12px 16px;
-          font-weight: 600;
-        }
-
-        .pdf-export-container .el-card__body {
-          padding: 12px;
-        }
-
-        .pdf-export-container .el-card {
-          margin-bottom: 15px; // 从20px改为15px，减少卡片间距
-        }
-
-        /* 表格样式优化 */
-        .pdf-export-container .el-descriptions__table {
-          width: 100% !important;
-          border-collapse: collapse;
-          table-layout: fixed;
-        }
-
-        .pdf-export-container .el-descriptions__label {
-          background: #f8f9fa;
-          font-weight: 600;
-          padding: 8px 12px;
-          border: 1px solid #ddd;
-          width: 150px !important;
-          min-width: 120px;
-          vertical-align: top;
-          word-wrap: break-word;
-          font-size: 11px;
-        }
-
-        .pdf-export-container .el-descriptions__content {
-          padding: 12px 16px;
-          border: 1px solid #ddd;
-          vertical-align: top;
-          word-wrap: break-word;
-          font-size: 12px;
-        }
-
-        /* 双列布局调整 */
-        .pdf-export-container .el-descriptions--column-2 .el-descriptions__label {
-          width: 100px !important;
-        }
-
-        .pdf-export-container .el-descriptions--column-2 .el-descriptions__content {
-          width: calc(50% - 100px) !important;
-        }
-
-        /* 单列布局调整 */
-        .pdf-export-container .el-descriptions--column-1 .el-descriptions__label {
-          width: 120px !important;
-        }
-
-        .pdf-export-container .el-descriptions--column-1 .el-descriptions__content {
-          width: calc(100% - 120px) !important;
-        }
-
-        .pdf-export-container .el-tag {
-          display: inline-block;
-          padding: 4px 8px;
-          border-radius: 3px;
-          font-size: 12px;
-          border: 1px solid #ddd;
-          background: #f0f0f0;
-        }
-
-        .pdf-export-container .page-break-before {
-          page-break-before: always;
-          height: 0;
-        }
-
-        .pdf-export-container .page-break-after {
-          page-break-after: always;
-          height: 0;
-        }
-
-        .pdf-export-container .timeline-content {
-          padding: 12px 16px;
-          background-color: #f8f9fa;
-          border-radius: 4px;
-          margin-bottom: 12px;
-          width: 100%;
-          box-sizing: border-box;
-        }
-
-        /* 时间线样式调整 */
-        .pdf-export-container .el-timeline {
-          padding-left: 20px;
-        }
-
-        .pdf-export-container .el-timeline-item__timestamp {
-          font-size: 12px;
-          color: #666;
-          margin-bottom: 8px;
-        }
-
-        /* 强制表格宽度 */
-        .pdf-export-container .el-row {
-          width: 100% !important;
-        }
-
-        .pdf-export-container .el-col {
-          width: 100% !important;
-          max-width: 100% !important;
-        }
-
-        /* 图标样式调整 */
-        .pdf-export-container .el-icon {
-          display: inline-block;
-          margin-right: 6px;
-          vertical-align: middle;
-        }
-
-        /* 文本样式调整 */
-        .pdf-export-container .el-text {
-          display: inline-block;
-          vertical-align: middle;
-        }
-
-        /* 时间线内容样式 */
-        .pdf-export-container .timeline-content .operation-type {
-          font-weight: 600;
-          color: #333;
-          margin-bottom: 4px;
-        }
-
-        .pdf-export-container .timeline-content .operation-desc {
-          color: #666;
-          font-size: 13px;
-          margin-bottom: 4px;
-        }
-
-        .pdf-export-container .timeline-content .operator {
-          color: #999;
-          font-size: 12px;
-          display: flex;
-          align-items: center;
-        }
-      `;
-
-      element.appendChild(style);
     },
 
     getStatusTagType(status) {
@@ -1023,6 +820,7 @@ export default {
 .info-card {
   border-radius: 8px;
   border: 1px solid var(--el-border-color-light);
+  margin-bottom: 20px;
 
   :deep(.el-card__header) {
     border-bottom: 1px dashed var(--el-border-color-light);
@@ -1065,6 +863,7 @@ export default {
 .action-buttons {
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
 .timeline-content {
@@ -1106,77 +905,39 @@ export default {
   }
 }
 
-// PDF专用样式
+/* PDF相关样式 */
 .pdf-only {
-  display: none; // 页面中隐藏
-}
-
-.pdf-exclude {
-  // 用于标记不需要导出到PDF的元素
+  display: none;
 }
 
 .pdf-header {
-  margin-bottom: 30px;
+  text-align: center;
+  margin-bottom: 20px;
 
   h1 {
-    color: #409EFF;
-    font-size: 24px;
-    font-weight: 600;
-    text-align: center;
-    margin-bottom: 20px;
+    color: var(--el-color-primary);
+    font-size: 20px;
+    margin-bottom: 5px;
+  }
+
+  .pdf-meta {
+    color: var(--el-text-color-secondary);
+    font-size: 14px;
   }
 }
 
-// 分页控制
-.page-break-before {
-  page-break-before: always;
-  height: 0;
-}
-
-.page-break-after {
-  page-break-after: always;
-  height: 0;
-}
-
-// 当元素用于PDF导出时的特殊样式
-.pdf-export-container {
+@media print {
   .pdf-only {
-    display: block !important; // PDF中显示
+    display: block !important;
   }
 
   .pdf-exclude {
-    display: none !important; // PDF中隐藏
+    display: none !important;
   }
 
-  .page-break-before {
-    display: block !important;
+  .el-card {
+    page-break-inside: avoid;
   }
-
-  .page-break-after {
-    display: block !important;
-  }
-}
-
-:deep(.el-descriptions__header) {
-  margin-bottom: 16px;
-}
-
-:deep(.el-descriptions__title) {
-  font-size: 15px;
-}
-
-:deep(.el-descriptions__label) {
-  font-weight: 500;
-  color: var(--el-text-color-secondary);
-}
-
-:deep(.el-descriptions__content) {
-  color: var(--el-text-color-primary);
-}
-
-:deep(.el-timeline-item__timestamp) {
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
 }
 
 @media (max-width: 1200px) {
