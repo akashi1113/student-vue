@@ -18,16 +18,28 @@
           <el-icon v-if="experiment.status === 0"><Warning /></el-icon>
           {{ getStatusText(experiment.status) }}
         </span>
+        <span class="approval-status" :class="'approval-status-' + approvalStatus">
+          {{ getApprovalStatusText(approvalStatus) }}
+        </span>
+
       </div>
     </div>
 
     <div class="card-actions">
-      <el-button
-          type="primary"
-          @click="handleStartExperiment"
-          :disabled="experiment.status !== 1"
+      <!-- <el-button 
+        type="primary" 
+        @click="handleBook"
+        :disabled="!isBookable"
       >
         去实验
+      </el-button>
+      <el-button @click="viewDetails">查看详情</el-button> -->
+      <el-button 
+        type="primary" 
+        @click="handleBook"
+        :disabled="canStartExperiment"
+      >
+        {{ getButtonText() }}
       </el-button>
       <el-button @click="viewDetails">查看详情</el-button>
     </div>
@@ -39,29 +51,39 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Timer, CircleCheck, Warning } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { useExperimentStore } from '@/store/experiment'
+import { ref } from 'vue'
+import { getPublishedExperiments } from '@/api/experiment'
+import ExperimentConducting from '@/views/experiment/ExperimentConducting.vue'
+
 
 export default {
   name: 'ExperimentCard',
   components: {
     Timer,
     CircleCheck,
-    Warning
+    Warning,
+    ExperimentConducting
   },
   props: {
     experiment: {
       type: Object,
       required: true,
       validator: (value) => {
-        return value.id && value.name && value.status !== undefined
+        console.log('Card接收的experiment:', value)
+        return 'id' in value && 'name' in value
       }
     },
     bookingId: {
       type: Number,
-      default: null
+      required: false
     }
   },
   setup(props) {
     const router = useRouter()
+    const experimentStore = useExperimentStore()
+    const experiments = ref([])
+
 
     const subjects = [
       { value: 'c++', label: 'C++' },
@@ -76,6 +98,41 @@ export default {
       2: '已满额',
       0: '已预约',
       3: '已关闭'
+    }
+
+    const approvalStatusTextMap = {
+      0: '待审批',
+      1: '审批中',
+      2: '已批准',
+      3: '已拒绝'
+    }
+
+    const approvalStatus = computed(() => {
+      console.log('当前实验对象:', props.experiment); // 调试日志
+      console.log('approval_status值:', props.experiment.approval_status);
+      return props.experiment.approval_status ?? 0
+    })
+
+    // 计算是否可预约
+    const isBookable = computed(() => {
+      return props.experiment.status === 1 && approvalStatus.value === 2
+    })
+
+    // 计算是否可以开始实验（已批准且已预约）
+    const canStartExperiment = computed(() => {
+      return props.experiment.status === 0 && approvalStatus.value === 2
+    })
+
+    // 获取按钮文本
+    const getButtonText = () => {
+      if (props.experiment.status === 0) {
+        return approvalStatus.value === 2 ? '去实验' : '已预约'
+      }
+      return '去实验'
+    }
+
+    const getApprovalStatusText = (status) => {
+      return approvalStatusTextMap[status] || '未知审批状态'
     }
 
     const getSubjectName = (value) => {
@@ -99,19 +156,17 @@ export default {
     })
 
     const viewDetails = () => {
-      if (!props.experiment?.id) {
-        ElMessage.error('无效的实验ID')
-        return
-      }
-
+      console.log(props.experiment.id)
       router.push({
-        name: 'ExperimentDetail',
-        params: {
+        name: 'ExperimentDetail', 
+        params: { 
+
           id: props.experiment.id
         }
       }).catch(err => {
         console.error('路由跳转失败:', err)
         ElMessage.error('无法跳转到详情页')
+
       })
     }
 
@@ -139,12 +194,59 @@ export default {
       })
     }
 
+    const handleBook = () => {
+      // router.push({
+      //     name: 'ExperimentConducting',
+      //     params: { 
+      //       experimentId: props.experiment.id 
+      //     }
+      //   }).catch(err => {
+      //     console.error('路由跳转失败:', err)
+      //     ElMessage.error('无法跳转到实验界面')
+      //   })
+      if (props.experiment.approval_status === 2) {
+        // 已预约且已批准，可以开始实验
+        router.push({
+          name: 'ExperimentConducting',
+          params: { 
+            experimentId: props.experiment.id 
+          }
+        }).catch(err => {
+          console.error('路由跳转失败:', err)
+          ElMessage.error('无法跳转到实验界面')
+        })
+      } else if (props.experiment.status === 1 && props.experiment.approval_status === 2) {
+        // 可预约状态，跳转到预约页面
+        router.push({
+          name: 'ExperimentBooking',
+          params: { 
+            id: props.experiment.id 
+          },
+          query: {
+            from: router.currentRoute.value.fullPath
+          }
+        }).catch(err => {
+          console.error('路由跳转失败:', err)
+          ElMessage.error('无法跳转到预约页面')
+        })
+      } else {
+        ElMessage.warning(`实验状态不可用 (状态:${props.experiment.status}, 审批:${props.experiment.approval_status})`)
+      }
+    }
+
     return {
       getSubjectName,
       getStatusText,
+      getApprovalStatusText,
       statusTagType,
       viewDetails,
+      handleBook,
+      approvalStatus,
+      isBookable,
+      canStartExperiment,
+      getButtonText,
       handleStartExperiment
+
     }
   }
 }
@@ -251,5 +353,25 @@ export default {
 .el-button.is-disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.approval-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.approval-status-0 {
+  color: #e6a23c; /* 待审批 - 黄色 */
+}
+.approval-status-1 {
+  color: #409eff; /* 审批中 - 蓝色 */
+}
+.approval-status-2 {
+  color: #67c23a; /* 已批准 - 绿色 */
+}
+.approval-status-3 {
+  color: #f56c6c; /* 已拒绝 - 红色 */
 }
 </style>

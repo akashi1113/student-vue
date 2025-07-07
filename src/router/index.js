@@ -12,6 +12,9 @@ import NoteView from '@/views/NoteView.vue'
 import ExperimentListView from '@/views/experiment/ExperimentListView.vue'
 import ExperimentConducting from '@/views/experiment/ExperimentConducting.vue'
 import ReportView from '@/views/experiment/ReportView.vue'
+// import ReportGenerator from '@/views/experiment/'
+
+
 
 import StudentHomework from '@/views/homework/student/StudentHomework.vue'
 import TeacherHomework from '@/views/homework/teacher/TeacherHomework.vue'
@@ -370,7 +373,7 @@ const routes = [
   {
     path: '/booking/:id',
     name: 'ExperimentBooking',
-    component: ExperimentBookingView,
+    component: () => import('@/views/experiment/ExperimentBookingView.vue'),
     props: true,
     meta: {
       title: '预约实验',
@@ -388,6 +391,13 @@ const routes = [
     }
   },
   {
+    path: '/experiment/conducting/:experimentId',
+    name: 'ExperimentConducting',
+    component: ExperimentConducting,
+    props: true,
+    meta: { title: '实验操作' }
+  },
+  {
     path: '/audit/report',
     name: 'AuditReport',
     component: () => import('@/views/audit/AuditReport.vue'),
@@ -396,6 +406,56 @@ const routes = [
       requiresAuth: false
     }
   },
+  // {
+  //   path: '/reports/generate/:recordId',
+  //   name: 'ReportGenerator',
+  //   component: ReportGenerator,
+  //   props: true
+  // }
+  // 添加教师端路由
+{
+  path: '/teacher/experimentList',
+  name: 'TeacherExperimentList',
+  component: () => import('@/views/experiment/Teacher_ExperimentList.vue'),
+  meta: {
+    title: '实验管理',
+    requiresAuth: true,
+    roles: ['TEACHER', 'ADMIN']
+  }
+},
+{
+  path: '/teacher/experiment/:id/template',
+  name: 'ExperimentTemplate',
+  component: () => import('@/views/experiment/ExperimentTemplate.vue'),
+  meta: {
+    title: '实验模板管理',
+    requiresAuth: true,
+    roles: ['TEACHER', 'ADMIN']
+  }
+},
+{
+  path: '/time-slot/:id',
+  name: 'TimeSlotManagement-experiment',
+  component: () => import('@/views/experiment/TimeSlotManagement.vue'),
+  props: true,
+  meta: {
+    requiresAuth: true,
+    roles: ['TEACHER', 'ADMIN']
+  }
+},
+
+
+{
+  path: '/teacher/experiment/approvals',
+  name: 'BookingApproval',
+  component: () => import('@/views/experiment/BookingApproval.vue'),
+  meta: {
+    title: '预约审批',
+    requiresAuth: true,
+    roles: ['TEACHER', 'ADMIN']
+  }
+},
+
   {
     path: '/ai/recommendation-history',
     name: 'RecommendationHistory',
@@ -450,6 +510,8 @@ function hasPermission(requiredRoles, userRole) {
   }
   return requiredRoles.includes(userRole)
 }
+
+
 
 // 合并路由守卫逻辑
 // router.beforeEach((to, from, next) => {

@@ -1,10 +1,10 @@
 // src/utils/request.js
 import axios from 'axios';
-import { ElMessage } from 'element-plus'
-import router from '../router'
+import { ElMessage } from 'element-plus';
+import router from '../router';
 
 // 两种请求方式并存，可以通过不同导出名使用
-const BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080'
+const BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080';
 
 // ==================== Axios 实例 ====================
 const axiosInstance = axios.create({
@@ -36,28 +36,23 @@ axiosInstance.interceptors.request.use(config => {
 
 // ==================== Fetch 封装 ====================
 function fetchRequest(options) {
-  const { url, method = 'GET', data, params, responseType } = options
+  const { url, method = 'GET', data, params, responseType } = options;
   
   // 构建完整URL
-  let fullUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`
+  let fullUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`;
   
   // 添加查询参数
   if (params) {
-    const searchParams = new URLSearchParams()
+    const searchParams = new URLSearchParams();
     Object.keys(params).forEach(key => {
       if (params[key] !== undefined && params[key] !== '') {
-        searchParams.append(key, params[key])
+        searchParams.append(key, params[key]);
       }
-    })
-    const queryString = searchParams.toString()
+    });
+    const queryString = searchParams.toString();
     if (queryString) {
-      fullUrl += `?${queryString}`
-      
-      // 添加调试日志，仅在查询审计报表时显示
-      if (url.includes('/api/audit/report')) {
-        console.log('发送到API的完整URL:', fullUrl)
-        console.log('完整的请求参数:', params)
-      }
+
+      fullUrl += `?${queryString}`;
     }
   }
   
@@ -68,7 +63,7 @@ function fetchRequest(options) {
       'Content-Type': 'application/json',
     },
     credentials: 'include' // 支持跨域携带cookie，用于session认证
-  }
+  };
   
   // 自动加token
   const token = localStorage.getItem('token')
@@ -79,89 +74,125 @@ function fetchRequest(options) {
   // 处理FormData（用于登录等接口）
   if (data instanceof FormData) {
     // 删除Content-Type，让浏览器自动设置
-    delete config.headers['Content-Type']
-    config.body = data
+    delete config.headers['Content-Type'];
+    config.body = data;
   } else if (data && (method.toUpperCase() === 'POST' || method.toUpperCase() === 'PUT')) {
-    config.body = JSON.stringify(data)
+    config.body = JSON.stringify(data);
   }
   
   // 发送请求
   return fetch(fullUrl, config)
-    .then(response => {
+    .then(async response => {
       if (!response.ok) {
         // 处理HTTP错误状态
         if (response.status === 401) {
-          ElMessage.error('未授权，请重新登录')
-          router.push('/login')
+          ElMessage.error('未授权，请重新登录');
+          router.push('/login');
         } else if (response.status === 403) {
-          ElMessage.error('拒绝访问')
+          ElMessage.error('拒绝访问');
         } else if (response.status === 404) {
-          ElMessage.error('请求地址出错')
+          ElMessage.error('请求地址出错');
         } else if (response.status >= 500) {
-          ElMessage.error('服务器内部错误')
+          ElMessage.error('服务器内部错误');
         }
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      // 新增：如果需要blob，直接返回blob
+      
+      // 检查响应内容类型和内容长度
+      const contentType = response.headers.get('content-type');
+      const contentLength = response.headers.get('content-length');
+      
+      // 如果是blob类型直接返回
       if (responseType === 'blob') {
-        return response.blob()
+        return response.blob();
       }
-      return response.json()
+      
+      // 如果响应可能为空
+      if (!contentType || !contentType.includes('application/json') || 
+          (contentLength && parseInt(contentLength) === 0)) {
+        return { success: true, message: '操作成功', data: null };
+      }
+      
+      try {
+        const data = await response.json();
+        return data;
+      } catch (e) {
+        console.warn('JSON解析失败，返回空响应', e);
+        return { success: true, message: '操作成功', data: null };
+      }
     })
     .then(data => {
-      // 🔥 适配新的API响应格式
+      // 适配API响应格式
       if (data && typeof data.success !== 'undefined') {
         // 新的ApiResponse格式
         if (data.success) {
-          // 成功时返回兼容格式，保持组件代码不变
           return {
             code: 200,
-            message: data.message,
+            message: data.message || '操作成功',
             data: data.data
-          }
+          };
         } else {
           // 失败时显示错误信息并抛出错误
-          ElMessage.error(data.message || '请求失败')
-          const error = new Error(data.message || '请求失败')
-          error.errorCode = data.errorCode
-          error.apiResponse = data
-          throw error
+          const errorMsg = data.message || '请求失败';
+          ElMessage.error(errorMsg);
+          const error = new Error(errorMsg);
+          error.errorCode = data.errorCode;
+          error.apiResponse = data;
+          throw error;
         }
       } else if (data && typeof data.code !== 'undefined') {
-        // 兼容旧的Result格式（如果还有的话）
+        // 兼容旧的Result格式
         if (data.code === 200) {
-          return data
+          return data;
         } else {
           // 处理业务错误
-          ElMessage.error(data.message || '操作失败')
+          ElMessage.error(data.message || '操作失败');
           
           // 401未授权，跳转到登录页
           if (data.code === 401) {
-            router.push('/login')
+            router.push('/login');
           }
           
-          const error = new Error(data.message || '请求失败')
-          error.code = data.code
-          error.apiResponse = data
-          throw error
+          const error = new Error(data.message || '请求失败');
+          error.code = data.code;
+          error.apiResponse = data;
+          throw error;
         }
       } else {
         // 直接返回原始数据（用于其他可能的响应格式）
-        return data
+        return data || { code: 200, message: '操作成功', data: null };
       }
     })
     .catch(error => {
-      console.error('Request failed:', error)
-      // 网络错误等情况
-      if (!error.apiResponse && !error.message.includes('HTTP error!')) {
-        ElMessage.error('网络错误，请检查网络连接')
+      console.error('Request failed:', error);
+      
+      let errorMsg = error.message;
+      
+      // 特殊处理JSON解析错误
+      if (error.message.includes('Failed to execute \'json\' on \'Response\'')) {
+        errorMsg = '服务器返回了无效的响应格式';
       }
-      throw error
-    })
+      // 处理网络错误
+      else if (!error.apiResponse && !error.message.includes('HTTP error!')) {
+        errorMsg = '网络错误，请检查网络连接';
+      }
+      
+      // 显示错误消息
+      if (errorMsg !== error.message) {
+        ElMessage.error(errorMsg);
+      }
+      
+      // 包装错误对象
+      const wrappedError = new Error(errorMsg);
+      wrappedError.originalError = error;
+      wrappedError.apiResponse = error.apiResponse;
+      
+      throw wrappedError;
+    });
 }
 
 // 导出两种请求方式
 export {
   axiosInstance as axiosRequest,
   fetchRequest as default
-}
+};
