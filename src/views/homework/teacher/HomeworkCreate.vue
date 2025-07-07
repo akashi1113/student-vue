@@ -258,7 +258,6 @@ export default {
         title: '',
         description: '',
         courseId: '',
-        teacherId: 2, // 默认教师ID
         homeworkType: 'MIXED',
         totalScore: 100,
         startTime: '',
@@ -278,9 +277,12 @@ export default {
     this.loadDraft();
   },
   methods: {
+    getToken() {
+      return localStorage.getItem('token')
+    },
     async loadCourses() {
       try {
-        const response = await homeworkApi.getCoursesByTeacher(this.homework.teacherId);
+        const response = await homeworkApi.getCoursesByTeacher(this.getToken());
         if (response.data.success) {
           this.courseList = response.data.data;
         }
@@ -427,7 +429,7 @@ export default {
           questions: processedQuestions
         };
 
-        const response = await homeworkApi.createHomework(createData);
+        const response = await homeworkApi.createHomework(createData,this.getToken());
         if (response.data.success) {
           // 清除草稿
           const draftKey = `homework_create_draft_${this.homework.teacherId}`;

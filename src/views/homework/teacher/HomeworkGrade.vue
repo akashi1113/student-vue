@@ -131,6 +131,9 @@ export default {
     this.loadDraft();
   },
   methods: {
+    getToken() {
+      return localStorage.getItem('token')
+    },
     async loadData() {
       this.loading = true;
       try {
@@ -255,7 +258,7 @@ export default {
           teacherId: this.teacherId
         };
 
-        const response = await homeworkApi.gradeHomework(this.submissionId, gradeData);
+        const response = await homeworkApi.gradeHomework(this.submissionId, gradeData,this.getToken());
         if (response.data.success) {
           // 清除草稿
           const draftKey = `grade_draft_${this.submissionId}`;
