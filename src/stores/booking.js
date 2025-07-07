@@ -34,23 +34,15 @@ export const useBookingStore = defineStore('booking', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await apiCall()
-            // 安全地处理响应数据
-            let data = []
-            if (response && response.data) {
-                if (response.data.success && Array.isArray(response.data.data)) {
-                    data = response.data.data
-                } else if (Array.isArray(response.data)) {
-                    data = response.data
-                } else if (response.data.data) {
-                    data = response.data.data
-                }
-            }
+            const data = await apiCall()
+            console.log('API处理后的数据:', data)
 
             if (successCallback) {
                 successCallback(data)
             }
-            return response
+
+            // 返回包装格式以保持兼容性
+            return { data: data }
         } catch (err) {
             error.value = err.message || '请求失败'
             console.error('API请求错误:', err)
@@ -161,7 +153,7 @@ export const useBookingStore = defineStore('booking', () => {
             // 更新本地状态
             notifications.value.forEach(notification => {
                 if (notificationIds.includes(notification.id)) {
-                    notification.sendStatus = 'read'
+                    notification.sendStatus = 'READ'
                     notification.readTime = new Date().toISOString()
                 }
             })

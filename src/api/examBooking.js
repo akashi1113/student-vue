@@ -316,12 +316,35 @@ const ExamBookingService = {
      * @private
      */
     _handleResponse(response) {
-        if (response.data && response.data.success) {
-            return response.data.data;
-        } else {
-            const errorMsg = response.data?.message || '请求失败';
-            throw new Error(errorMsg);
+        console.log('Handling response:', response);
+
+        // 检查响应是否存在
+        if (!response) {
+            throw new Error('响应为空');
         }
+
+        // 检查响应数据
+        if (!response.data) {
+            throw new Error('响应数据为空');
+        }
+
+        // 如果是标准的 ApiResponse 格式
+        if (response.data.success !== undefined) {
+            if (response.data.success) {
+                return response.data.data || [];
+            } else {
+                const errorMsg = response.data.message || '请求失败';
+                throw new Error(errorMsg);
+            }
+        }
+
+        // 如果直接是数据数组
+        if (Array.isArray(response.data)) {
+            return response.data;
+        }
+
+        // 其他情况返回响应数据
+        return response.data;
     }
 };
 

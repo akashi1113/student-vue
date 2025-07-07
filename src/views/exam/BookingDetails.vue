@@ -385,16 +385,43 @@ export default {
     }
   },
   methods: {
+    // 添加获取token的方法
+    getToken() {
+      return localStorage.getItem('token') || sessionStorage.getItem('token')
+    },
+
+    // 检查认证状态
+    checkAuth() {
+      const token = this.getToken()
+      if (!token) {
+        this.$message.error('请先登录')
+        this.$router.push('/login')
+        return false
+      }
+      return true
+    },
     async loadBookingDetails() {
+      // 检查认证状态
+      if (!this.checkAuth()) return
+
       this.loading = true;
       this.error = null;
+
       try {
         const bookingId = this.$route.params.bookingId;
+        const token = this.getToken(); // 获取token
+
+        console.log('加载预约详情，ID:', bookingId, 'Token:', token ? '存在' : '不存在');
+
         const response = await examBookingApi.getBookingDetails(bookingId);
 
-        if (response.data && response.data.success && response.data.data) {
-          this.booking = response.data.data;
-          this.operationRecords = response.data.data.operationRecords || [
+        console.log('预约详情响应:', response);
+
+        if (response) {
+          this.booking = response;
+
+          // 处理操作记录
+          this.operationRecords = this.booking.operationRecords || [
             {
               id: 1,
               operationType: '创建预约',
@@ -421,15 +448,25 @@ export default {
         console.error('Error loading booking details:', error);
         this.error = '加载预约详情失败: ' + (error.message || '请稍后重试');
         this.$message.error(this.error);
+
+        // 如果是认证错误，跳转到登录页
+        if (error.response?.status === 401) {
+          this.$message.error('登录已过期，请重新登录');
+          this.$router.push('/login');
+        }
       } finally {
         this.loading = false;
       }
     },
 
     async confirmBooking() {
+      if (!this.checkAuth()) return
+
       this.confirming = true;
       try {
-        await examBookingApi.confirmBooking(this.booking.bookingId);
+        const token = this.getToken();
+        await examBookingApi.confirmBooking(this.booking.bookingId, token);
+
         this.booking.bookingStatus = 'CONFIRMED';
         this.operationRecords.unshift({
           id: Date.now(),
@@ -442,6 +479,11 @@ export default {
       } catch (error) {
         console.error('Confirm booking failed:', error);
         this.$message.error('确认预约失败: ' + (error.message || error));
+
+        if (error.response?.status === 401) {
+          this.$message.error('登录已过期，请重新登录');
+          this.$router.push('/login');
+        }
       } finally {
         this.confirming = false;
       }
@@ -453,6 +495,8 @@ export default {
     },
 
     async submitCancel() {
+      if (!this.checkAuth()) return
+
       if (!this.cancelForm.reason.trim()) {
         this.$message.warning('请输入取消原因');
         return;
@@ -460,12 +504,13 @@ export default {
 
       this.cancelling = true;
       try {
+        const token = this.getToken();
         const cancelData = {
           userId: this.booking.userId,
           cancelReason: this.cancelForm.reason
         };
 
-        await examBookingApi.cancelBooking(this.booking.bookingId, cancelData);
+        await examBookingApi.cancelBooking(this.booking.bookingId, cancelData, token);
 
         this.booking.bookingStatus = 'CANCELLED';
         this.booking.cancelReason = this.cancelForm.reason;
@@ -483,13 +528,46 @@ export default {
       } catch (error) {
         console.error('Cancel booking failed:', error);
         this.$message.error('取消预约失败: ' + (error.message || error));
+
+        if (error.response?.status === 401) {
+          this.$message.error('登录已过期，请重新登录');
+          this.$router.push('/login');
+        }
       } finally {
         this.cancelling = false;
       }
     },
 
-    checkIn() {
-      this.$message.success('签到功能待实现');
+    async checkIn() {
+      if (!this.checkAuth()) return
+
+      try {
+        const token = this.getToken();
+        const checkInData = {
+          bookingId: this.booking.bookingId,
+          checkInTime: new Date().toISOString()
+        };
+
+        await examBookingApi.checkIn(this.booking.bookingId, checkInData, token);
+
+        this.operationRecords.unshift({
+          id: Date.now(),
+          operationType: '签到',
+          description: '用户签到成功',
+          operatorName: '用户',
+          operationTime: new Date().toISOString()
+        });
+
+        this.$message.success('签到成功');
+      } catch (error) {
+        console.error('Check in failed:', error);
+        this.$message.error('签到失败: ' + (error.message || error));
+
+        if (error.response?.status === 401) {
+          this.$message.error('登录已过期，请重新登录');
+          this.$router.push('/login');
+        }
+      }
     },
 
     editBooking() {

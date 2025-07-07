@@ -53,7 +53,7 @@
               :key="notification.id"
               class="notification-item"
               :class="{
-              'unread': notification.sendStatus !== 'read',
+              'unread': notification.sendStatus !== 'READ',
               'selected': selectedNotifications.includes(notification.id)
             }"
               @click="handleNotificationClick(notification)"
@@ -71,7 +71,7 @@
                 <div class="notification-title">
                   <span class="title-text">{{ notification.title }}</span>
                   <el-tag
-                      v-if="notification.sendStatus !== 'read'"
+                      v-if="notification.sendStatus !== 'READ'"
                       type="danger"
                       size="small"
                       effect="plain"
@@ -102,7 +102,7 @@
 
             <div class="notification-actions">
               <el-button
-                  v-if="notification.sendStatus !== 'read'"
+                  v-if="notification.sendStatus !== 'READ'"
                   size="small"
                   @click.stop="markAsRead(notification.id)"
               >
@@ -222,16 +222,32 @@ export default {
     },
 
     async loadNotifications() {
+      console.log('[Load] Starting to load notifications...')
       if (!this.checkAuth()) return
 
       this.loading = true
       try {
+        console.log('[API] Calling fetchUserNotifications...')
         await this.bookingStore.fetchUserNotifications()
+
+        // 添加详细的数据日志
+        console.group('[Data] Notification Data:')
+        console.log('Raw notifications:', this.bookingStore.notifications)
+        console.log('Processed notifications:', this.notifications)
+        console.log('Unread count:', this.unreadCount)
+        console.groupEnd()
+
+        if (this.notifications.length === 0) {
+          console.warn('[Data] Notifications array is empty')
+        } else {
+          console.log(`[Data] Loaded ${this.notifications.length} notifications`)
+        }
       } catch (error) {
-        this.$message.error('加载通知失败: ' + (error.message || '请稍后重试'))
-        console.error('加载通知失败:', error)
+        console.error('[API Error] Failed to load notifications:', error)
+        this.handleApiError(error, '加载通知')
       } finally {
         this.loading = false
+        console.log('[Load] Finished loading notifications')
       }
     },
 
@@ -244,7 +260,7 @@ export default {
       this.detailDialogVisible = true
 
       // 如果是未读通知，自动标记为已读
-      if (notification.sendStatus !== 'read') {
+      if (notification.sendStatus !== 'READ') {
         this.markAsRead(notification.id)
       }
     },
@@ -256,8 +272,7 @@ export default {
         await this.bookingStore.markAsRead(notificationId)
         this.$message.success('已标记为已读')
       } catch (error) {
-        this.$message.error('标记已读失败: ' + (error.message || '请稍后重试'))
-        console.error('标记已读失败:', error)
+        this.handleApiError(error, '标记已读')
       }
     },
 
@@ -276,8 +291,7 @@ export default {
         this.selectAll = false
         this.$message.success('批量标记成功')
       } catch (error) {
-        this.$message.error('批量标记失败: ' + (error.message || '请稍后重试'))
-        console.error('批量标记失败:', error)
+        this.handleApiError(error, '批量标记')
       } finally {
         this.batchReading = false
       }
@@ -297,8 +311,7 @@ export default {
         await this.bookingStore.batchMarkAsRead(unreadIds)
         this.$message.success('全部标记为已读')
       } catch (error) {
-        this.$message.error('标记失败: ' + (error.message || '请稍后重试'))
-        console.error('标记失败:', error)
+        this.handleApiError(error, '标记全部已读')
       } finally {
         this.markingAll = false
       }
@@ -306,6 +319,22 @@ export default {
 
     viewRelatedBooking(bookingId) {
       this.$router.push(`/exam-booking/details/${bookingId}`)
+    },
+
+    // 统一处理API错误
+    handleApiError(error, action = '操作') {
+      console.error(`${action}失败:`, error)
+
+      let errorMessage = error.response?.data?.message ||
+          error.message ||
+          `${action}失败，请稍后重试`
+
+      if (error.response?.status === 401) {
+        errorMessage = '登录已过期，请重新登录'
+        this.$router.push('/login')
+      }
+
+      this.$message.error(errorMessage)
     },
 
     getNotificationTypeText(type) {
