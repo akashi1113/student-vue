@@ -235,11 +235,14 @@ export default {
     };
   },
   methods: {
+    getToken() {
+      return localStorage.getItem('token')
+    },
     async loadExamList() {
       try {
         const response = await examApi.getAllExams();
         console.log('考试列表响应:', response); // 添加调试日志
-        this.examList = response.data.data || [];
+        this.examList = response || [];
       } catch (error) {
         this.$message.error('加载考试列表失败: ' + (error.message || ''));
       }
@@ -250,7 +253,7 @@ export default {
       this.loading = true;
       try {
         const response = await examBookingApi.getTimeSlots(this.selectedExam);
-        this.timeSlots = response.data.data || [];
+        this.timeSlots = response || [];
       } catch (error) {
         this.$message.error('加载时间段失败: ' + (error.message || ''));
       } finally {
@@ -313,7 +316,7 @@ export default {
             examId: this.selectedExam,
             createdBy: 5
           };
-          await examBookingApi.updateTimeSlot(this.form.id, formData);
+          await examBookingApi.updateTimeSlot(this.form.id, formData,this.getToken());
           this.$message.success('更新成功');
         } else {
           // 创建时排除 id 字段
@@ -324,7 +327,7 @@ export default {
             createdBy: 5
           };
           console.log('创建数据:', createData);
-          await examBookingApi.createTimeSlot(createData);
+          await examBookingApi.createTimeSlot(createData,this.getToken());
           this.$message.success('创建成功');
         }
 

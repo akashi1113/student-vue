@@ -123,18 +123,6 @@
           </template>
         </el-table-column>
       </el-table>
-
-      <div class="pagination">
-        <el-pagination
-            v-model:current-page="pagination.currentPage"
-            v-model:page-size="pagination.pageSize"
-            :page-sizes="[10, 20, 50, 100]"
-            :total="pagination.total"
-            layout="total, sizes, prev, pager, next, jumper"
-            @size-change="loadBookings"
-            @current-change="loadBookings"
-        />
-      </div>
     </div>
 
     <!-- 取消预约对话框 -->
