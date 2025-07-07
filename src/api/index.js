@@ -29,12 +29,12 @@ api.interceptors.request.use(
 // 响应拦截器
 api.interceptors.response.use(
     response => {
-        const { data } = response
-        if (data.success) {
-            return data.data
+        const res = response.data;
+        if (res.success === true) { // 严格布尔判断
+            return res; // 返回完整响应对象
         } else {
-            ElMessage.error(data.message || '请求失败')
-            return Promise.reject(new Error(data.message))
+            ElMessage.error(res.message || '操作失败');
+            return Promise.reject(new Error(res.message));
         }
     },
     error => {
