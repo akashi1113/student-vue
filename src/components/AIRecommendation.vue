@@ -305,28 +305,38 @@ export default {
 }
 
 .recommendation-entry {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  padding: 20px;
+  background: #e6f0fa;
+  border-radius: 10px;
+  padding: 16px 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+  transition: background 0.2s;
+  border: 1.5px solid #409eff;
+  box-shadow: none;
 }
 
 .recommendation-entry:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+  background: #d0e7fa;
+  border-color: #337ecc;
 }
 
 .entry-content {
   display: flex;
   align-items: center;
-  color: white;
+  color: #337ecc;
 }
 
 .entry-icon {
-  font-size: 24px;
-  margin-right: 15px;
+  font-size: 28px;
+  margin-right: 18px;
+  color: #409eff;
+  background: #fff;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(64,158,255,0.08);
 }
 
 .entry-text {
@@ -334,20 +344,24 @@ export default {
 }
 
 .entry-text h3 {
-  margin: 0 0 5px 0;
+  margin: 0 0 2px 0;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 500;
+  color: #337ecc;
 }
 
 .entry-text p {
   margin: 0;
-  opacity: 0.9;
-  font-size: 14px;
+  opacity: 0.85;
+  font-size: 13px;
+  color: #337ecc;
 }
 
 .entry-arrow {
-  font-size: 18px;
-  opacity: 0.8;
+  font-size: 20px;
+  opacity: 1;
+  color: #409eff;
+  margin-left: 8px;
 }
 
 .dialog-header-actions {

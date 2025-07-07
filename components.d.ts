@@ -14,6 +14,7 @@ declare module 'vue' {
     BookingCard: typeof import('./src/components/exam/BookingCard.vue')['default']
     CategoryFilter: typeof import('./src/components/CategoryFilter.vue')['default']
     ConfirmDialog: typeof import('./src/components/common/ConfirmDialog.vue')['default']
+    DogAssistant: typeof import('./src/components/DogAssistant.vue')['default']
     DrawingCanvas: typeof import('./src/components/DrawingCanvas.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
     ElAvatar: typeof import('element-plus/es')['ElAvatar']

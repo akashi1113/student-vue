@@ -83,7 +83,7 @@
                   </div>
                 </td>
                 <td>
-                  {{ item.duration ? Math.round(item.duration / 60) : 0 }} 分钟
+                  {{ item.progress ? Math.round(item.progress / 60) : 0 }} 分钟
                 </td>
                 <td>{{ formatDate(item.lastStudyTime) }}</td>
               </tr>
@@ -181,7 +181,7 @@
       </div>
       <!-- 学习时间分布 -->
       <div class="progress-section">
-        <h2>⏰ 学习时间分布</h2>
+        <h2> 学习时间分布</h2>
         <div class="time-distribution-container">
           <div class="time-card morning">
             <div class="time-icon">🌅</div>
@@ -214,7 +214,7 @@
       <!-- AI学习建议 -->
       <div class="suggestion-section">
         <div class="section-header">
-          <h2>🤖 AI学习建议</h2>
+          <h2> AI学习建议</h2>
           <button @click="generateSuggestions" :disabled="!hasData" class="refresh-btn">
             刷新建议
           </button>
@@ -239,7 +239,7 @@
       <!-- 导出学习报告 -->
       <div class="report-section">
         <div class="section-header">
-          <h2>📄 学习报告</h2>
+          <h2> 学习报告</h2>
           <button @click="generateReport" :disabled="!hasData" class="export-btn">
             导出PDF报告
           </button>
@@ -252,18 +252,19 @@
 
     <!-- 空状态 -->
     <div v-else-if="!loading && !hasData" class="empty-state">
-      <div class="empty-icon">📊</div>
+      <div class="empty-icon"></div>
       <h3>暂无数据</h3>
       <p>您暂无相关学习记录，请先开始学习</p>
     </div>
 
     <!-- 加载状态 -->
     <div v-else-if="loading" class="loading-state">
-      <div class="loading-icon">⏳</div>
+      <div class="loading-icon"></div>
       <h3>加载中...</h3>
       <p>正在获取您的学习效果数据</p>
     </div>
   </div>
+  <DogAssistant />
 </template>
 
 <script>
@@ -275,12 +276,14 @@ import {
   getMyChartData
 } from '../../api/gradeAnalysis'
 import { isAuthenticated, getUserId } from '../../utils/auth'
-  import { getAILearningSuggestions } from '../../api/aiSuggestions'
+import { getAILearningSuggestions } from '../../api/aiSuggestions'
 import jsPDF from 'jspdf'
 import request from '../../utils/request'
+import DogAssistant from '@/components/DogAssistant.vue'
 
 export default {
   name: 'LearningEvaluation',
+  components: { DogAssistant },
   data() {
     return {
       timePeriod: 'all',
@@ -368,12 +371,11 @@ export default {
           name: '成绩',
           type: 'bar',
           data: scores,
-          itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#667eea' },
-              { offset: 1, color: '#764ba2' }
-            ])
-          }
+          itemStyle: { color: '#409eff' },
+          barStyle: { color: '#409eff' },
+          lineStyle: { color: '#409eff' },
+          areaStyle: { color: '#66b1ff' },
+          emphasis: { itemStyle: { color: '#66b1ff' } },
         }]
       }
     },
@@ -430,13 +432,9 @@ export default {
           smooth: true,
           symbol: 'circle',
           symbolSize: 8,
-          lineStyle: {
-            color: '#667eea',
-            width: 3
-          },
-          itemStyle: {
-            color: '#764ba2'
-          }
+          lineStyle: { color: '#409eff', width: 3 },
+          itemStyle: { color: '#409eff' },
+          areaStyle: { color: '#66b1ff' },
         }]
       }
     },
@@ -500,24 +498,15 @@ export default {
             smooth: true,
             symbol: 'circle',
             symbolSize: 8,
-            lineStyle: {
-              color: '#36b37e',
-              width: 3
-            },
-            itemStyle: {
-              color: '#36b37e'
-            }
+            lineStyle: { color: '#409eff', width: 3 },
+            itemStyle: { color: '#409eff' },
           },
           {
             name: '平均分',
             type: 'line',
             data: new Array(scores.length).fill(avgLine),
-            lineStyle: {
-              color: '#ff6b6b',
-              type: 'dashed',
-              width: 2
-            },
-            symbol: 'none',
+            lineStyle: { color: '#66b1ff', type: 'dashed', width: 2 },
+            itemStyle: { color: '#66b1ff' },
             tooltip: {
               show: false
             }
@@ -559,15 +548,14 @@ export default {
             name: '能力评分',
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(102,126,234,0.4)' },
-                { offset: 0.5, color: 'rgba(102,126,234,0.25)' },
-                { offset: 1, color: 'rgba(118,75,162,0.15)' }
+                { offset: 0, color: 'rgba(64,158,255,0.4)' },
+                { offset: 0.5, color: 'rgba(64,158,255,0.25)' },
+                { offset: 1, color: 'rgba(102,177,255,0.15)' }
               ])
             },
-            lineStyle: {
-              width: 2
-            }
-          }]
+            lineStyle: { color: '#409eff', width: 2 },
+            itemStyle: { color: '#409eff', borderColor: '#fff', borderWidth: 2 },
+          }],
         }]
       }
     },
@@ -765,7 +753,7 @@ export default {
     avgScore = (this.examRecordsTable.records || []).reduce((a, b) => a + (b.score || 0), 0) / ((this.examRecordsTable.records || []).length || 1)
   }
 
-  // 2. 学习投入度：学习时长/标准时长（5小时）
+  // 2. 学习投入度：学习进度/标准时长（5小时）
   let totalStudyTime = this.totalStudyTime / 3600 // 单位小时
   const standardTime = 5
   let investScore = Math.min(100, Math.round((totalStudyTime / standardTime) * 100))
@@ -859,7 +847,7 @@ export default {
             courseTitle: record.course_title || record.courseTitle || '',
             videoTitle: record.video_title || record.videoTitle || '',
             progressPercentage: this.calculateProgress(record),
-            duration: record.duration || 0
+            progress: record.progress || 0
           })) || [],
           examRecords: this.examRecordsTable?.records?.map(record => ({
             examTitle: record.examTitle || '未知考试',
@@ -1108,21 +1096,13 @@ export default {
           // 重要：添加区域填充样式
           areaStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(102,126,234,0.4)' },
-              { offset: 0.5, color: 'rgba(102,126,234,0.25)' },
-              { offset: 1, color: 'rgba(118,75,162,0.15)' }
+              { offset: 0, color: 'rgba(64,158,255,0.4)' },
+              { offset: 0.5, color: 'rgba(64,158,255,0.25)' },
+              { offset: 1, color: 'rgba(102,177,255,0.15)' }
             ])
           },
-          lineStyle: {
-            color: '#667eea',
-            width: 3,
-            type: 'solid'
-          },
-          itemStyle: {
-            color: '#667eea',
-            borderColor: '#fff',
-            borderWidth: 2
-          },
+          lineStyle: { color: '#409eff', width: 2 },
+          itemStyle: { color: '#409eff', borderColor: '#fff', borderWidth: 2 },
           symbol: 'circle',
           symbolSize: 8,
           emphasis: {
@@ -1216,10 +1196,10 @@ export default {
             hasNextPage: (res.data.pageNum || 1) < (res.data.pages || 1)
           }
           
-          // 计算总学习时间，使用后端返回的 duration 字段
+          // 计算总学习时间，使用后端返回的 progress 字段
           this.totalStudyTime = records.reduce((sum, item) => {
-            const duration = item.duration || 0;
-            return sum + duration;
+            const progress = item.progress || 0;
+            return sum + progress;
           }, 0);
           
           console.log('学习记录数据:', {
@@ -1235,11 +1215,12 @@ export default {
               lastStudyTime: record.lastStudyTime,
               study_time: record.study_time,
               studyTime: record.studyTime,
-              duration: record.duration,
+              progress: record.progress,
               study_duration: record.study_duration,
               studyDuration: record.studyDuration
             });
           });
+          console.log('学习记录原始数据:', records[0]);
         } else {
           console.log('获取学习记录失败，使用默认数据');
           // 设置默认的学习记录数据，以便时间分布模块能正常显示
@@ -1292,18 +1273,15 @@ export default {
       if (item.progressPercentage !== undefined) {
         return parseFloat(item.progressPercentage).toFixed(1);
       }
-      
-      // 否则根据progress和duration计算百分比
-      if (item.progress && item.duration && item.duration > 0) {
-        const percentage = (item.progress / item.duration) * 100;
+      // progress 和 videoDuration 计算百分比
+      if (item.progress && item.videoDuration && item.videoDuration > 0) {
+        const percentage = (item.progress / item.videoDuration) * 100;
         return Math.min(100, percentage).toFixed(1);
       }
-      
       // 如果completed字段为true，表示已完成
       if (item.completed === true || item.completed === 1) {
         return '100.0';
       }
-      
       // 如果没有必要的字段，返回0
       return '0.0';
     },
@@ -1385,7 +1363,7 @@ export default {
                     <td style="padding: 10px; border: 1px solid #ddd;">${item.courseTitle || '未知课程'}</td>
                     <td style="padding: 10px; border: 1px solid #ddd;">${item.videoTitle || '未知视频'}</td>
                     <td style="padding: 10px; border: 1px solid #ddd;">${this.calculateProgress(item)}%</td>
-                    <td style="padding: 10px; border: 1px solid #ddd;">${item.duration ? Math.round(item.duration / 60) : 0}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">${item.progress ? Math.round(item.progress / 60) : 0}</td>
                     <td style="padding: 10px; border: 1px solid #ddd;">${this.formatDate(item.lastStudyTime)}</td>
                   </tr>
                 `).join('')}
@@ -1508,10 +1486,10 @@ export default {
         for (const record of records) {
           // 根据后端返回的字段名：lastStudyTime 和 duration
           const studyTimeStr = record.lastStudyTime;
-          const duration = record.duration || 0;
+          const progress = record.progress || 0;
           
-          if (!studyTimeStr || !duration) {
-            console.log('跳过无效记录:', { studyTimeStr, duration });
+          if (!studyTimeStr || !progress) {
+            console.log('跳过无效记录:', { studyTimeStr, progress });
             continue;
           }
           
@@ -1537,7 +1515,7 @@ export default {
             }
             
             if (isInPeriod) {
-              periodStudyTime += duration;
+              periodStudyTime += progress;
               validRecords++;
             }
           } catch (error) {
@@ -1689,72 +1667,73 @@ export default {
 }
 
 .query-panel {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 25px;
-  border-radius: 12px;
+  background: #eaf6ff;
+  padding: 20px;
+  border-radius: 16px;
   margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
-
 .query-row {
   display: flex;
   align-items: center;
   gap: 20px;
   flex-wrap: wrap;
 }
-
 .query-item {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-
 .query-item label {
   font-weight: 500;
+  color: #222;
   white-space: nowrap;
 }
-
-.query-item input,
-.query-item select {
+.query-item input, .query-item select {
   padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  font-size: 15px;
+  height: 38px;
+  box-sizing: border-box;
 }
-
 .query-btn, .reset-btn {
-  padding: 10px 20px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s;
+  font-size: 15px;
+  transition: background-color 0.3s;
 }
-
 .query-btn {
-  background: #4CAF50;
-  color: white;
+  background: #409eff;
+  color: #fff;
 }
-
 .query-btn:hover:not(:disabled) {
-  background: #45a049;
-  transform: translateY(-2px);
+  background: #66b1ff;
 }
-
-.query-btn:disabled {
-  background: #999;
-  cursor: not-allowed;
-}
-
 .reset-btn {
-  background: rgba(255,255,255,0.2);
-  color: white;
-  border: 1px solid rgba(255,255,255,0.3);
+  background: transparent;
+  color: #222;
+  border: 1px solid #409eff;
+  border-radius: 4px;
+  font-size: 15px;
+  padding: 8px 18px;
+  transition: background 0.2s, color 0.2s;
 }
-
 .reset-btn:hover {
-  background: rgba(255,255,255,0.3);
+  background: #409eff;
+  color: #fff;
+}
+.analysis-cards .card-value {
+  color: #409eff;
 }
 
 /* 卡片区域样式 */
@@ -1881,8 +1860,8 @@ export default {
 }
 
 .records-table th {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: #409eff;
+  color: #fff;
   font-weight: 500;
   font-size: 14px;
 }
