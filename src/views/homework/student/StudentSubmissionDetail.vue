@@ -227,10 +227,6 @@ export default {
     homeworkId: {
       type: [String, Number],
       required: true
-    },
-    userId: {
-      type: [String, Number],
-      required: true
     }
   },
   data() {
@@ -255,13 +251,11 @@ export default {
   async mounted() {
     console.log('StudentSubmissionDetail mounted:', {
       homeworkId: this.homeworkId,
-      userId: this.userId
     });
 
-    if (!this.homeworkId || !this.userId) {
+    if (!this.homeworkId) {
       console.error('Missing required props:', {
         homeworkId: this.homeworkId,
-        userId: this.userId
       });
       alert('参数错误，请重试');
       this.$router.go(-1);
@@ -272,29 +266,23 @@ export default {
     await this.checkResubmitPermission();
   },
   methods: {
+    getToken() {
+      return localStorage.getItem('token');
+    },
     async loadData() {
-      if (!this.homeworkId || !this.userId) {
-        console.error('loadData called with missing parameters');
-        return;
-      }
-
+      const token=this.getToken();
       this.loading = true;
       try {
-        console.log('Loading all submissions for:', {
-          homeworkId: this.homeworkId,
-          userId: this.userId
-        });
-
         // 获取所有提交记录
         const submissionsResponse = await homeworkApi.getStudentSubmission(
             this.homeworkId,
-            this.userId
+            token
         );
 
         if (submissionsResponse.data.success && submissionsResponse.data.data.length > 0) {
           this.allSubmissions = submissionsResponse.data.data;
           // 按提交次数倒序排列
-          this.allSubmissions.sort((a, b) => new Date(b.submitTimes) - new Date(a.submitTimes));
+          this.allSubmissions.sort((a, b) => new Date(a.submitTimes) - new Date(b.submitTimes));
 
           // 默认选择最新一次提交
           this.selectedSubmissionIndex = 0;
@@ -342,13 +330,14 @@ export default {
     },
 
     async checkResubmitPermission() {
+      const token=this.getToken();
       if (this.allSubmissions.length === 0) {
         this.canResubmit = false;
         return;
       }
 
       try {
-        const response = await homeworkApi.canResubmit(this.homeworkId, this.userId);
+        const response = await homeworkApi.canResubmit(this.homeworkId,token);
         this.canResubmit = response.data.success && response.data.data;
       } catch (error) {
         console.error('检查重提权限失败:', error);

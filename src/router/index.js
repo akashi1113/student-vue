@@ -13,6 +13,9 @@ import ExperimentListView from '@/views/experiment/ExperimentListView.vue'
 import ExperimentConducting from '@/views/experiment/ExperimentConducting.vue'
 import ReportView from '@/views/experiment/ReportView.vue'
 
+import StudentHomework from '@/views/homework/student/StudentHomework.vue'
+import TeacherHomework from '@/views/homework/teacher/TeacherHomework.vue'
+
 // 动态导入组件
 const Login = () => import('../views/UserLogin.vue')
 const Register = () => import('../views/UserRegister.vue')
@@ -218,14 +221,25 @@ const routes = [
 
   // ============================== 原有路由继续 ==============================
 
-  // 作业系统路由
+  // 学生作业页面
   {
-    path: '/homework',
-    name: 'HomeworkList',
-    component: () => import('@/views/homework/student/HomeworkList.vue'),
+    path: '/student/homework',
+    name: 'StudentHomework',
+    component: StudentHomework,
     meta: {
-      title: '作业列表',
-      requiresAuth: true
+      requiresAuth: true,
+      roles: ['学生'] // 或者 ['STUDENT']，根据你的角色定义
+    }
+  },
+
+  // 教师作业页面
+  {
+    path: '/teacher/homework',
+    name: 'TeacherHomework',
+    component: TeacherHomework,
+    meta: {
+      requiresAuth: true,
+      roles: ['教师'] // 或者 ['TEACHER']，根据你的角色定义
     }
   },
   {
@@ -287,7 +301,7 @@ const routes = [
     }
   },
   {
-    path: '/homework/:homeworkId/submission/student/:userId',
+    path: '/homework/:homeworkId/submission',
     name: 'StudentSubmissionDetail',
     component: () => import('@/views/homework/student/StudentSubmissionDetail.vue'),
     props: true,

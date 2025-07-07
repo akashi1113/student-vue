@@ -373,6 +373,8 @@ export default {
         userData.id = userData.userId
       }
       localStorage.setItem('userInfo', JSON.stringify(userData))
+      localStorage.setItem('role', userData.user.roleDesc)
+      localStorage.setItem('username',userData.user.username)
       const redirect = router.currentRoute.value.query.redirect || '/';
       router.push(redirect)
       console.log('登录返回的数据:', userData)

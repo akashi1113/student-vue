@@ -1,41 +1,32 @@
 <template>
   <div class="homework-list">
     <div class="header">
-      <h1>作业管理</h1>
+      <h1>我的作业</h1>
       <div class="controls">
-        <select v-model="userRole" @change="onRoleChange" class="role-select">
-          <option value="student">学生视图</option>
-          <option value="teacher">教师视图</option>
-        </select>
-        <input
-            v-model="userId"
-            placeholder="用户ID"
-            @change="loadHomework"
-            class="user-input"
-            type="number"
-        />
-        <button
-            v-if="userRole === 'teacher'"
-            @click="$router.push('/homework/create')"
-            class="create-btn"
-        >
-          <span class="icon">+</span> 创建作业
-        </button>
+        <div class="user-info">
+          <span class="user-name">{{ userName || '未登录' }}</span>
+        </div>
       </div>
     </div>
 
-    <div class="homework-tabs" v-if="userRole === 'student'">
+    <div class="homework-tabs">
       <button
           :class="{ active: activeTab === 'available' }"
-          @click="activeTab = 'available'; loadHomework()"
+          @click="switchTab('available')"
       >
-        <span class="tab-icon">📚</span> 可用作业
+        可提交作业
       </button>
       <button
           :class="{ active: activeTab === 'all' }"
-          @click="activeTab = 'all'; loadHomework()"
+          @click="switchTab('all')"
       >
-        <span class="tab-icon">📋</span> 所有作业
+        全部作业
+      </button>
+      <button
+          :class="{ active: activeTab === 'submitted' }"
+          @click="switchTab('submitted')"
+      >
+        已提交作业
       </button>
     </div>
 
@@ -53,12 +44,14 @@
           </span>
         </div>
 
-        <p class="course">
-          <span class="icon">🏫</span> {{ homework.courseTitle }}
-        </p>
-        <p class="teacher">
-          <span class="icon">👨‍🏫</span> {{ homework.teacherName }}
-        </p>
+        <div class="card-meta">
+          <p class="course">
+            {{ homework.courseTitle || '未指定课程' }}
+          </p>
+          <p class="teacher">
+            教师: {{ homework.teacherName || '未知教师' }}
+          </p>
+        </div>
 
         <div class="divider"></div>
 
@@ -67,37 +60,48 @@
         <div class="homework-meta">
           <span class="type">{{ getTypeText(homework.homeworkType) }}</span>
           <span class="score">
-            <span class="icon">💯</span> {{ homework.totalScore }}分
+            总分: {{ homework.totalScore }}分
+          </span>
+          <span v-if="homework.submissionCount > 0" class="submitted">
+            已提交 {{ homework.submissionCount }} 次
           </span>
         </div>
 
         <div class="homework-time">
-          <p>
-            <span class="icon">⏱️</span>
-            <span class="time-label">开始:</span>
+          <div class="time-item">
+            <span class="time-label">开始时间:</span>
             {{ formatDate(homework.startTime) }}
-          </p>
-          <p>
-            <span class="icon">⏰</span>
-            <span class="time-label">截止:</span>
+          </div>
+          <div class="time-item">
+            <span class="time-label">截止时间:</span>
             {{ formatDate(homework.endTime) }}
-          </p>
+          </div>
+          <div v-if="homework.isExpired" class="expired-notice">
+            已过期
+          </div>
         </div>
 
         <div class="homework-actions" @click.stop>
           <button
-              v-if="userRole === 'student'"
+              v-if="canSubmit(homework)"
               @click="submitHomework(homework.id)"
               class="submit-btn"
           >
-            <span class="icon">📤</span> 提交作业
+            {{ homework.submissionCount > 0 ? '重新提交' : '开始作业' }}
           </button>
           <button
-              v-if="userRole === 'teacher'"
-              @click="manageHomework(homework.id)"
-              class="manage-btn"
+              v-if="homework.submissionCount > 0"
+              @click="viewSubmissions(homework.id)"
+              class="view-btn"
           >
-            <span class="icon">👀</span> 管理作业
+            查看提交
+          </button>
+          <button
+              v-if="!canSubmit(homework) && homework.submissionCount === 0"
+              class="disabled-btn"
+              disabled
+          >
+            无法提交
           </button>
         </div>
       </div>
@@ -107,15 +111,9 @@
       <div class="spinner"></div>
       <p>加载中...</p>
     </div>
+
     <div v-if="!loading && homeworkList.length === 0" class="empty">
-      <p>🎯 暂无作业数据</p>
-      <button
-          v-if="userRole === 'teacher'"
-          @click="$router.push('/homework/create')"
-          class="empty-create-btn"
-      >
-        创建第一个作业
-      </button>
+      <p>{{ getEmptyMessage() }}</p>
     </div>
   </div>
 </template>
@@ -124,50 +122,116 @@
 import homeworkApi from '@/api/homework';
 
 export default {
-  name: 'HomeworkList',
+  name: 'StudentHomework',
   data() {
     return {
       homeworkList: [],
       loading: false,
-      userRole: 'student',
-      userId: 2,
-      activeTab: 'available'
+      activeTab: 'available',
+      userName: ''
     };
   },
   mounted() {
+    this.initUserInfo();
     this.loadHomework();
   },
   methods: {
+    getToken() {
+      return localStorage.getItem('token');
+    },
+
+    initUserInfo() {
+      this.userName = localStorage.getItem('userName') || localStorage.getItem('username') || '学生';
+    },
+
+    checkAuth() {
+      const token = this.getToken();
+      if (!token) {
+        this.$message.error('请先登录');
+        this.$router.push('/login');
+        return false;
+      }
+      return true;
+    },
+
+    switchTab(tab) {
+      this.activeTab = tab;
+      this.loadHomework();
+    },
+
     async loadHomework() {
+      if (!this.checkAuth()) return;
+
       this.loading = true;
       this.homeworkList = [];
 
       try {
+        const token = this.getToken();
         let response;
-        if (this.userRole === 'student') {
-          if (this.activeTab === 'available') {
-            response = await homeworkApi.getAvailableHomework(this.userId);
-          } else {
-            response = await homeworkApi.getHomeworkByStudent(this.userId);
+
+        if (this.activeTab === 'available') {
+          response = await homeworkApi.getAvailableHomework(token);
+        } else if (this.activeTab === 'all') {
+          response = await homeworkApi.getHomeworkByStudent(token);
+        } else if (this.activeTab === 'submitted') {
+          response = await homeworkApi.getStudentSubmissions(token);
+          if (response.data.success && response.data.data) {
+            this.processSubmissionData(response.data.data);
+            return;
           }
-        } else {
-          response = await homeworkApi.getHomeworkByTeacher(this.userId);
         }
 
-        if (response.data.success) {
-          this.homeworkList = response.data.data;
+        if (response && response.data && response.data.success) {
+          this.homeworkList = response.data.data || [];
+        } else {
+          throw new Error('数据格式错误');
         }
       } catch (error) {
         console.error('加载作业失败:', error);
         this.$message.error('加载作业失败，请稍后重试');
+
+        if (error.response?.status === 401) {
+          this.$message.error('登录已过期，请重新登录');
+          this.$router.push('/login');
+        }
       } finally {
         this.loading = false;
       }
     },
 
-    onRoleChange() {
-      this.userId = this.userRole === 'student' ? 2 : 5;
-      this.loadHomework();
+    processSubmissionData(submissions) {
+      const homeworkMap = new Map();
+
+      submissions.forEach(submission => {
+        if (!homeworkMap.has(submission.homeworkId)) {
+          homeworkMap.set(submission.homeworkId, {
+            id: submission.homeworkId,
+            title: submission.homeworkTitle || '未知作业',
+            courseTitle: submission.courseTitle || '未知课程',
+            teacherName: submission.teacherName || '未知教师',
+            status: submission.homeworkStatus || 'PUBLISHED',
+            description: submission.homeworkDescription || '',
+            homeworkType: submission.homeworkType || 'MIXED',
+            totalScore: submission.totalScore || 0,
+            startTime: submission.startTime,
+            endTime: submission.endTime,
+            submissionCount: 0,
+            submissions: []
+          });
+        }
+
+        const homework = homeworkMap.get(submission.homeworkId);
+        homework.submissionCount++;
+        homework.submissions.push(submission);
+      });
+
+      this.homeworkList = Array.from(homeworkMap.values());
+    },
+
+    canSubmit(homework) {
+      const now = new Date();
+      const endTime = new Date(homework.endTime);
+      return homework.status === 'PUBLISHED' && now <= endTime;
     },
 
     viewHomework(homeworkId) {
@@ -178,15 +242,24 @@ export default {
       this.$router.push(`/homework/${homeworkId}/submit`);
     },
 
-    manageHomework(homeworkId) {
-      this.$router.push(`/homework/${homeworkId}/submissions`);
+    viewSubmissions(homeworkId) {
+      this.$router.push(`/homework/${homeworkId}/submission`);
+    },
+
+    getEmptyMessage() {
+      const messages = {
+        'available': '暂无可提交的作业',
+        'all': '暂无作业',
+        'submitted': '暂无已提交的作业'
+      };
+      return messages[this.activeTab] || '暂无数据';
     },
 
     getTypeText(type) {
       const types = {
-        'SUBJECTIVE': '📝 主观题',
-        'OBJECTIVE': '🔘 客观题',
-        'MIXED': '📚 混合题'
+        'SUBJECTIVE': '主观题',
+        'OBJECTIVE': '客观题',
+        'MIXED': '混合题'
       };
       return types[type] || type;
     },
@@ -214,7 +287,7 @@ export default {
   max-width: 1280px;
   margin: 0 auto;
   padding: 24px 20px;
-  background: #f8f9fa;
+  background: #f8fafc;
   min-height: calc(100vh - 48px);
 }
 
@@ -225,85 +298,27 @@ export default {
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   margin-bottom: 24px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
   align-items: center;
   justify-content: space-between;
+  border-left: 4px solid #3b82f6;
 }
 
 .header h1 {
   margin: 0;
   font-size: 24px;
   font-weight: 600;
-  color: #333;
-  background: linear-gradient(90deg, #007bff, #00b4ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #1e3a8a;
 }
 
-.controls {
+.user-info {
   display: flex;
-  gap: 12px;
   align-items: center;
-  flex-wrap: wrap;
-}
-
-.role-select, .user-input {
-  padding: 10px 14px;
-  border: 1px solid #e0e0e0;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f0f7ff;
   border-radius: 8px;
-  background: white;
-  min-width: 140px;
-  transition: all 0.3s;
   font-size: 14px;
-}
-
-.role-select {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 16px;
-  padding-right: 32px;
-}
-
-.user-input {
-  width: 100px;
-}
-
-.role-select:focus,
-.user-input:focus {
-  border-color: #007bff;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
-}
-
-.create-btn {
-  padding: 10px 16px;
-  background: linear-gradient(135deg, #007bff, #0062cc);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.create-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,123,255,0.2);
-}
-
-.create-btn:active {
-  transform: scale(0.98);
-}
-
-.icon {
-  margin-right: 4px;
+  color: #1e40af;
 }
 
 .homework-tabs {
@@ -324,31 +339,17 @@ export default {
   border-radius: 6px;
   font-weight: 500;
   transition: all 0.3s;
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #666;
+  color: #64748b;
 }
 
 .homework-tabs button.active {
-  background: rgba(0,123,255,0.1);
-  color: #007bff;
-}
-
-.homework-tabs button.active:after {
-  content: '';
-  position: absolute;
-  bottom: -8px;
-  left: 20%;
-  width: 60%;
-  height: 3px;
-  background: #007bff;
-  border-radius: 3px;
+  background: #3b82f6;
+  color: white;
 }
 
 .homework-tabs button:hover {
-  background: rgba(0,123,255,0.05);
+  background: #e0e7ff;
+  color: #1e40af;
 }
 
 .homework-grid {
@@ -364,7 +365,7 @@ export default {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  border: 1px solid #f0f0f0;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -372,8 +373,8 @@ export default {
 
 .homework-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-  border-color: #e0e0e0;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.1);
+  border-color: #bfdbfe;
 }
 
 .card-header {
@@ -385,7 +386,7 @@ export default {
 
 .card-header h3 {
   margin: 0;
-  color: #333;
+  color: #1e3a8a;
   font-size: 18px;
   font-weight: 600;
   line-height: 1.4;
@@ -402,37 +403,39 @@ export default {
 }
 
 .status.draft {
-  background: #fff8e1;
-  color: #ff8f00;
+  background: #e0f2fe;
+  color: #0369a1;
 }
 
 .status.published {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .status.closed {
-  background: #ffebee;
-  color: #c62828;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.card-meta {
+  margin: 8px 0;
 }
 
 .course, .teacher {
-  margin: 6px 0;
-  color: #666;
+  margin: 4px 0;
+  color: #475569;
   font-size: 14px;
-  display: flex;
-  align-items: center;
 }
 
 .divider {
   height: 1px;
-  background: #f0f0f0;
+  background: #f1f5f9;
   margin: 12px 0;
 }
 
 .description {
   margin: 12px 0;
-  color: #666;
+  color: #475569;
   font-size: 14px;
   line-height: 1.6;
   flex-grow: 1;
@@ -450,80 +453,88 @@ export default {
   flex-wrap: wrap;
 }
 
-.type, .score {
+.type, .score, .submitted {
   padding: 6px 12px;
   border-radius: 12px;
   font-size: 13px;
   font-weight: 500;
-  display: flex;
-  align-items: center;
 }
 
 .type {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .score {
-  background: #f3e5f5;
-  color: #7b1fa2;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.submitted {
+  background: #dcfce7;
+  color: #166534;
 }
 
 .homework-time {
-  background: #f8f9fa;
+  background: #f8fafc;
   padding: 12px;
   border-radius: 8px;
   margin: 16px 0;
   font-size: 13px;
 }
 
-.homework-time p {
+.time-item {
   margin: 6px 0;
-  display: flex;
-  align-items: center;
+  color: #475569;
 }
 
 .time-label {
-  margin: 0 6px;
-  color: #888;
-  width: 40px;
+  color: #64748b;
+}
+
+.expired-notice {
+  color: #b91c1c;
+  font-weight: 500;
 }
 
 .homework-actions {
   margin-top: auto;
   display: flex;
+  gap: 8px;
   justify-content: flex-end;
 }
 
-.submit-btn, .manage-btn {
+.submit-btn, .view-btn, .disabled-btn {
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .submit-btn {
-  background: linear-gradient(135deg, #28a745, #218838);
+  background: #3b82f6;
   color: white;
 }
 
-.manage-btn {
-  background: linear-gradient(135deg, #6c757d, #5a6268);
+.submit-btn:hover {
+  background: #2563eb;
+}
+
+.view-btn {
+  background: #60a5fa;
   color: white;
 }
 
-.submit-btn:hover, .manage-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.view-btn:hover {
+  background: #3b82f6;
 }
 
-.submit-btn:active, .manage-btn:active {
-  transform: scale(0.96);
+.disabled-btn {
+  background: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
 }
 
 .loading, .empty {
@@ -540,9 +551,9 @@ export default {
   width: 40px;
   height: 40px;
   margin: 0 auto 16px;
-  border: 4px solid rgba(0,123,255,0.1);
+  border: 4px solid rgba(59, 130, 246, 0.1);
   border-radius: 50%;
-  border-top-color: #007bff;
+  border-top-color: #3b82f6;
   animation: spin 1s ease-in-out infinite;
 }
 
@@ -552,23 +563,8 @@ export default {
 
 .empty p {
   font-size: 16px;
-  color: #666;
-  margin-bottom: 16px;
-}
-
-.empty-create-btn {
-  padding: 10px 20px;
-  background: linear-gradient(135deg, #007bff, #0062cc);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.empty-create-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,123,255,0.2);
+  color: #64748b;
+  margin: 0;
 }
 
 @media (max-width: 768px) {
@@ -576,14 +572,6 @@ export default {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
-  }
-
-  .controls {
-    width: 100%;
-  }
-
-  .role-select, .user-input {
-    width: 100%;
   }
 
   .homework-grid {
@@ -597,6 +585,10 @@ export default {
 
   .homework-tabs button {
     white-space: nowrap;
+  }
+
+  .homework-actions {
+    flex-direction: column;
   }
 }
 

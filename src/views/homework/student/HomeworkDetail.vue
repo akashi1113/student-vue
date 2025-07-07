@@ -211,7 +211,6 @@ export default {
       statistics: null,
       loading: false,
       isTeacher: false,
-      userId: 2, // 实际应用中应从用户状态获取
       canSubmit: false
     };
   },
@@ -224,6 +223,9 @@ export default {
     }
   },
   methods: {
+    getToken() {
+      return localStorage.getItem('token');
+    },
     async loadHomework() {
       this.loading = true;
       try {
@@ -259,10 +261,11 @@ export default {
     },
 
     async checkSubmitPermission() {
+      const token=this.getToken();
       try {
         const [accessResponse, resubmitResponse] = await Promise.all([
-          homeworkApi.checkHomeworkAccess(this.homeworkId, this.userId),
-          homeworkApi.canResubmit(this.homeworkId, this.userId)
+          homeworkApi.checkHomeworkAccess(this.homeworkId, token),
+          homeworkApi.canResubmit(this.homeworkId, token)
         ]);
 
         this.canSubmit = accessResponse.data.success &&
@@ -284,7 +287,7 @@ export default {
     },
 
     viewSubmissions() {
-      this.$router.push(`/homework/${this.homeworkId}/submissions`);
+      this.$router.push(`/homework/${this.homeworkId}/submission`);
     },
 
     async publishHomework() {
@@ -331,7 +334,7 @@ export default {
     },
 
     viewMySubmission() {
-      this.$router.push(`/homework/${this.homeworkId}/submission/student/${this.userId}`);
+      this.$router.push(`/homework/${this.homeworkId}/submission`);
     },
 
     formatDescription(desc) {
