@@ -135,6 +135,16 @@ const routes = [
       requiresAuth: true
     }
   },
+  {
+    path: '/teacher/exams',
+    name: 'TeacherExamManagement',
+    component: () => import('@/views/exam/teacher/ExamManagement.vue'),
+    meta: {
+      title: '考试管理',
+      requiresAuth: true,
+      roles: ['TEACHER', 'ADMIN']
+    }
+  },
 
   // ============================== 考试预约系统路由 ==============================
 

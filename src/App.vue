@@ -62,7 +62,7 @@
 
         <!-- 教师导航项 -->
         <div v-if="isTeacher" class="nav-section">
-          <router-link to="/teacher/exams/create" class="nav-item">
+          <router-link to="/teacher/exams" class="nav-item">
             <el-icon><EditPen /></el-icon>
             <span>考试管理</span>
           </router-link>
@@ -73,10 +73,6 @@
           <router-link to="/analytics" class="nav-item">
             <el-icon><DataAnalysis /></el-icon>
             <span>教学分析</span>
-          </router-link>
-          <router-link to="/audit/report" class="nav-item">
-            <el-icon><Monitor /></el-icon>
-            <span>日志审计</span>
           </router-link>
         </div>
 
