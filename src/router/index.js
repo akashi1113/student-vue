@@ -14,8 +14,7 @@ import ExperimentConducting from '@/views/experiment/ExperimentConducting.vue'
 import ReportView from '@/views/experiment/ReportView.vue'
 // import ReportGenerator from '@/views/experiment/'
 
-
-
+import Home from '../views/Home.vue'
 import StudentHomework from '@/views/homework/student/StudentHomework.vue'
 import TeacherHomework from '@/views/homework/teacher/TeacherHomework.vue'
 
@@ -34,7 +33,11 @@ function isAuthenticated() {
 const routes = [
   {
     path: '/',
-    redirect: '/login',
+    name: 'Home',
+    component: Home,
+    meta: {
+      requiresAuth: true // 需要登录才能访问
+    }
   },
   // 来自index.js的路由
   {
@@ -188,18 +191,6 @@ const routes = [
       roles: ['TEACHER', 'ADMIN']
     }
   },
-
-  // 在现有路由中添加教师考试管理路由
-  // {
-  //   path: '/teacher/exams',
-  //   name: 'TeacherExamManagement',
-  //   component: () => import('@/views/exam/teacher/ExamManagement.vue'),
-  //   meta: {
-  //     title: '考试管理',
-  //     requiresAuth: true,
-  //     roles: ['TEACHER', 'ADMIN']
-  //   }
-  // },
   {
     path: '/teacher/exams/create',
     name: 'ExamCreate',
@@ -313,17 +304,6 @@ const routes = [
       requiresAuth: true
     }
   },
-  {
-    path: '/courses/:courseId/homework',
-    name: 'CourseHomework',
-    component: () => import('@/views/homework/teacher/CourseHomework.vue'),
-    props: true,
-    meta: {
-      title: '课程作业',
-      requiresAuth: true
-    }
-  },
-
   {
     path: '/notes',
     name: 'Notes',
