@@ -44,13 +44,12 @@ function isAuthenticated() {
 
 // 获取用户角色
 function getUserRole() {
-  const userInfo = localStorage.getItem('userInfo')
-  if (userInfo) {
+  const role = localStorage.getItem('role')
+  if (role) {
     try {
-      const user = JSON.parse(userInfo)
-      return user.role || user.userType || 'STUDENT'
+      return role || '学生'
     } catch (e) {
-      return 'STUDENT'
+      return '学生'
     }
   }
   return null
@@ -83,7 +82,7 @@ const routes = [
     meta: {
       title: '智学助手',
       requiresAuth: true,
-      roles: ['STUDENT', 'TEACHER', 'ADMIN'] // 根据需求设置权限
+      roles: ['学生', '教师', '管理员'] // 根据需求设置权限
     }
   },
   // 来自index.js的路由
@@ -189,7 +188,7 @@ const routes = [
     meta: {
       title: '考试管理',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   // 考试预约系统路由
@@ -200,7 +199,7 @@ const routes = [
     meta: {
       title: '我的预约',
       requiresAuth: true,
-      roles: ['STUDENT']
+      roles: ['学生']
     }
   },
   {
@@ -210,7 +209,7 @@ const routes = [
     meta: {
       title: '考试通知',
       requiresAuth: true,
-      roles: ['STUDENT']
+      roles: ['学生']
     }
   },
   {
@@ -221,7 +220,7 @@ const routes = [
     meta: {
       title: '预约详情',
       requiresAuth: true,
-      roles: ['STUDENT']
+      roles: ['学生']
     }
   },
 
@@ -233,7 +232,7 @@ const routes = [
     meta: {
       title: '时间段管理',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -243,7 +242,7 @@ const routes = [
     meta: {
       title: '预约管理',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -253,7 +252,7 @@ const routes = [
     meta: {
       title: '创建考试',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   // {
@@ -264,7 +263,7 @@ const routes = [
   //   meta: {
   //     title: '编辑考试',
   //     requiresAuth: true,
-  //     roles: ['TEACHER', 'ADMIN']
+  //     roles: ['教师', '管理员']
   //   }
   // },
 
@@ -443,7 +442,7 @@ const routes = [
     meta: {
       title: '实验管理',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -453,7 +452,7 @@ const routes = [
     meta: {
       title: '实验模板管理',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -463,7 +462,7 @@ const routes = [
     props: true,
     meta: {
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -473,7 +472,7 @@ const routes = [
     meta: {
       title: '预约审批',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -500,7 +499,7 @@ const routes = [
     component: () => import('@/views/experiment/ReportView.vue'),
     meta: {
       title: '实验报告',
-      roles: ['teacher'],
+      roles: ['教师'],
       requiresAuth: true
     },
     props: true
