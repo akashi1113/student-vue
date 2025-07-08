@@ -106,28 +106,46 @@ const formatTime = (seconds) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-// 获取视频详情
+// 关键修改：确保正确获取和传递学习记录
 const fetchVideoDetail = async (videoId) => {
     try {
-        // ✅ 修改：不再需要用户ID参数
+        loading.value = true;
+
+        // 并行请求视频详情和学习记录
         const [videoResponse, studyRecordResponse] = await Promise.all([
             videoAPI.getVideoDetail(videoId),
-            studyRecordAPI.getStudyRecordForVideo(videoId)
+            studyRecordAPI.getStudyRecordForVideo(videoId) // 确保API调用正确
         ]);
 
+        // 确保正确解析响应（根据实际API响应结构调整）
+        const videoData = videoResponse.data || videoResponse;
+        const recordData = studyRecordResponse.data || studyRecordResponse;
+
+        // 确保学习记录正确赋值
         video.value = {
-            ...videoResponse.data,
-            progress: studyRecordResponse.data?.lastPlaybackPosition || 0,
-            completed: studyRecordResponse.data?.isCompleted || false
+            ...videoData,
+            progress: recordData.lastPlaybackPosition || 0,
+            completed: recordData.isCompleted || false
         };
 
         // 获取相关视频
-        if (videoResponse.data?.courseId) {
-            await fetchRelatedVideos(videoResponse.data.courseId);
+        if (videoData.courseId) {
+            await fetchRelatedVideos(videoData.courseId);
         }
     } catch (error) {
         console.error('获取视频详情失败:', error);
         ElMessage.error('获取视频详情失败: ' + (error.message || '未知错误'));
+
+        // 设置默认值
+        video.value = {
+            id: parseInt(videoId),
+            title: '加载失败',
+            duration: 0,
+            progress: 0,
+            completed: false
+        }
+    } finally {
+        loading.value = false;
     }
 };
 
@@ -135,8 +153,9 @@ const fetchVideoDetail = async (videoId) => {
 const fetchRelatedVideos = async (courseId) => {
     try {
         // ✅ 修改：不再需要用户ID参数
+        console.log(`获取课程${courseId}的相关视频`);
         const response = await videoAPI.getVideosByCourse(courseId);
-        const videos = response.data || [];
+        const videos = response || [];
 
         // 为每个视频加载学习进度
         const videosWithProgress = await Promise.all(

@@ -120,7 +120,8 @@ const postId = Number(route.params.id);
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
 // ✅ 修改：移除硬编码的用户ID，从JWT获取
 // const currentUserId = ref(null);
-const currentUserId = ref(localStorage.getItem('userId') || null);
+const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+const currentUserId = ref(userInfo.user ? userInfo.user.id : null);
 
 // 响应式数据
 const post = ref(null);
