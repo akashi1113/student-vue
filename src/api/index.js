@@ -174,14 +174,13 @@ export const forumAPI = {
     likeComment: (commentId) => api.post(`/post/comments/${commentId}/like`),
     unlikeComment: (commentId) => api.delete(`/post/comments/${commentId}/like`),
 
-    // 管理员功能
-    getPendingPosts: (page = 1, size = 10) =>
-        api.get('/post/admin/pending', { params: { page, size } }),
+    getPendingPosts: (params) =>
+        api.get('/post/admin/pending', { params }),
 
     approvePost: (id) => api.post(`/post/admin/${id}/approve`),
     rejectPost: (id, reason) => api.post(`/post/admin/${id}/reject`, null, { params: { reason } }),
     getPostDetailForAdmin: (id) => api.get(`/post/admin/detail/${id}`),
-    getPendingReports: (page = 1, size = 10) => api.get('/post/admin/reports', { params: { page, size } }),
+    getPendingReports: (params) => api.get('/post/admin/reports', { params }),
     processReportAndDeletePost: (reportId) => api.put(`/post/admin/reports/${reportId}/deletePost`),
     processReportAndKeepPost: (reportId, reasonForKeeping) =>
         api.put(`/post/admin/reports/${reportId}/keepPost`, null, { params: { reasonForKeeping } })
