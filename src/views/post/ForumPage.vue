@@ -156,15 +156,14 @@ const availableCategories = ref([
     { value: '其他话题', label: '其他话题' }
 ]);
 
+// 获取热门帖子
 const fetchHotPosts = async () => {
     try {
-        const count = 5;
-        const response = await forumAPI.getHotPosts(count);
-        // 修正：直接使用 response（假设后端返回的热门帖子结构是 { list: [...] }）
-        hotPosts.value = response.list || [];
+        const count = 5; // 获取5条热门帖子
+        hotPosts.value = await forumAPI.getHotPosts(count);
     } catch (error) {
         console.error("获取热门帖子失败:", error);
-        ElMessage.error('获取热门帖子失败: ' + (error.message || '未知错误'));
+        ElMessage.error('获取热门帖子失败');
     }
 };
 

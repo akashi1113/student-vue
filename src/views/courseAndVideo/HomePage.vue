@@ -48,18 +48,17 @@ const currentPage = ref(1)
 const pageSize = ref(8)
 const total = ref(0)
 
-// 获取课程列表
 const fetchCourses = async () => {
     loading.value = true
     try {
-        // ✅ 修改：不再传递userId，适配API响应格式
         const response = await courseAPI.getCourses(currentPage.value, pageSize.value)
-        courses.value = response.data?.list || []
-        total.value = response.data?.total || 0
+        // 修正：直接使用response的list和total（因为response已经是后端的data字段内容）
+        courses.value = response.list || []
+        total.value = response.total || 0
     } catch (error) {
         console.error('获取课程失败:', error)
         ElMessage.error('获取课程失败: ' + (error.message || '请稍后再试'))
-        courses.value = [] // 清空数据
+        courses.value = []
     } finally {
         loading.value = false
     }
