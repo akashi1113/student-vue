@@ -26,41 +26,26 @@ api.interceptors.request.use(
     error => Promise.reject(error)
 )
 
-// 响应拦截器
+// 响应拦截器 (保持不变)
 api.interceptors.response.use(
     response => {
-        const res = response.data;
-        if (res.success === true) { // 严格布尔判断
-            return res; // 返回完整响应对象
+        const { data } = response
+        if (data.success) {
+            return data.data
         } else {
-            ElMessage.error(res.message || '操作失败');
-            return Promise.reject(new Error(res.message));
+            ElMessage.error(data.message || '请求失败')
+            return Promise.reject(new Error(data.message))
         }
     },
     error => {
         let errorMessage = '网络错误，请稍后再试'
-
         if (error.response) {
-            // 处理 401 未授权错误
-            if (error.response.status === 401) {
-                errorMessage = '用户未登录或会话已过期'
-                // 这里可以添加重定向到登录页的逻辑
-            }
-            // 处理 403 禁止访问错误
-            else if (error.response.status === 403) {
-                errorMessage = '权限不足，禁止访问'
-            }
-            else {
-                errorMessage = error.response.data.message ||
-                    error.response.statusText ||
-                    errorMessage
-            }
+            errorMessage = error.response.data.message || error.response.statusText || errorMessage
         } else if (error.request) {
             errorMessage = '服务器无响应，请检查网络或稍后再试'
         } else {
             errorMessage = error.message
         }
-
         ElMessage.error(errorMessage)
         return Promise.reject(new Error(errorMessage))
     }
@@ -216,48 +201,48 @@ export const notificationAPI = {
     markAllAsRead: () => api.put('/notifications/read/all')
 };
 
-// =====================================
-// 用户相关 API
-// =====================================
-export const userAPI = {
-    login: (username, password) =>
-        api.post('/users/login', null, { params: { username, password } }),
+// // =====================================
+// // 用户相关 API
+// // =====================================
+// export const userAPI = {
+//     login: (username, password) =>
+//         api.post('/users/login', null, { params: { username, password } }),
 
-    loginByCode: (email, code) =>
-        api.post('/users/loginByCode', null, { params: { email, code } }),
+//     loginByCode: (email, code) =>
+//         api.post('/users/loginByCode', null, { params: { email, code } }),
 
-    register: (userDTO) => api.post('/users/register', userDTO),
+//     register: (userDTO) => api.post('/users/register', userDTO),
 
-    sendVerificationCode: (email) => api.post('/users/sendCode', null, { params: { email } }),
+//     sendVerificationCode: (email) => api.post('/users/sendCode', null, { params: { email } }),
 
-    getUserById: (id) => api.get(`/users/${id}`),
+//     getUserById: (id) => api.get(`/users/${id}`),
 
-    updateProfile: (id, username, email, avatarFile, avatarString) => {
-        const formData = new FormData();
-        formData.append('username', username);
-        formData.append('email', email);
-        if (avatarFile) formData.append('avatarFile', avatarFile);
-        if (avatarString) formData.append('avatar', avatarString);
+//     updateProfile: (id, username, email, avatarFile, avatarString) => {
+//         const formData = new FormData();
+//         formData.append('username', username);
+//         formData.append('email', email);
+//         if (avatarFile) formData.append('avatarFile', avatarFile);
+//         if (avatarString) formData.append('avatar', avatarString);
 
-        return api.put(`/users/${id}`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
-    },
+//         return api.put(`/users/${id}`, formData, {
+//             headers: { 'Content-Type': 'multipart/form-data' }
+//         });
+//     },
 
-    changePassword: (oldPassword, newPassword) =>
-        api.put('/users/password', null, { params: { oldPassword, newPassword } }),
+//     changePassword: (oldPassword, newPassword) =>
+//         api.put('/users/password', null, { params: { oldPassword, newPassword } }),
 
-    logout: (token) => api.post('/users/logout', null, { headers: { Authorization: `Bearer ${token}` } }),
+//     logout: (token) => api.post('/users/logout', null, { headers: { Authorization: `Bearer ${token}` } }),
 
-    // 管理员功能
-    listUsers: (page = 1, size = 10) =>
-        api.get('/users/admin/list', { params: { page, size } }),
+//     // 管理员功能
+//     listUsers: (page = 1, size = 10) =>
+//         api.get('/users/admin/list', { params: { page, size } }),
 
-    enableUser: (id) => api.put(`/users/admin/${id}/enable`),
-    disableUser: (id) => api.put(`/users/admin/${id}/disable`),
-    setUserRole: (id, role) => api.put(`/users/admin/${id}/role`, null, { params: { role } }),
-    resetPassword: (id) => api.put(`/users/admin/${id}/password`),
-    forceLogout: (userId) => api.post(`/users/admin/${userId}/forceLogout`)
-};
+//     enableUser: (id) => api.put(`/users/admin/${id}/enable`),
+//     disableUser: (id) => api.put(`/users/admin/${id}/disable`),
+//     setUserRole: (id, role) => api.put(`/users/admin/${id}/role`, null, { params: { role } }),
+//     resetPassword: (id) => api.put(`/users/admin/${id}/password`),
+//     forceLogout: (userId) => api.post(`/users/admin/${userId}/forceLogout`)
+// };
 
 export default api;
