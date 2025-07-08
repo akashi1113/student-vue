@@ -89,8 +89,8 @@ export default {
 
     // 获取用户身份
     const getUserRole = () => {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-      isStudent.value = userInfo.role === '学生'
+      const role=localStorage.getItem('role')
+      isStudent.value = role === '学生'
     }
 
     // 获取token的统一方法

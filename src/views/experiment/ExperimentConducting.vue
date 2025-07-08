@@ -279,15 +279,14 @@ export default {
     },
     // 初始化实验
     async initializeExperiment() {
-      const token=this.getToken();
       try {
         // 开始实验
-        const recordResponse = await experimentApi.startExperiment(this.experimentId, token);
-        this.experimentRecord = recordResponse.data;
+        const recordResponse = await experimentApi.startExperiment(this.experimentId);
+        this.experimentRecord = recordResponse.data.data;
 
         // 获取实验详情
-        const detailResponse = await experimentApi.getExperimentDetail(this.experimentRecord.id);
-        const detail = detailResponse.data;
+        const detailResponse = await experimentApi.getExperimentRecord(this.experimentRecord.id);
+        const detail = detailResponse.data.data;
 
         this.experiment = detail.experiment;
         this.experimentSteps = this.parseSteps(detail.stepRecords);
@@ -407,7 +406,7 @@ export default {
     async refreshCodeHistory() {
       try {
         const response = await experimentApi.getCodeHistory(this.experimentRecord.id);
-        this.codeHistory = response.data;
+        this.codeHistory = response.data.data;
         console.log('刷新后的代码历史:', this.codeHistory.length, '条记录');
       } catch (error) {
         console.error('获取代码历史失败:', error);
@@ -611,7 +610,7 @@ export default {
     async generateReport() {
       try {
         const response = await experimentApi.generateReport(this.experimentRecord.id);
-        this.reportData = response.data;
+        this.reportData = response.data.data;
         this.showReport = true;
 
         // 渲染报告内容
@@ -1065,7 +1064,6 @@ export default {
 </script>
 
 <style scoped>
-/* 原有样式保持不变，新增报告中步骤的样式 */
 .steps-list-report {
   padding-left: 20px;
 }

@@ -206,7 +206,6 @@ const ExamService = {
      */
     _buildAuthHeader(token) {
         const cleanToken = token?.replace('Bearer ', '') || '';
-
         return { Authorization: cleanToken };
     },
 
