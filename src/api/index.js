@@ -156,11 +156,12 @@ export const forumAPI = {
     reportPost: (id, reason) => api.post(`/post/${id}/report`, null, { params: { reason } }),
 
     // 评论与回复
-    getComments: (postId, page = 1, size = 10) =>
-        api.get(`/post/${postId}/comments`, { params: { page, size } }),
+    // 修改评论相关 API
+    getComments: (postId, params) =>
+        api.get(`/post/${postId}/comments`, { params }),
 
-    getCommentReplies: (parentCommentId, page = 1, size = 10) =>
-        api.get(`/post/comments/${parentCommentId}/replies`, { params: { page, size } }),
+    getCommentReplies: (parentCommentId, params) =>
+        api.get(`/post/comments/${parentCommentId}/replies`, { params }),
 
     createComment: (postId, commentData) =>
         api.post(`/post/${postId}/comments`, commentData),

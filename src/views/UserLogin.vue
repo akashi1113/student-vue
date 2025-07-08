@@ -364,22 +364,30 @@ export default {
     // 登录成功处理
     const loginSuccess = (userData) => {
       ElMessage.success('登录成功！')
-      // 存储token，确保后续接口能自动带token
       if (userData.token) {
         localStorage.setItem('token', userData.token.trim())
       }
-      // 兼容后端返回userId但没有id的情况
       if (userData.userId && !userData.id) {
         userData.id = userData.userId
       }
       localStorage.setItem('userInfo', JSON.stringify(userData))
-      localStorage.setItem('role', userData.user.roleDesc)
-      localStorage.setItem('username',userData.user.username)
-      // 1. 检查是否为管理员
-      if (userData.user.roleDesc === '管理员') {
-        // 如果是管理员，直接跳转到后台管理页面，忽略任何 redirect 参数
+      // 兼容性判断和默认值
+      let roleDesc = '学生';
+      let username = '';
+      if (userData.user) {
+        roleDesc = userData.user.roleDesc || '学生';
+        username = userData.user.username || '';
+      } else {
+        roleDesc = userData.roleDesc || userData.role || '学生';
+        username = userData.username || '';
+      }
+      localStorage.setItem('role', roleDesc)
+      localStorage.setItem('username', username)
+      // 兼容'管理员'和'admin'两种角色
+      if (roleDesc === 'admin' || roleDesc === '管理员') {
         router.push('/admin')
         console.log('管理员登录，强制跳转到 /admin')
+        return
       }
       const redirect = router.currentRoute.value.query.redirect || '/';
       router.push(redirect)

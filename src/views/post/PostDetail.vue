@@ -44,12 +44,21 @@
                 <el-button type="primary" :plain="!post.isLiked" @click="toggleLikePost" :icon="Pointer">
                     {{ post.isLiked ? '已赞' : '点赞' }} ({{ post.likeCount }})
                 </el-button>
+                <!-- 修复后的操作按钮区域 -->
                 <div class="post-operations">
-                    <template v-if="post.userId === currentUserId">
+                    <!-- 自己的帖子：显示编辑和删除 -->
+                    <template v-if="currentUserId && Number(post.userId) === Number(currentUserId)">
                         <el-button type="primary" link @click="openEditPostDialog">编辑</el-button>
                         <el-button type="danger" link @click="handleDeletePost">删除</el-button>
                     </template>
-                    <el-button v-else type="warning" link @click="handleReportPost">举报</el-button>
+                    <!-- 别人的帖子：只显示举报 -->
+                    <template v-else-if="currentUserId">
+                        <el-button type="warning" link @click="handleReportPost">举报</el-button>
+                    </template>
+                    <!-- 未登录：不显示任何操作按钮 -->
+                    <template v-else>
+                        <el-button type="info" link @click="toLogin">请登录后操作</el-button>
+                    </template>
                 </div>
             </div>
         </el-card>
@@ -110,7 +119,8 @@ const router = useRouter();
 const postId = Number(route.params.id);
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
 // ✅ 修改：移除硬编码的用户ID，从JWT获取
-const currentUserId = ref(null);
+// const currentUserId = ref(null);
+const currentUserId = ref(localStorage.getItem('userId') || null);
 
 // 响应式数据
 const post = ref(null);
@@ -127,26 +137,27 @@ const availableCategories = ref([
     { value: '其他话题', label: '其他话题' }
 ]);
 
-// 获取帖子详情
 const fetchPostDetail = async () => {
     try {
         const isAdminMode = route.query.mode === 'admin';
         let result = null;
 
         if (isAdminMode) {
-            // ✅ 修改：适配API响应格式
-            const response = await forumAPI.getPostDetailForAdmin(postId);
-            result = response.data;
+            // ✅ 直接使用API返回的结果（已经是data.data）
+            result = await forumAPI.getPostDetailForAdmin(postId);
         } else {
-            // ✅ 修改：适配API响应格式
-            const response = await forumAPI.getPostDetail(postId);
-            result = response.data;
+            // ✅ 直接使用API返回的结果
+            result = await forumAPI.getPostDetail(postId);
         }
+
+        console.log("API返回的数据:", result); // 调试
 
         if (result) {
             post.value = result;
-            // ✅ 修改：从响应中获取当前用户ID
-            currentUserId.value = result.currentUserId || null;
+            // // ✅ 根据数据结构，用户ID应该是result.userId
+            // currentUserId.value = result.userId || null;
+
+
         } else {
             throw new Error("帖子数据为空或加载失败");
         }
@@ -156,13 +167,14 @@ const fetchPostDetail = async () => {
     }
 };
 
-// 获取评论列表
 const fetchComments = async () => {
     try {
         const params = { page: 1, size: 100 };
-        // ✅ 修改：适配API响应格式
-        const response = await forumAPI.getComments(postId, params);
-        comments.value = (response.data?.list || []).map(c => ({ ...c, children: [] }));
+        // ✅ 直接使用响应结果（已经是data.data）
+        const result = await forumAPI.getComments(postId, params);
+
+        // ✅ 直接访问 result.list
+        comments.value = (result?.list || []).map(c => ({ ...c, children: [] }));
     } catch (error) {
         console.error('获取评论列表失败:', error);
         ElMessage.error('获取评论列表失败: ' + (error.message || '未知错误'));
@@ -309,12 +321,12 @@ const handleReply = ({ parentId, content }) => {
     submitComment(parentId, content);
 };
 
-// 加载回复
 const loadReplies = async (parentComment) => {
     try {
         const params = { page: 1, size: 100 };
-        const response = await forumAPI.getCommentReplies(parentComment.id, params);
-        parentComment.children = response.data?.list || [];
+        // ✅ 直接使用结果
+        const result = await forumAPI.getCommentReplies(parentComment.id, params);
+        parentComment.children = result?.list || [];
     } catch (error) {
         ElMessage.error('加载回复失败: ' + (error.message || '未知错误'));
     }

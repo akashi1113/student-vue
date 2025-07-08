@@ -19,7 +19,7 @@ import Home from '../views/Home.vue'
 import StudentHomework from '@/views/homework/student/StudentHomework.vue'
 import TeacherHomework from '@/views/homework/teacher/TeacherHomework.vue'
 import ChatInterface from '@/views/ChatInterface.vue';
-
+import Profile from '../views/Profile.vue'
 
 // 动态导入组件
 const Login = () => import('../views/UserLogin.vue')
@@ -72,6 +72,16 @@ const routes = [
     meta: {
       requiresAuth: true,
       title: '首页'
+    }
+  },
+  // 新增个人中心路由
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: Profile,
+    meta: {
+      title: '个人中心',
+      requiresAuth: true
     }
   },
   // 添加智能聊天路由
