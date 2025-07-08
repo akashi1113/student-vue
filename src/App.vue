@@ -54,6 +54,10 @@
             <el-icon><TrendCharts /></el-icon>
             <span>学习评价</span>
           </router-link>
+          <router-link to="/ai-chat" class="nav-item">
+            <el-icon><ChatLineRound /></el-icon>
+            <span>智学助手</span>
+          </router-link>
           <router-link to="/ai/recommendation-history" class="nav-item">
             <el-icon><Cpu /></el-icon>
             <span>AI推荐</span>
@@ -270,7 +274,6 @@ export default {
 </script>
 
 <style scoped>
-/* 你的样式保持不变 */
 #app {
   font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -282,7 +285,7 @@ export default {
   background-color: #f5f7fa;
 }
 
-/* 顶部导航栏样式 */
+/* 顶部导航栏样式 - 蓝色渐变 */
 .top-navbar {
   height: 60px;
   background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%);
@@ -344,7 +347,7 @@ export default {
   overflow: hidden;
 }
 
-/* 侧边栏样式 */
+/* 侧边栏样式 - 统一蓝色主题 */
 .sidebar {
   width: 220px;
   background-color: white;
@@ -367,6 +370,7 @@ export default {
   font-weight: 600;
 }
 
+/* 统一导航项样式 */
 .nav-item {
   display: flex;
   align-items: center;
@@ -393,6 +397,12 @@ export default {
 .nav-item .el-icon {
   margin-right: 8px;
   font-size: 18px;
+  color: #5a5e66;
+}
+
+.nav-item:hover .el-icon,
+.nav-item.router-link-exact-active .el-icon {
+  color: #1976d2;
 }
 
 /* 主内容区样式 */

@@ -17,6 +17,8 @@ import ReportView from '@/views/experiment/ReportView.vue'
 import Home from '../views/Home.vue'
 import StudentHomework from '@/views/homework/student/StudentHomework.vue'
 import TeacherHomework from '@/views/homework/teacher/TeacherHomework.vue'
+import ChatInterface from '@/views/ChatInterface.vue';
+
 
 // 动态导入组件
 const Login = () => import('../views/UserLogin.vue')
@@ -37,6 +39,17 @@ const routes = [
     component: Home,
     meta: {
       requiresAuth: true // 需要登录才能访问
+    }
+  },
+  // 添加智能聊天路由
+  {
+    path: '/ai-chat',
+    name: 'AIChat',
+    component: ChatInterface,
+    meta: {
+      title: '智学助手',
+      requiresAuth: true,
+      roles: ['STUDENT', 'TEACHER', 'ADMIN'] // 根据需求设置权限
     }
   },
   // 来自index.js的路由
