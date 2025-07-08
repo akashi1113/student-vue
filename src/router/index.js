@@ -7,13 +7,19 @@ import KnowledgeList from '../views/KnowledgeList.vue'
 import KnowledgeDetail from '../views/KnowledgeDetail.vue'
 import ScoreManage from '../views/score_manage/ScoreManage.vue'
 import LearningEvaluation from '../views/learning_evaluation/LearningEvaluation.vue'
+
+// 来自index.ts的组件
 import NoteView from '@/views/NoteView.vue'
 import ExperimentListView from '@/views/experiment/ExperimentListView.vue'
 import ExperimentConducting from '@/views/experiment/ExperimentConducting.vue'
 import ReportView from '@/views/experiment/ReportView.vue'
+// import ReportGenerator from '@/views/experiment/'
+
 import Home from '../views/Home.vue'
 import StudentHomework from '@/views/homework/student/StudentHomework.vue'
 import TeacherHomework from '@/views/homework/teacher/TeacherHomework.vue'
+import ChatInterface from '@/views/ChatInterface.vue';
+
 
 // 动态导入组件
 const Login = () => import('../views/UserLogin.vue')
@@ -38,13 +44,12 @@ function isAuthenticated() {
 
 // 获取用户角色
 function getUserRole() {
-  const userInfo = localStorage.getItem('userInfo')
-  if (userInfo) {
+  const role = localStorage.getItem('role')
+  if (role) {
     try {
-      const user = JSON.parse(userInfo)
-      return user.role || user.userType || 'STUDENT'
+      return role || '学生'
     } catch (e) {
-      return 'STUDENT'
+      return '学生'
     }
   }
   return null
@@ -69,6 +74,18 @@ const routes = [
       title: '首页'
     }
   },
+  // 添加智能聊天路由
+  {
+    path: '/ai-chat',
+    name: 'AIChat',
+    component: ChatInterface,
+    meta: {
+      title: '智学助手',
+      requiresAuth: true,
+      roles: ['学生', '教师', '管理员'] // 根据需求设置权限
+    }
+  },
+  // 来自index.js的路由
   {
     path: '/login',
     name: 'UserLogin',
@@ -123,6 +140,7 @@ const routes = [
       requiresAuth: true
     }
   },
+
   // 考试系统路由
   {
     path: '/exams',
@@ -170,7 +188,7 @@ const routes = [
     meta: {
       title: '考试管理',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   // 考试预约系统路由
@@ -181,7 +199,7 @@ const routes = [
     meta: {
       title: '我的预约',
       requiresAuth: true,
-      roles: ['STUDENT']
+      roles: ['学生']
     }
   },
   {
@@ -191,7 +209,7 @@ const routes = [
     meta: {
       title: '考试通知',
       requiresAuth: true,
-      roles: ['STUDENT']
+      roles: ['学生']
     }
   },
   {
@@ -202,9 +220,10 @@ const routes = [
     meta: {
       title: '预约详情',
       requiresAuth: true,
-      roles: ['STUDENT']
+      roles: ['学生']
     }
   },
+
   // 教师/管理员端考试预约管理路由
   {
     path: '/exam-booking/time-slot-management',
@@ -213,7 +232,7 @@ const routes = [
     meta: {
       title: '时间段管理',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -223,7 +242,7 @@ const routes = [
     meta: {
       title: '预约管理',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -233,9 +252,23 @@ const routes = [
     meta: {
       title: '创建考试',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
+  // {
+  //   path: '/teacher/exams/:examId/edit',
+  //   name: 'ExamEdit',
+  //   component: () => import('@/views/exam/teacher/ExamEdit.vue'),
+  //   props: true,
+  //   meta: {
+  //     title: '编辑考试',
+  //     requiresAuth: true,
+  //     roles: ['教师', '管理员']
+  //   }
+  // },
+
+  // ============================== 原有路由继续 ==============================
+
   // 学生作业页面
   {
     path: '/student/homework',
@@ -246,6 +279,7 @@ const routes = [
       roles: ['学生']
     }
   },
+
   // 教师作业页面
   {
     path: '/teacher/homework',
@@ -333,6 +367,7 @@ const routes = [
       requiresAuth: true
     }
   },
+
   {
     path: '/experimentList',
     name: 'ExperimentList',
@@ -384,6 +419,13 @@ const routes = [
     }
   },
   {
+    path: '/experiment/conducting/:experimentId',
+    name: 'ExperimentConducting',
+    component: ExperimentConducting,
+    props: true,
+    meta: { title: '实验操作' }
+  },
+  {
     path: '/audit/report',
     name: 'AuditReport',
     component: () => import('@/views/audit/AuditReport.vue'),
@@ -400,7 +442,7 @@ const routes = [
     meta: {
       title: '实验管理',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -410,7 +452,7 @@ const routes = [
     meta: {
       title: '实验模板管理',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -420,7 +462,7 @@ const routes = [
     props: true,
     meta: {
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -430,7 +472,7 @@ const routes = [
     meta: {
       title: '预约审批',
       requiresAuth: true,
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['教师', '管理员']
     }
   },
   {
@@ -457,7 +499,7 @@ const routes = [
     component: () => import('@/views/experiment/ReportView.vue'),
     meta: {
       title: '实验报告',
-      roles: ['teacher'],
+      roles: ['教师'],
       requiresAuth: true
     },
     props: true
@@ -531,6 +573,7 @@ const routes = [
       requiresAuth: true
     }
   }
+
 ]
 
 const router = createRouter({

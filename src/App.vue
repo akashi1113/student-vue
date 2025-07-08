@@ -6,11 +6,6 @@
         <h1>CSU学生管理系统</h1>
       </div>
 
-      <!-- 新增社区论坛导航（所有人可见） -->
-      <div class="nav-links">
-        <router-link to="/forum" class="nav-item">社区论坛</router-link>
-      </div>
-
       <div class="user-profile" v-if="currentUser">
         <!-- 新增通知功能 -->
         <el-badge :value="unreadCount" :max="99" class="notification-badge" :hidden="unreadCount === 0">
@@ -40,17 +35,28 @@
     <!-- 侧边导航栏 -->
     <div class="app-container">
       <div class="sidebar" v-if="isAuthenticated">
-
-        <!-- 学生导航项 -->
-        <div v-if="isStudent" class="nav-section">
-          <!-- 新增课程首页 -->
-          <router-link to="/course-home" class="nav-item">
+        <!-- 通用导航项 - 所有人可见 -->
+        <div class="nav-section">
+          <router-link to="/" class="nav-item">
             <el-icon>
               <HomeFilled />
             </el-icon>
-            <span>课程首页</span>
+            <span>首页</span>
           </router-link>
+          <router-link to="/forum" class="nav-item">
+            <el-icon><ChatLineSquare /></el-icon>
+            <span>社区论坛</span>
+          </router-link>
+        </div>
 
+        <!-- 学生导航项 -->
+        <div v-if="isStudent" class="nav-section">
+          <router-link to="/course-home" class="nav-item">
+            <el-icon>
+              <School />
+            </el-icon>
+            <span>课程中心</span>
+          </router-link>
           <router-link to="/knowledge" class="nav-item">
             <el-icon>
               <Collection />
@@ -87,6 +93,10 @@
             </el-icon>
             <span>学习评价</span>
           </router-link>
+          <router-link to="/ai-chat" class="nav-item">
+            <el-icon><ChatLineRound /></el-icon>
+            <span>智学助手</span>
+          </router-link>
           <router-link to="/ai/recommendation-history" class="nav-item">
             <el-icon>
               <Cpu />
@@ -108,6 +118,12 @@
               <Checked />
             </el-icon>
             <span>作业管理</span>
+          </router-link>
+          <router-link to="/teacher/experimentList" class="nav-item">
+            <el-icon>
+              <MagicStick />
+            </el-icon>
+            <span>实验管理</span>
           </router-link>
           <router-link to="/analytics" class="nav-item">
             <el-icon>
@@ -194,7 +210,9 @@ import {
   List,
   Setting,
   User,
-  Bell
+  Bell,
+  ChatLineSquare,
+  School
 } from '@element-plus/icons-vue'
 import NotificationDrawer from './components/NotificationDrawer.vue'
 import { notificationAPI } from './api'
@@ -225,7 +243,9 @@ export default {
     Setting,
     User,
     Bell,
-    NotificationDrawer
+    NotificationDrawer,
+    ChatLineSquare,
+    School
   },
   setup() {
     const router = useRouter()
@@ -385,7 +405,6 @@ export default {
 </script>
 
 <style scoped>
-/* 你的样式保持不变 */
 #app {
   font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -397,7 +416,7 @@ export default {
   background-color: #f5f7fa;
 }
 
-/* 顶部导航栏样式 */
+/* 顶部导航栏样式 - 蓝色渐变 */
 .top-navbar {
   height: 60px;
   background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%);
@@ -506,7 +525,6 @@ export default {
   overflow: hidden;
 }
 
-/* 侧边栏样式 */
 .sidebar {
   width: 220px;
   background-color: white;
@@ -514,10 +532,13 @@ export default {
   overflow-y: auto;
   transition: all 0.3s;
   z-index: 5;
+  padding: 8px 0; /* 减少整体内边距 */
 }
 
+/* 完全统一导航区块样式 */
 .nav-section {
-  margin-bottom: 16px;
+  margin-bottom: 0; /* 完全移除区块间距 */
+  padding: 0 8px;
 }
 
 .nav-title {
@@ -525,19 +546,28 @@ export default {
   color: #8a92a5;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 16px 20px 8px;
+  padding: 8px 12px 4px; /* 调整标题内边距 */
   font-weight: 600;
+  margin-top: 8px; /* 减少标题上方间距 */
 }
 
+/* 第一个导航区块不需要标题上边距 */
+.nav-section:first-child .nav-title {
+  margin-top: 0;
+}
+
+/* 完全统一导航项样式 */
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 12px 20px;
+  padding: 10px 12px;
   color: #5a5e66;
   text-decoration: none;
   transition: all 0.3s;
   font-size: 14px;
   border-left: 3px solid transparent;
+  border-radius: 4px;
+  margin: 2px 0; /* 最小化上下间距 */
 }
 
 .nav-item:hover {
@@ -555,6 +585,22 @@ export default {
 .nav-item .el-icon {
   margin-right: 8px;
   font-size: 18px;
+  color: #5a5e66;
+}
+
+.nav-item:hover .el-icon,
+.nav-item.router-link-exact-active .el-icon {
+  color: #1976d2;
+}
+
+.nav-item[href*="forum"] .el-icon {
+  color: inherit;
+}
+
+.nav-item.router-link-exact-active[href*="forum"] {
+  color: #1976d2;
+  background-color: #f0f7ff;
+  border-left-color: #1976d2;
 }
 
 /* 主内容区样式 */
