@@ -2,7 +2,7 @@
   <div class="teacher-exam-container">
     <!-- 顶部标题和操作按钮 -->
     <div class="page-header">
-      <h1 class="page-title">考试管理中心</h1>
+      <h1 class="page-title">考试管理</h1>
       <div class="header-actions">
         <el-button type="primary" @click="goToCreateExam">
           <el-icon><Plus /></el-icon>

@@ -7,171 +7,201 @@
         </div>
       </template>
       <template #extra>
-        <el-button type="primary" @click="handleCreateClick">
-          <el-icon><plus /></el-icon> 创建新实验
-        </el-button>
+        <div class="header-actions">
+          <el-button
+              type="info"
+              @click="goToApprovals"
+              class="approval-btn"
+          >
+            <el-icon><DocumentChecked /></el-icon> 预约审批
+          </el-button>
+          <el-button type="primary" @click="handleCreateClick">
+            <el-icon><Plus /></el-icon> 创建新实验
+          </el-button>
+        </div>
       </template>
     </el-page-header>
-    
+
     <el-card class="experiment-card">
       <el-skeleton :rows="6" animated v-if="loading" />
       <template v-else>
-        <el-table 
-          :data="experiments" 
-          style="width: 100%" 
-          v-if="experiments && experiments.length"
-          :key="tableKey"
+        <el-table
+            :data="experiments"
+            style="width: 100%"
+            v-if="experiments && experiments.length"
+            :key="tableKey"
+            stripe
         >
-          <el-table-column prop="id" label="ID" width="80">
+          <!-- 表格列保持不变 -->
+          <el-table-column prop="id" label="ID" width="80" fixed="left">
             <template #default="{row}">
               {{ row?.id || '-' }}
             </template>
           </el-table-column>
-          
-          <el-table-column prop="name" label="实验名称">
+
+          <el-table-column prop="name" label="实验名称" min-width="180" fixed="left">
             <template #default="{row}">
-              {{ row?.name || '未命名实验' }}
+              <el-tooltip :content="row.description" placement="top" v-if="row.description">
+                <span class="experiment-name">{{ row?.name || '未命名实验' }}</span>
+              </el-tooltip>
+              <span v-else>{{ row?.name || '未命名实验' }}</span>
             </template>
           </el-table-column>
-          
-          <el-table-column label="学科分类">
+
+          <el-table-column label="学科分类" min-width="120">
             <template #default="{row}">
               {{ getSubjectName(row?.subject) }}
             </template>
           </el-table-column>
-          
-          <el-table-column label="时长(分钟)" width="100">
+
+          <el-table-column label="时长(分钟)" width="100" align="center">
             <template #default="{row}">
               {{ row?.duration || 0 }}
             </template>
           </el-table-column>
-          
-          <el-table-column label="状态" width="120">
+
+          <el-table-column label="状态" width="120" align="center">
             <template #default="{row}">
-              <el-tag :type="getStatusTagType(row?.status)">
+              <el-tag :type="getStatusTagType(row?.status)" effect="light">
                 {{ getStatusText(row?.status) }}
               </el-tag>
             </template>
           </el-table-column>
-          
-          <el-table-column label="发布状态" width="120">
+
+          <el-table-column label="发布状态" width="120" align="center">
             <template #default="{row}">
-              <el-tag :type="row?.isPublished ? 'success' : 'info'">
+              <el-tag :type="row?.isPublished ? 'success' : 'info'" effect="light">
                 {{ row?.isPublished ? '已发布' : '未发布' }}
               </el-tag>
             </template>
           </el-table-column>
-          
-          <el-table-column label="操作" width="280">
+
+          <el-table-column label="操作" width="320" fixed="right">
             <template #default="{row}">
-              <el-button 
-                size="small" 
-                @click="editExperiment(row)"
-                :disabled="!row?.id"
-              >
-                编辑
-              </el-button>
-              <el-button 
-                size="small" 
-                type="primary" 
-                @click="manageTimeSlots(row)"
-                :disabled="!row?.id"
-              >
-                管理时间段
-              </el-button>
-              <el-button 
-                size="small" 
-                type="success" 
-                @click="manageTemplate(row)"
-                :disabled="!row?.id"
-              >
-                管理模板
-              </el-button>
-              <el-button 
-                size="small" 
-                :type="row?.isPublished ? 'warning' : 'primary'" 
-                @click="togglePublish(row)"
-                :disabled="!row?.id"
-              >
-                {{ row?.isPublished ? '取消发布' : '发布' }}
-              </el-button>
+              <el-button-group>
+                <el-button
+                    size="small"
+                    @click="editExperiment(row)"
+                    :disabled="!row?.id"
+                >
+                  <el-icon><Edit /></el-icon> 编辑
+                </el-button>
+                <el-button
+                    size="small"
+                    type="primary"
+                    @click="manageTimeSlots(row)"
+                    :disabled="!row?.id"
+                >
+                  <el-icon><Clock /></el-icon> 时间段
+                </el-button>
+                <el-button
+                    size="small"
+                    type="success"
+                    @click="manageTemplate(row)"
+                    :disabled="!row?.id"
+                >
+                  <el-icon><Files /></el-icon> 模板
+                </el-button>
+                <el-button
+                    size="small"
+                    :type="row?.isPublished ? 'warning' : 'primary'"
+                    @click="togglePublish(row)"
+                    :disabled="!row?.id"
+                >
+                  <el-icon v-if="row?.isPublished"><Close /></el-icon>
+                  <el-icon v-else><Check /></el-icon>
+                  {{ row?.isPublished ? '取消发布' : '发布' }}
+                </el-button>
+              </el-button-group>
             </template>
           </el-table-column>
         </el-table>
-        <el-empty description="暂无实验数据" v-else />
+        <el-empty description="暂无实验数据" v-else>
+          <el-button type="primary" @click="handleCreateClick">创建第一个实验</el-button>
+        </el-empty>
       </template>
-      
+
       <el-pagination
-        v-model:current-page="pagination.current"
-        v-model:page-size="pagination.size"
-        :total="pagination.total"
-        @current-change="fetchExperiments"
-        layout="prev, pager, next"
-        class="pagination"
-        :disabled="loading"
+          v-model:current-page="pagination.current"
+          v-model:page-size="pagination.size"
+          :total="pagination.total"
+          @current-change="fetchExperiments"
+          layout="total, prev, pager, next, jumper"
+          class="pagination"
+          :disabled="loading"
+          :hide-on-single-page="true"
       />
     </el-card>
-    
+
     <!-- 创建/编辑实验对话框 -->
-    <el-dialog 
-      v-model="showEditDialog" 
-      :title="editingExperiment?.id ? '编辑实验' : '创建新实验'"
-      :close-on-click-modal="false"
+    <el-dialog
+        v-model="showEditDialog"
+        :title="editingExperiment?.id ? '编辑实验' : '创建新实验'"
+        :close-on-click-modal="false"
+        width="600px"
     >
-      <el-form :model="experimentForm" label-width="100px" :disabled="formLoading">
-        <el-form-item label="实验名称" required>
-          <el-input 
-            v-model="experimentForm.name" 
-            placeholder="请输入实验名称" 
-            :maxlength="50"
-            show-word-limit
+      <el-form
+          :model="experimentForm"
+          label-width="100px"
+          :disabled="formLoading"
+          :rules="formRules"
+          ref="experimentFormRef"
+      >
+        <el-form-item label="实验名称" prop="name">
+          <el-input
+              v-model="experimentForm.name"
+              placeholder="请输入实验名称"
+              :maxlength="50"
+              show-word-limit
           />
         </el-form-item>
-        
-        <el-form-item label="学科分类" required>
-          <el-select 
-            v-model="experimentForm.subject" 
-            placeholder="请选择学科"
-            clearable
+
+        <el-form-item label="学科分类" prop="subject">
+          <el-select
+              v-model="experimentForm.subject"
+              placeholder="请选择学科"
+              clearable
+              style="width: 100%"
           >
             <el-option
-              v-for="subject in subjects"
-              :key="subject.value"
-              :label="subject.label"
-              :value="subject.value"
+                v-for="subject in subjects"
+                :key="subject.value"
+                :label="subject.label"
+                :value="subject.value"
             />
           </el-select>
         </el-form-item>
-        
-        <el-form-item label="实验描述" required>
-          <el-input 
-            v-model="experimentForm.description" 
-            type="textarea" 
-            :rows="4" 
-            placeholder="请输入实验描述"
-            :maxlength="500"
-            show-word-limit
+
+        <el-form-item label="实验描述" prop="description">
+          <el-input
+              v-model="experimentForm.description"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入实验描述"
+              :maxlength="500"
+              show-word-limit
           />
         </el-form-item>
-        
-        <el-form-item label="预计时长" required>
-          <el-input-number 
-            v-model="experimentForm.duration" 
-            :min="15" 
-            :max="240" 
-            controls-position="right" 
+
+        <el-form-item label="预计时长" prop="duration">
+          <el-input-number
+              v-model="experimentForm.duration"
+              :min="15"
+              :max="240"
+              controls-position="right"
+              style="width: 120px"
           /> 分钟
         </el-form-item>
-        
+
         <el-form-item label="实验室位置">
-          <el-input 
-            v-model="experimentForm.location" 
-            placeholder="请输入实验室位置"
-            :maxlength="100"
+          <el-input
+              v-model="experimentForm.location"
+              placeholder="请输入实验室位置"
+              :maxlength="100"
           />
         </el-form-item>
-        
-        <el-form-item label="状态">
+
+        <el-form-item label="状态" prop="status">
           <el-radio-group v-model="experimentForm.status">
             <el-radio :label="1">可预约</el-radio>
             <el-radio :label="2">已满额</el-radio>
@@ -179,15 +209,15 @@
           </el-radio-group>
         </el-form-item>
       </el-form>
-      
+
       <template #footer>
         <el-button @click="showEditDialog = false" :disabled="formLoading">
           取消
         </el-button>
-        <el-button 
-          type="primary" 
-          @click="saveExperiment"
-          :loading="formLoading"
+        <el-button
+            type="primary"
+            @click="submitForm"
+            :loading="formLoading"
         >
           保存
         </el-button>
@@ -197,16 +227,24 @@
 </template>
 
 <script setup>
-import request from '@/utils/request' // 根据你的项目结构调整路径
+import request from '@/utils/request'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus } from '@element-plus/icons-vue'
-import { 
+import {
+  Plus,
+  Edit,
+  Clock,
+  Files,
+  Check,
+  Close,
+  DocumentChecked
+} from '@element-plus/icons-vue'
+import {
   getTeacherExperiments,
   createExperiment,
   updateExperiment
 } from '@/api/teacher_experiment'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 
 const router = useRouter()
 const experiments = ref([])
@@ -214,7 +252,8 @@ const showEditDialog = ref(false)
 const editingExperiment = ref(null)
 const loading = ref(false)
 const formLoading = ref(false)
-const tableKey = ref(0) // 用于强制刷新表格
+const tableKey = ref(0)
+const experimentFormRef = ref(null)
 
 const experimentForm = ref({
   name: '',
@@ -225,6 +264,26 @@ const experimentForm = ref({
   status: 1,
   isPublished: false
 })
+
+const formRules = {
+  name: [
+    { required: true, message: '请输入实验名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '长度在2到50个字符', trigger: 'blur' }
+  ],
+  subject: [
+    { required: true, message: '请选择学科分类', trigger: 'change' }
+  ],
+  description: [
+    { required: true, message: '请输入实验描述', trigger: 'blur' },
+    { min: 10, max: 500, message: '长度在10到500个字符', trigger: 'blur' }
+  ],
+  duration: [
+    { required: true, message: '请输入预计时长', trigger: 'blur' }
+  ],
+  status: [
+    { required: true, message: '请选择状态', trigger: 'change' }
+  ]
+}
 
 const pagination = ref({
   current: 1,
@@ -261,24 +320,9 @@ const fetchExperiments = async () => {
       pageNum: pagination.value.current,
       pageSize: pagination.value.size
     })
-    console.log('API响应数据:', res); // 检查返回的数据结构
+
     if (res?.data?.list) {
-    //   experiments.value = res.data.records.map(item => ({
-    //     ...item,
-    //     id: item.id || '',
-    //     name: item.name || '未命名实验',
-    //     subject: item.subject || '',
-    //     duration: Number(item.duration) || 60,
-    //     status: Number(item.status) || 1,
-    //     isPublished: Boolean(item.isPublished)
-    //   }))
-    //   pagination.value.total = Number(res.data.total) || 0
-    // } else {
-    //   experiments.value = []
-    //   pagination.value.total = 0
-    //   throw new Error('获取的实验数据格式不正确')
-    // }
-      experiments.value = res.data.list;  // 直接赋值 lis
+      experiments.value = res.data.list
       pagination.value.total = Number(res.data.total) || 0
     } else {
       experiments.value = []
@@ -290,8 +334,11 @@ const fetchExperiments = async () => {
     experiments.value = []
   } finally {
     loading.value = false
-    // tableKey.value++ // 强制刷新表格
   }
+}
+
+const goToApprovals = () => {
+  router.push({ name: 'BookingApproval' })
 }
 
 const handleCreateClick = () => {
@@ -327,9 +374,9 @@ const editExperiment = (experiment) => {
     ElMessage.error('无效的实验数据')
     return
   }
-  
+
   editingExperiment.value = experiment
-  experimentForm.value = { 
+  experimentForm.value = {
     name: experiment.name || '',
     subject: experiment.subject || '',
     description: experiment.description || '',
@@ -341,18 +388,16 @@ const editExperiment = (experiment) => {
   showEditDialog.value = true
 }
 
-// Teacher_ExperimentList.vue 中的 manageTimeSlots 方法
 const manageTimeSlots = (experiment) => {
   if (!experiment?.id) {
     ElMessage.error('无效的实验ID')
     return
   }
   router.push({
-    name: 'TimeSlotManagement-experiment', // 使用路由名称
+    name: 'TimeSlotManagement-experiment',
     params: { id: experiment.id },
-    query: { experimentName: experiment.name } // 传递名称
+    query: { experimentName: experiment.name }
   }).catch(err => {
-    // 捕获路由错误
     console.error('路由跳转失败:', err)
     ElMessage.error('无法跳转到时间段管理页面')
   })
@@ -369,12 +414,18 @@ const manageTemplate = (experiment) => {
   })
 }
 
+const submitForm = async () => {
+  try {
+    await experimentFormRef.value.validate()
+    await saveExperiment()
+  } catch (error) {
+    console.log('表单验证失败', error)
+  }
+}
+
 const saveExperiment = async () => {
   formLoading.value = true
   try {
-    // 获取当前登录教师的ID（假设存储在localStorage或Vuex中）
-    // const userInfo = JSON.parse(localStorage.getItem('userInfo'))
-    // const teacherId = userInfo?.id // 根据实际用户数据结构调整
     const teacherId = 1 // 临时测试值
     const requestData = {
       ...experimentForm.value,
@@ -383,25 +434,28 @@ const saveExperiment = async () => {
 
     if (editingExperiment.value?.id) {
       await updateExperiment(requestData, editingExperiment.value.id)
-      ElMessage.success('实验更新成功')
+      ElNotification.success({
+        title: '成功',
+        message: '实验更新成功',
+        duration: 2000
+      })
     } else {
-      // 创建新实验，并获取返回的实验ID
-      // 创建新实验时包含teacherId
       const res = await createExperiment(requestData)
-      console.log('创建实验响应:', res) // 调试日志
-      
-      // 根据实际响应结构调整
-      const experimentId = res.data?.id || res.data // 尝试获取id字段，如果没有则直接使用data
-      
+      const experimentId = res.data?.id || res.data
+
       if (!experimentId) {
         throw new Error('未能获取实验ID')
       }
-      ElMessage.success('实验创建成功')
 
-      // 新增：创建成功后自动跳转到该实验的时间段管理页面
+      ElNotification.success({
+        title: '成功',
+        message: '实验创建成功',
+        duration: 2000
+      })
+
       router.push({
-        name: 'TimeSlotManagement-experiment', // 确保路由名称正确
-        params: { id: experimentId.toString() } // 传递实验ID
+        name: 'TimeSlotManagement-experiment',
+        params: { id: experimentId.toString() }
       })
     }
     showEditDialog.value = false
@@ -454,13 +508,18 @@ onMounted(() => {
 
 <style scoped>
 .teacher-experiment-container {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 20px;
 }
 
 .page-header {
   margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .page-header-content {
@@ -468,14 +527,75 @@ onMounted(() => {
   font-weight: 500;
 }
 
+.header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.approval-btn {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+.approval-btn:hover {
+  background-color: #5a6268;
+  border-color: #545b62;
+}
+
 .experiment-card {
   margin-top: 20px;
   width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.experiment-name {
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.experiment-name:hover {
+  color: #409eff;
+  text-decoration: underline;
 }
 
 .pagination {
   margin-top: 20px;
   display: flex;
   justify-content: center;
+}
+
+:deep(.el-table__row) {
+  transition: all 0.3s;
+}
+
+:deep(.el-table__row:hover) {
+  background-color: #f5f7fa !important;
+}
+
+:deep(.el-tag) {
+  font-weight: 500;
+}
+
+:deep(.el-dialog) {
+  border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  :deep(.el-table__body-wrapper) {
+    overflow-x: auto;
+  }
+
+  :deep(.el-table td.el-table__cell,
+        .el-table th.el-table__cell) {
+    padding: 8px 0;
+  }
 }
 </style>

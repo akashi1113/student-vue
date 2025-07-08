@@ -206,9 +206,9 @@
                       <el-icon><User /></el-icon>
                       <span>状态：{{ getExamStatusText(exam.status) }}</span>
                     </div>
-                    <div class="info-item" v-if="exam.bookingInfo">
+                    <div class="info-item" v-if="exam.examBooking">
                       <el-icon><Location /></el-icon>
-                      <span>地点：{{ exam.bookingInfo.examLocation }}</span>
+                      <span>地点：{{ exam.examBooking.examLocation }}</span>
                     </div>
                   </div>
 
@@ -797,13 +797,13 @@ export default {
     },
 
     canStartExam(exam) {
-      if (!exam.bookingInfo || exam.examMode !== 'ONLINE') return false
+      if (exam.examBooking===null || exam.examMode !== 'ONLINE') return false
 
       const now = new Date()
-      const examTime = new Date(exam.bookingInfo.examDateTime)
-      const timeDiff = examTime.getTime() - now.getTime()
+      const examStartTime = new Date(exam.examBooking.timeSlot.bookingStartTime)
+      const examEndTime = new Date(exam.examBooking.timeSlot.bookingEndTime)
 
-      return timeDiff <= 30 * 60 * 1000 && timeDiff >= -exam.duration * 60 * 1000
+      return now.getTime()>=examStartTime.getTime() && now.getTime()<=examEndTime.getTime()
     },
 
     canShowStartButton(exam) {

@@ -37,7 +37,7 @@
       <el-button 
         type="primary" 
         @click="handleBook"
-        :disabled="canStartExperiment"
+        :disabled="!canStartExperiment"
       >
         {{ getButtonText() }}
       </el-button>
@@ -62,8 +62,7 @@ export default {
   components: {
     Timer,
     CircleCheck,
-    Warning,
-    ExperimentConducting
+    Warning
   },
   props: {
     experiment: {
@@ -102,33 +101,34 @@ export default {
 
     const approvalStatusTextMap = {
       0: '待审批',
-      1: '审批中',
-      2: '已批准',
+      1: '已通过',
       3: '已拒绝'
     }
 
     const approvalStatus = computed(() => {
       console.log('当前实验对象:', props.experiment); // 调试日志
       console.log('approval_status值:', props.experiment.approval_status);
-      return props.experiment.approval_status ?? 0
+      return props.experiment.approval_status
     })
 
     // 计算是否可预约
     const isBookable = computed(() => {
-      return props.experiment.status === 1 && approvalStatus.value === 2
+      return props.experiment.status === 1
     })
 
     // 计算是否可以开始实验（已批准且已预约）
     const canStartExperiment = computed(() => {
-      return props.experiment.status === 0 && approvalStatus.value === 2
+      return approvalStatus.value === 1
     })
 
     // 获取按钮文本
     const getButtonText = () => {
-      if (props.experiment.status === 0) {
-        return approvalStatus.value === 2 ? '去实验' : '已预约'
+      if (approvalStatus.value === 1) {
+        return '去实验'
       }
-      return '去实验'
+      else if (approvalStatus.value === 0) {
+        return '已预约'
+      }
     }
 
     const getApprovalStatusText = (status) => {
@@ -159,8 +159,7 @@ export default {
       console.log(props.experiment.id)
       router.push({
         name: 'ExperimentDetail', 
-        params: { 
-
+        params: {
           id: props.experiment.id
         }
       }).catch(err => {
@@ -195,16 +194,7 @@ export default {
     }
 
     const handleBook = () => {
-      // router.push({
-      //     name: 'ExperimentConducting',
-      //     params: { 
-      //       experimentId: props.experiment.id 
-      //     }
-      //   }).catch(err => {
-      //     console.error('路由跳转失败:', err)
-      //     ElMessage.error('无法跳转到实验界面')
-      //   })
-      if (props.experiment.approval_status === 2) {
+      if (props.experiment.approval_status === 1) {
         // 已预约且已批准，可以开始实验
         router.push({
           name: 'ExperimentConducting',
@@ -215,7 +205,7 @@ export default {
           console.error('路由跳转失败:', err)
           ElMessage.error('无法跳转到实验界面')
         })
-      } else if (props.experiment.status === 1 && props.experiment.approval_status === 2) {
+      } else if (props.experiment.status === 1) {
         // 可预约状态，跳转到预约页面
         router.push({
           name: 'ExperimentBooking',
@@ -246,7 +236,6 @@ export default {
       canStartExperiment,
       getButtonText,
       handleStartExperiment
-
     }
   }
 }

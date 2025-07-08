@@ -93,6 +93,12 @@
             </el-icon>
             <span>学习评价</span>
           </router-link>
+          <router-link to="/notes" class="nav-item">
+            <el-icon>
+              <Memo />
+            </el-icon>
+            <span>学习笔记</span>
+          </router-link>
           <router-link to="/ai-chat" class="nav-item">
             <el-icon><ChatLineRound /></el-icon>
             <span>智学助手</span>
@@ -143,17 +149,17 @@
             </el-icon>
             <span>管理后台</span>
           </router-link>
-          <router-link to="/exam-booking/time-slot-management" class="nav-item">
-            <el-icon>
-              <Calendar />
-            </el-icon>
-            <span>考试安排</span>
-          </router-link>
-          <router-link to="/exam-booking/booking-management" class="nav-item">
+          <router-link to="/teacher/exams" class="nav-item">
             <el-icon>
               <List />
             </el-icon>
-            <span>预约管理</span>
+            <span>考试管理</span>
+          </router-link>
+          <router-link to="/teacher/experimentList" class="nav-item">
+            <el-icon>
+              <MagicStick />
+            </el-icon>
+            <span>实验管理</span>
           </router-link>
           <router-link to="/system/manage" class="nav-item">
             <el-icon>
@@ -206,13 +212,13 @@ import {
   Checked,
   DataAnalysis,
   Monitor,
-  Calendar,
   List,
   Setting,
   User,
   Bell,
   ChatLineSquare,
-  School
+  School,
+  Memo
 } from '@element-plus/icons-vue'
 import NotificationDrawer from './components/NotificationDrawer.vue'
 import { notificationAPI } from './api'
@@ -238,14 +244,14 @@ export default {
     Checked,
     DataAnalysis,
     Monitor,
-    Calendar,
     List,
     Setting,
     User,
     Bell,
     NotificationDrawer,
     ChatLineSquare,
-    School
+    School,
+    Memo
   },
   setup() {
     const router = useRouter()

@@ -13,10 +13,11 @@ export const useExperimentStore = defineStore('experiment', {
 
   actions: {
     async fetchExperiments() {
+      const token=localStorage.getItem('token');
   this.isLoading = true
   this.error = null
   try {
-    const response = await experimentApi.getExperiments()
+    const response = await experimentApi.getExperiments(token)
     
     if (response.data && Array.isArray(response.data)) {
       this.experiments = response.data.map(exp => ({

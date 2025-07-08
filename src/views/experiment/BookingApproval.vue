@@ -58,6 +58,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
+import {ElMessage} from 'element-plus'
 import { getPendingBookings, approveBooking } from '@/api/teacher_experiment'
 
 const router = useRouter()

@@ -30,20 +30,6 @@
         </el-card>
       </div>
     </div>
-
-    <div class="recent-activities">
-      <h2>最近活动</h2>
-      <el-timeline>
-        <el-timeline-item
-            v-for="(activity, index) in activities"
-            :key="index"
-            :timestamp="activity.time"
-            :color="activity.color"
-        >
-          {{ activity.content }}
-        </el-timeline-item>
-      </el-timeline>
-    </div>
   </div>
 </template>
 
@@ -79,34 +65,11 @@ export default {
 
     // 快捷操作
     const quickActions = ref([
-      { title: '我的课程', path: '/courses', icon: Notebook, color: '#409EFF' },
-      { title: '待做作业', path: '/student/homework', icon: Document, color: '#67C23A' },
-      { title: '考试安排', path: '/exams', icon: CollectionTag, color: '#E6A23C' },
-      { title: '学习分析', path: '/analytics', icon: DataAnalysis, color: '#F56C6C' }
-    ])
-
-    // 最近活动
-    const activities = ref([
-      {
-        content: '完成了《数据结构》第3章作业',
-        time: '2023-05-15 14:30',
-        color: '#0bbd87'
-      },
-      {
-        content: '参加了《操作系统》期中考试',
-        time: '2023-05-10 09:00',
-        color: '#409EFF'
-      },
-      {
-        content: '提交了《数据库原理》实验报告',
-        time: '2023-05-08 16:45',
-        color: '#E6A23C'
-      },
-      {
-        content: '加入了《计算机网络》课程',
-        time: '2023-05-01 10:20',
-        color: '#909399'
-      }
+      { title: '知识库', path: '/knowledge', icon: CollectionTag, color: '#409EFF' },
+      { title: '考试中心', path: '/exams', icon: CollectionTag, color: '#E6A23C' },
+      { title: '作业中心', path: '/student/homework', icon: Document, color: '#67C23A' },
+      { title: '课程中心', path: '/course-home', icon: Notebook, color: '#F56C6C' },
+      { title: '智学助手', path: '/ai-chat', icon: Star, color: '#FFD700' }
     ])
 
     // 导航方法
@@ -125,7 +88,6 @@ export default {
       lastLoginTime,
       messageCount,
       quickActions,
-      activities,
       navigateTo
     }
   }
@@ -136,74 +98,102 @@ export default {
 .home-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 32px 16px 24px 16px;
 }
 
 .welcome-card {
-  background: linear-gradient(135deg, #409EFF 0%, #79BBFF 100%);
+  background: linear-gradient(135deg, #5fa8ff 0%, #a6c8ff 100%);
   color: white;
-  padding: 30px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 40px 32px 32px 32px;
+  border-radius: 20px;
+  margin-bottom: 32px;
+  box-shadow: 0 8px 32px rgba(64, 158, 255, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .welcome-card h1 {
-  margin: 0 0 20px 0;
-  font-size: 28px;
+  margin: 0 0 24px 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 1px;
 }
 
 .user-info {
   background: white;
-  padding: 20px;
-  border-radius: 8px;
+  padding: 24px 32px;
+  border-radius: 16px;
   color: #606266;
+  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.08);
+  min-width: 320px;
 }
 
 .quick-actions {
-  margin: 30px 0;
+  margin: 40px 0 32px 0;
 }
 
 .quick-actions h2 {
   color: #303133;
-  margin-bottom: 20px;
-  font-size: 22px;
+  margin-bottom: 28px;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 28px;
 }
 
 .action-card {
   cursor: pointer;
-  transition: transform 0.3s;
+  transition: transform 0.25s, box-shadow 0.25s;
+  border-radius: 18px;
+  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.10);
+  background: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-8px) scale(1.04);
+  box-shadow: 0 8px 32px rgba(64, 158, 255, 0.18);
 }
 
 .action-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 0;
+  padding: 32px 0 24px 0;
 }
 
 .action-content span {
-  margin-top: 10px;
-  font-size: 16px;
+  margin-top: 16px;
+  font-size: 18px;
+  font-weight: 500;
+  color: #333;
+  letter-spacing: 0.5px;
 }
 
-.recent-activities {
-  margin-top: 30px;
-}
-
-.recent-activities h2 {
-  color: #303133;
-  margin-bottom: 20px;
-  font-size: 22px;
+@media (max-width: 900px) {
+  .home-container {
+    padding: 16px 4px;
+  }
+  .welcome-card {
+    padding: 24px 12px;
+    border-radius: 14px;
+  }
+  .user-info {
+    padding: 16px 8px;
+    border-radius: 10px;
+    min-width: 0;
+  }
+  .action-content {
+    padding: 18px 0 12px 0;
+  }
 }
 </style>
