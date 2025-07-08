@@ -1,0 +1,131 @@
+/* 全局重置 */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'PingFang SC', 'Helvetica Neue', Helvetica, 'Microsoft YaHei', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f7f9ff;
+    /* 基础背景色 */
+}
+
+/* Element Plus 按钮自定义样式 */
+.el-button--primary {
+    background-color: #667eea !important;
+    border-color: #667eea !important;
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus {
+    background-color: #764ba2 !important;
+    border-color: #764ba2 !important;
+}
+
+.el-button--danger {
+    background-color: #ff4d4f !important;
+    border-color: #ff4d4f !important;
+}
+
+.el-button--danger:hover,
+.el-button--danger:focus {
+    background-color: #cf1322 !important;
+    border-color: #cf1322 !important;
+}
+
+/* Element Plus 输入框、选择器等焦点样式 */
+.el-input__inner:focus,
+.el-textarea__inner:focus,
+.el-select__wrapper.is-focused,
+.el-input-number__increase,
+.el-input-number__decrease {
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+    border-color: #667eea !important;
+}
+
+/* Element Plus 进度条颜色 */
+.el-progress-bar__inner {
+    background-color: #667eea !important;
+}
+
+/* Element Plus 标签页选中颜色 */
+.el-tabs__item.is-active {
+    color: #667eea !important;
+}
+
+.el-tabs__active-bar {
+    background-color: #667eea !important;
+}
+
+/* Element Plus 对话框头部颜色 */
+.el-dialog__header {
+    background-color: #667eea;
+    color: white;
+}
+
+/* Element Plus 表格头部颜色 */
+.el-table__header th {
+    background-color: rgba(102, 126, 234, 0.1) !important;
+    color: #667eea !important;
+}
+
+/* 统一卡片样式 */
+.card-base {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.1);
+    overflow: hidden;
+}
+
+/* 占位 Skeleton 样式 */
+.el-skeleton {
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* 针对移动端优化 */
+@media (max-width: 768px) {
+    .app-header {
+        padding: 10px 15px;
+    }
+
+    .header-content {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .nav-links {
+        order: 3;
+        /* 让导航链接在小屏幕下单独一行 */
+        width: 100%;
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .user-info {
+        order: 2;
+    }
+
+    .logo {
+        order: 1;
+    }
+
+    .app-main {
+        padding: 20px 15px;
+    }
+
+    .card-base {
+        border-radius: 12px;
+    }
+}

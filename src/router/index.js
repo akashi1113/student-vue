@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { tomatoStore } from '@/store/tomatoStore'
 
-// 来自index.js的组件
+// 组件导入
 import KnowledgeList from '../views/KnowledgeList.vue'
 import KnowledgeDetail from '../views/KnowledgeDetail.vue'
 import ScoreManage from '../views/score_manage/ScoreManage.vue'
@@ -26,19 +27,52 @@ const Register = () => import('../views/UserRegister.vue')
 const ExperimentDetailView = () => import('@/views/experiment/ExperimentDetailView.vue')
 const ExperimentBookingView = () => import('@/views/experiment/ExperimentBookingView.vue')
 
-// 来自index.js的认证检查
+// 新增组件导入
+const HomePage = () => import('../views/courseAndVideo/HomePage.vue')
+const CourseDetail = () => import('../views/courseAndVideo/CourseDetail.vue')
+const VideoDetail = () => import('../views/courseAndVideo/VideoDetail.vue')
+const AdminPanel = () => import('../views/manager/AdminPanel.vue')
+const ForumPage = () => import('../views/post/ForumPage.vue')
+const PostDetail = () => import('../views/post/PostDetail.vue')
+const HotPostsPage = () => import('@/views/post/HotPostsPage.vue')
+
+// 认证检查函数
 function isAuthenticated() {
   const userInfo = localStorage.getItem('userInfo')
   return !!userInfo
 }
 
+// 获取用户角色
+function getUserRole() {
+  const userInfo = localStorage.getItem('userInfo')
+  if (userInfo) {
+    try {
+      const user = JSON.parse(userInfo)
+      return user.role || user.userType || 'STUDENT'
+    } catch (e) {
+      return 'STUDENT'
+    }
+  }
+  return null
+}
+
+// 检查用户权限
+function hasPermission(requiredRoles, userRole) {
+  if (!requiredRoles || requiredRoles.length === 0) {
+    return true
+  }
+  return requiredRoles.includes(userRole)
+}
+
 const routes = [
+  // ================= 原有路由 =================
   {
     path: '/',
     name: 'Home',
     component: Home,
     meta: {
-      requiresAuth: true // 需要登录才能访问
+      requiresAuth: true,
+      title: '首页'
     }
   },
   // 添加智能聊天路由
@@ -158,9 +192,7 @@ const routes = [
       roles: ['TEACHER', 'ADMIN']
     }
   },
-
-  // ============================== 考试预约系统路由 ==============================
-
+  // 考试预约系统路由
   {
     path: '/exam-booking/my-bookings',
     name: 'MyBookings',
@@ -245,7 +277,7 @@ const routes = [
     component: StudentHomework,
     meta: {
       requiresAuth: true,
-      roles: ['学生'] // 或者 ['STUDENT']，根据你的角色定义
+      roles: ['学生']
     }
   },
 
@@ -256,7 +288,7 @@ const routes = [
     component: TeacherHomework,
     meta: {
       requiresAuth: true,
-      roles: ['教师'] // 或者 ['TEACHER']，根据你的角色定义
+      roles: ['教师']
     }
   },
   {
@@ -352,7 +384,10 @@ const routes = [
     name: 'ExperimentConducting',
     component: ExperimentConducting,
     props: true,
-    meta: { title: '实验操作' }
+    meta: {
+      title: '实验操作',
+      requiresAuth: true
+    }
   },
   {
     path: '/experiment/:id',
@@ -400,56 +435,47 @@ const routes = [
       requiresAuth: false
     }
   },
-  // {
-  //   path: '/reports/generate/:recordId',
-  //   name: 'ReportGenerator',
-  //   component: ReportGenerator,
-  //   props: true
-  // }
-  // 添加教师端路由
-{
-  path: '/teacher/experimentList',
-  name: 'TeacherExperimentList',
-  component: () => import('@/views/experiment/Teacher_ExperimentList.vue'),
-  meta: {
-    title: '实验管理',
-    requiresAuth: true,
-    roles: ['TEACHER', 'ADMIN']
-  }
-},
-{
-  path: '/teacher/experiment/:id/template',
-  name: 'ExperimentTemplate',
-  component: () => import('@/views/experiment/ExperimentTemplate.vue'),
-  meta: {
-    title: '实验模板管理',
-    requiresAuth: true,
-    roles: ['TEACHER', 'ADMIN']
-  }
-},
-{
-  path: '/time-slot/:id',
-  name: 'TimeSlotManagement-experiment',
-  component: () => import('@/views/experiment/TimeSlotManagement.vue'),
-  props: true,
-  meta: {
-    requiresAuth: true,
-    roles: ['TEACHER', 'ADMIN']
-  }
-},
-
-
-{
-  path: '/teacher/experiment/approvals',
-  name: 'BookingApproval',
-  component: () => import('@/views/experiment/BookingApproval.vue'),
-  meta: {
-    title: '预约审批',
-    requiresAuth: true,
-    roles: ['TEACHER', 'ADMIN']
-  }
-},
-
+  // 教师端路由
+  {
+    path: '/teacher/experimentList',
+    name: 'TeacherExperimentList',
+    component: () => import('@/views/experiment/Teacher_ExperimentList.vue'),
+    meta: {
+      title: '实验管理',
+      requiresAuth: true,
+      roles: ['TEACHER', 'ADMIN']
+    }
+  },
+  {
+    path: '/teacher/experiment/:id/template',
+    name: 'ExperimentTemplate',
+    component: () => import('@/views/experiment/ExperimentTemplate.vue'),
+    meta: {
+      title: '实验模板管理',
+      requiresAuth: true,
+      roles: ['TEACHER', 'ADMIN']
+    }
+  },
+  {
+    path: '/time-slot/:id',
+    name: 'TimeSlotManagement-experiment',
+    component: () => import('@/views/experiment/TimeSlotManagement.vue'),
+    props: true,
+    meta: {
+      requiresAuth: true,
+      roles: ['TEACHER', 'ADMIN']
+    }
+  },
+  {
+    path: '/teacher/experiment/approvals',
+    name: 'BookingApproval',
+    component: () => import('@/views/experiment/BookingApproval.vue'),
+    meta: {
+      title: '预约审批',
+      requiresAuth: true,
+      roles: ['TEACHER', 'ADMIN']
+    }
+  },
   {
     path: '/ai/recommendation-history',
     name: 'RecommendationHistory',
@@ -472,8 +498,81 @@ const routes = [
     path: '/experiment/:experimentId/reports',
     name: 'ExperimentReports',
     component: () => import('@/views/experiment/ReportView.vue'),
-    meta: { title: '实验报告', roles: ['teacher'] },
+    meta: {
+      title: '实验报告',
+      roles: ['teacher'],
+      requiresAuth: true
+    },
     props: true
+  },
+
+  // ================= 新增路由 =================
+  {
+    path: '/course-home', // 课程首页（学生可见）
+    name: 'CourseHome',
+    component: HomePage,
+    meta: {
+      title: '课程首页',
+      requiresAuth: true,
+      roles: ['学生'] // 仅学生可见
+    }
+  },
+  {
+    path: '/forum', // 社区论坛（所有人可见）
+    name: 'Forum',
+    component: ForumPage,
+    meta: {
+      title: '社区论坛',
+      requiresAuth: true // 登录后可见
+    }
+  },
+  {
+    path: '/post/:id', // 帖子详情
+    name: 'PostDetail',
+    component: PostDetail,
+    props: true,
+    meta: {
+      title: '帖子详情',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/course/:id', // 课程详情
+    name: 'CourseDetail',
+    component: CourseDetail,
+    props: true,
+    meta: {
+      title: '课程详情',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/video/:id', // 视频详情
+    name: 'VideoDetail',
+    component: VideoDetail,
+    props: true,
+    meta: {
+      title: '视频详情',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/admin', // 管理后台（仅管理员可见）
+    name: 'AdminPanel',
+    component: AdminPanel,
+    meta: {
+      title: '管理后台',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/hot-posts', // 热门帖子
+    name: 'HotPosts',
+    component: HotPostsPage,
+    meta: {
+      title: '热门帖子',
+      requiresAuth: true
+    }
   }
 
 ]
@@ -483,65 +582,48 @@ const router = createRouter({
   routes
 })
 
-// 获取用户角色的辅助函数
-function getUserRole() {
-  const userInfo = localStorage.getItem('userInfo')
-  if (userInfo) {
-    try {
-      const user = JSON.parse(userInfo)
-      return user.role || user.userType || 'STUDENT' // 根据你的用户数据结构调整
-    } catch (e) {
-      return 'STUDENT'
+// 修改后的路由守卫（移除了管理员特殊检查）
+router.beforeEach((to, from, next) => {
+  // 1. 设置标题
+  if (to.meta.title) {
+    document.title = `${to.meta.title} - 智能化在线教学支持服务平台`
+  }
+
+  // 2. 番茄钟检查（论坛相关页面）
+  if (['Forum', 'PostDetail', 'HotPosts'].includes(to.name) && tomatoStore.value.isRunning) {
+    ElMessage.warning('番茄钟专注期间，社区论坛已禁止访问')
+    next(false)
+    return
+  }
+
+  // 3. 检查登录状态和角色权限
+  if (to.meta.requiresAuth) {
+    if (isAuthenticated()) {
+      // 检查角色权限（如果有设置roles）
+      if (to.meta.roles) {
+        const userRole = getUserRole()
+        if (!hasPermission(to.meta.roles, userRole)) {
+          ElMessage.error('您没有权限访问此页面')
+          next('/')
+          return
+        }
+      }
+      next()
+    } else {
+      ElMessage.warning('请先登录')
+      next({
+        path: '/login',
+        query: { redirect: to.fullPath }
+      })
+    }
+  } else {
+    // 如果用户已登录，访问登录/注册页面则重定向到首页
+    if ((to.path === '/login' || to.path === '/register') && isAuthenticated()) {
+      next('/')
+    } else {
+      next()
     }
   }
-  return null
-}
-
-// 检查用户权限的辅助函数
-function hasPermission(requiredRoles, userRole) {
-  if (!requiredRoles || requiredRoles.length === 0) {
-    return true
-  }
-  return requiredRoles.includes(userRole)
-}
-
-
-
-// 合并路由守卫逻辑
-// router.beforeEach((to, from, next) => {
-//   // 来自index.js的标题设置
-//   if (to.meta.title) {
-//     document.title = `${to.meta.title} - 智能化在线教学支持服务平台`
-//   }
-//
-//   // 来自index.js的认证检查
-//   if (to.meta.requiresAuth) {
-//     if (isAuthenticated()) {
-//       // 检查角色权限
-//       if (to.meta.roles) {
-//         const userRole = getUserRole()
-//         if (!hasPermission(to.meta.roles, userRole)) {
-//           ElMessage.error('您没有权限访问此页面')
-//           next('/')
-//           return
-//         }
-//       }
-//       next()
-//     } else {
-//       ElMessage.warning('请先登录')
-//       next({
-//         path: '/login',
-//         query: { redirect: to.fullPath }
-//       })
-//     }
-//   } else {
-//     // 来自index.js的重定向逻辑
-//     if ((to.path === '/login' || to.path === '/register') && isAuthenticated()) {
-//       next('/')
-//     } else {
-//       next()
-//     }
-//   }
-// })
+})
 
 export default router

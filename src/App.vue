@@ -5,7 +5,20 @@
       <div class="logo-container">
         <h1>CSU学生管理系统</h1>
       </div>
+
+      <!-- 新增社区论坛导航（所有人可见） -->
+      <div class="nav-links">
+        <router-link to="/forum" class="nav-item">社区论坛</router-link>
+      </div>
+
       <div class="user-profile" v-if="currentUser">
+        <!-- 新增通知功能 -->
+        <el-badge :value="unreadCount" :max="99" class="notification-badge" :hidden="unreadCount === 0">
+          <el-icon class="notification-icon" @click="notificationDrawerVisible = true">
+            <Bell />
+          </el-icon>
+        </el-badge>
+
         <el-dropdown>
           <div class="user-info">
             <el-avatar :size="36" :src="currentUser.avatar || defaultAvatar" />
@@ -30,28 +43,48 @@
 
         <!-- 学生导航项 -->
         <div v-if="isStudent" class="nav-section">
+          <!-- 新增课程首页 -->
+          <router-link to="/course-home" class="nav-item">
+            <el-icon>
+              <HomeFilled />
+            </el-icon>
+            <span>课程首页</span>
+          </router-link>
+
           <router-link to="/knowledge" class="nav-item">
-            <el-icon><Collection /></el-icon>
+            <el-icon>
+              <Collection />
+            </el-icon>
             <span>知识库</span>
           </router-link>
           <router-link to="/exams" class="nav-item">
-            <el-icon><Document /></el-icon>
+            <el-icon>
+              <Document />
+            </el-icon>
             <span>考试中心</span>
           </router-link>
           <router-link to="/student/homework" class="nav-item">
-            <el-icon><Notebook /></el-icon>
+            <el-icon>
+              <Notebook />
+            </el-icon>
             <span>作业中心</span>
           </router-link>
           <router-link to="/experimentList" class="nav-item">
-            <el-icon><MagicStick /></el-icon>
+            <el-icon>
+              <MagicStick />
+            </el-icon>
             <span>实验中心</span>
           </router-link>
           <router-link to="/score-manage" class="nav-item">
-            <el-icon><DataLine /></el-icon>
+            <el-icon>
+              <DataLine />
+            </el-icon>
             <span>我的成绩</span>
           </router-link>
           <router-link to="/learning-evaluation" class="nav-item">
-            <el-icon><TrendCharts /></el-icon>
+            <el-icon>
+              <TrendCharts />
+            </el-icon>
             <span>学习评价</span>
           </router-link>
           <router-link to="/ai-chat" class="nav-item">
@@ -59,7 +92,9 @@
             <span>智学助手</span>
           </router-link>
           <router-link to="/ai/recommendation-history" class="nav-item">
-            <el-icon><Cpu /></el-icon>
+            <el-icon>
+              <Cpu />
+            </el-icon>
             <span>AI推荐</span>
           </router-link>
         </div>
@@ -67,15 +102,21 @@
         <!-- 教师导航项 -->
         <div v-if="isTeacher" class="nav-section">
           <router-link to="/teacher/exams" class="nav-item">
-            <el-icon><EditPen /></el-icon>
+            <el-icon>
+              <EditPen />
+            </el-icon>
             <span>考试管理</span>
           </router-link>
           <router-link to="/teacher/homework" class="nav-item">
-            <el-icon><Checked /></el-icon>
+            <el-icon>
+              <Checked />
+            </el-icon>
             <span>作业管理</span>
           </router-link>
           <router-link to="/analytics" class="nav-item">
-            <el-icon><DataAnalysis /></el-icon>
+            <el-icon>
+              <DataAnalysis />
+            </el-icon>
             <span>教学分析</span>
           </router-link>
         </div>
@@ -83,24 +124,41 @@
         <!-- 管理员导航项 -->
         <div v-if="isAdmin" class="nav-section">
           <div class="nav-title">管理功能</div>
+          <!-- 新增管理后台 -->
+          <router-link to="/admin" class="nav-item">
+            <el-icon>
+              <Setting />
+            </el-icon>
+            <span>管理后台</span>
+          </router-link>
           <router-link to="/exam-booking/time-slot-management" class="nav-item">
-            <el-icon><Calendar /></el-icon>
+            <el-icon>
+              <Calendar />
+            </el-icon>
             <span>考试安排</span>
           </router-link>
           <router-link to="/exam-booking/booking-management" class="nav-item">
-            <el-icon><List /></el-icon>
+            <el-icon>
+              <List />
+            </el-icon>
             <span>预约管理</span>
           </router-link>
           <router-link to="/system/manage" class="nav-item">
-            <el-icon><Setting /></el-icon>
+            <el-icon>
+              <Setting />
+            </el-icon>
             <span>系统管理</span>
           </router-link>
           <router-link to="/user/manage" class="nav-item">
-            <el-icon><User /></el-icon>
+            <el-icon>
+              <User />
+            </el-icon>
             <span>用户管理</span>
           </router-link>
           <router-link to="/audit/report" class="nav-item">
-            <el-icon><Monitor /></el-icon>
+            <el-icon>
+              <Monitor />
+            </el-icon>
             <span>日志审计</span>
           </router-link>
         </div>
@@ -111,14 +169,20 @@
         <router-view />
       </div>
     </div>
+
+    <!-- 通知抽屉组件 -->
+    <NotificationDrawer :visible="notificationDrawerVisible" :current-user-id="currentUserId"
+      @close="notificationDrawerVisible = false" @update-unread-count="fetchUnreadCount" />
   </div>
 </template>
 
+
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, ElDropdown, ElDropdownMenu, ElDropdownItem, ElAvatar, ElIcon } from 'element-plus'
+import { ElMessage, ElDropdown, ElDropdownMenu, ElDropdownItem, ElAvatar, ElIcon, ElBadge } from 'element-plus'
 import {
+  HomeFilled,
   Collection,
   Document,
   Notebook,
@@ -133,8 +197,11 @@ import {
   Calendar,
   List,
   Setting,
-  User
+  User,
+  Bell
 } from '@element-plus/icons-vue'
+import NotificationDrawer from './components/NotificationDrawer.vue'
+import { notificationAPI } from './api'
 
 export default {
   name: 'App',
@@ -144,6 +211,8 @@ export default {
     ElDropdownItem,
     ElAvatar,
     ElIcon,
+    ElBadge,
+    HomeFilled,
     Collection,
     Document,
     Notebook,
@@ -158,7 +227,9 @@ export default {
     Calendar,
     List,
     Setting,
-    User
+    User,
+    Bell,
+    NotificationDrawer
   },
   setup() {
     const router = useRouter()
@@ -166,13 +237,21 @@ export default {
     const defaultAvatar = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png')
     const currentUser = ref(null)
 
+    // 新增通知功能相关状态
+    const notificationDrawerVisible = ref(false);
+    const unreadCount = ref(0);
+    let pollInterval = null;
+    const currentUserId = computed(() => {
+      return currentUser.value?.id || localStorage.getItem('userId')
+    })
+
     const loadUserInfo = () => {
       const token = localStorage.getItem('token')
       const userInfo = localStorage.getItem('userInfo')
       const role = localStorage.getItem('role')
       const username = localStorage.getItem('username')
+      const userId = localStorage.getItem('userId')
 
-      // 如果没有token，清除用户信息
       if (!token) {
         currentUser.value = null
         return
@@ -190,6 +269,11 @@ export default {
           if (!currentUser.value.username && username) {
             currentUser.value.username = username
           }
+
+          // 从JWT中提取用户ID
+          if (userId && !currentUser.value.id) {
+            currentUser.value.id = userId
+          }
         } catch (e) {
           console.error('解析用户信息失败:', e)
           logout()
@@ -197,10 +281,35 @@ export default {
       } else if (role && username) {
         currentUser.value = {
           username: username,
-          roleDesc: role
+          roleDesc: role,
+          id: userId || Date.now().toString() // 临时ID
         }
       }
     }
+
+    // 新增通知功能方法
+    const fetchUnreadCount = async () => {
+      if (!currentUserId.value) return;
+      try {
+        const count = await notificationAPI.getUnreadCount({
+          userId: currentUserId.value
+        });
+        unreadCount.value = count;
+      } catch (error) {
+        console.error("获取未读消息数失败:", error);
+      }
+    };
+
+    const startPolling = () => {
+      fetchUnreadCount();
+      pollInterval = setInterval(fetchUnreadCount, 30000);
+    };
+
+    const stopPolling = () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
 
     const logout = () => {
       localStorage.removeItem('token')
@@ -246,8 +355,13 @@ export default {
 
     onMounted(() => {
       loadUserInfo()
-      // 监听localStorage变化事件
       window.addEventListener('storage', handleStorageChange)
+      startPolling();
+    })
+
+    onBeforeUnmount(() => {
+      window.removeEventListener('storage', handleStorageChange)
+      stopPolling();
     })
 
     // 组件销毁时清除事件监听
@@ -264,11 +378,12 @@ export default {
       isStudent,
       isTeacher,
       isAdmin,
-      cleanup
+      // 通知功能相关
+      notificationDrawerVisible,
+      unreadCount,
+      currentUserId,
+      fetchUnreadCount
     }
-  },
-  beforeUnmount() {
-    this.cleanup()
   }
 }
 </script>
@@ -297,6 +412,53 @@ export default {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   position: relative;
   z-index: 10;
+}
+
+/* 新增导航链接样式 */
+.nav-links {
+  display: flex;
+  margin-left: 40px;
+}
+
+.nav-item {
+  color: white;
+  text-decoration: none;
+  font-size: 16px;
+  padding: 8px 15px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+  margin-right: 10px;
+}
+
+.nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.router-link-active {
+  background-color: rgba(255, 255, 255, 0.2);
+  font-weight: 500;
+}
+
+/* 用户信息区域调整 */
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* 通知图标样式 */
+.notification-badge {
+  cursor: pointer;
+}
+
+.notification-icon {
+  font-size: 22px;
+  color: white;
+  transition: color 0.3s;
+}
+
+.notification-icon:hover {
+  color: #e6f7ff;
 }
 
 .logo-container h1 {
