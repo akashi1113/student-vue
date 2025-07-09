@@ -101,25 +101,29 @@
             {{ formatDateTime(row.bookingTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="viewDetails(row)">详情</el-button>
-            <el-button
-                v-if="row.bookingStatus === 'BOOKED'"
-                size="small"
-                type="success"
-                @click="confirmBooking(row)"
-            >
-              确认
-            </el-button>
-            <el-button
-                v-if="['BOOKED', 'CONFIRMED'].includes(row.bookingStatus)"
-                size="small"
-                type="danger"
-                @click="cancelBooking(row)"
-            >
-              取消
-            </el-button>
+            <div class="action-buttons">
+              <el-button size="small" @click="viewDetails(row)">详情</el-button>
+              <el-button
+                  v-if="row.bookingStatus === 'BOOKED'"
+                  size="small"
+                  type="success"
+                  @click="confirmBooking(row)"
+                  class="confirm-btn"
+              >
+                确认
+              </el-button>
+              <el-button
+                  v-if="['BOOKED', 'CONFIRMED'].includes(row.bookingStatus)"
+                  size="small"
+                  type="danger"
+                  @click="cancelBooking(row)"
+                  class="cancel-btn"
+              >
+                取消
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -311,57 +315,265 @@ export default {
 
 <style scoped>
 .booking-management {
-  padding: 20px;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  background-color: #f8fafc;
+  min-height: 100vh;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-left: 5px solid #5b8cff;
 }
 
 .page-header h1 {
   margin: 0;
-  color: #303133;
+  color: #2c3e50;
+  font-size: 26px;
+  font-weight: 600;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
+  gap: 16px;
+}
+
+.header-actions .el-select,
+.header-actions .el-date-editor {
+  --el-input-focus-border-color: #5b8cff;
+}
+
+.header-actions .el-button {
+  padding: 10px 20px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.header-actions .el-button:hover {
+  transform: translateY(-2px);
 }
 
 .stats-cards {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .stats-card {
-  text-align: center;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 
 .stats-content {
-  padding: 10px;
+  padding: 20px;
 }
 
 .stats-number {
-  font-size: 24px;
-  font-weight: bold;
-  color: #409eff;
+  font-size: 28px;
+  font-weight: 600;
+  color: #5b8cff;
   margin-bottom: 8px;
 }
 
 .stats-label {
-  font-size: 14px;
-  color: #606266;
+  font-size: 15px;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .bookings-table {
   background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.el-table {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.el-table :deep(.el-table__header) th {
+  background-color: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+}
+
+.el-table :deep(.el-table__cell) {
+  padding: 14px 0;
+}
+
+.el-table :deep(.cell) {
+  padding: 0 12px;
+}
+
+.el-table :deep(.el-table__row:hover) {
+  background-color: #f8fafc !important;
+}
+
+.el-tag {
+  font-weight: 500;
+  padding: 0 10px;
+  height: 26px;
+  line-height: 26px;
+}
+
+.el-tag--warning {
+  background-color: #fefce8;
+  border-color: #fef08a;
+  color: #eab308;
+}
+
+.el-tag--success {
+  background-color: #f0fdf4;
+  border-color: #dcfce7;
+  color: #22c55e;
+}
+
+.el-tag--danger {
+  background-color: #fef2f2;
+  border-color: #fee2e2;
+  color: #ef4444;
+}
+
+.el-tag--info {
+  background-color: #f0f9ff;
+  border-color: #e0f2fe;
+  color: #0ea5e9;
+}
+
+.el-button--small {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.el-button--success {
+  --el-button-bg-color: #22c55e;
+  --el-button-border-color: #22c55e;
+  --el-button-hover-bg-color: #16a34a;
+  --el-button-hover-border-color: #16a34a;
+}
+
+.el-button--danger {
+  --el-button-bg-color: #ef4444;
+  --el-button-border-color: #ef4444;
+  --el-button-hover-bg-color: #dc2626;
+  --el-button-hover-border-color: #dc2626;
+}
+
+/* 对话框样式 */
+.el-dialog {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.el-dialog__header {
+  padding: 20px 24px;
+  background-color: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  margin-right: 0;
+}
+
+.el-dialog__title {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.el-dialog__body {
+  padding: 24px;
+}
+
+.el-dialog__footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.el-form-item {
+  margin-bottom: 20px;
+}
+
+.el-form-item__label {
+  color: #475569;
+  font-weight: 500;
+}
+
+.el-textarea__inner {
+  min-height: 100px;
   border-radius: 8px;
 }
 
-.pagination {
-  margin-top: 20px;
-  text-align: right;
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .header-actions .el-select,
+  .header-actions .el-date-editor {
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+
+  .stats-cards .el-col {
+    margin-bottom: 16px;
+  }
+
+  .bookings-table {
+    padding: 16px;
+  }
+
+  .el-table :deep(.el-table__cell) {
+    padding: 8px 0;
+  }
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.action-buttons .el-button {
+  flex: 1;
+  min-width: 70px;
+}
+
+.action-buttons .confirm-btn {
+  --el-button-bg-color: #22c55e;
+  --el-button-border-color: #22c55e;
+  --el-button-hover-bg-color: #16a34a;
+  --el-button-hover-border-color: #16a34a;
+}
+
+.action-buttons .cancel-btn {
+  --el-button-bg-color: #ef4444;
+  --el-button-border-color: #ef4444;
+  --el-button-hover-bg-color: #dc2626;
+  --el-button-hover-border-color: #dc2626;
 }
 </style>
