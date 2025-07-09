@@ -132,6 +132,32 @@
             </el-button>
         </div>
 
+        <!-- AI推荐区域 -->
+        <!-- 在ForumPage.vue模板中修改AI推荐区域 -->
+        <div class="ai-recommend-section">
+            <!-- 悬浮光球 -->
+            <div class="ai-orb" :class="{ active: recommendedPosts.length }">
+                <div class="orb-core"></div>
+                <div class="orb-glow"></div>
+
+                <!-- 动态粒子 -->
+                <div class="particle" v-for="i in 30" :key="i" :style="getParticleStyle(i)"></div>
+
+                <!-- AI对话框 - 等边三角形定位 -->
+                <div v-for="(post, index) in recommendedPosts.slice(0, 3)" :key="'dialog' + post.id" class="ai-dialog"
+                    :class="'dialog-' + index" @click="goToPostDetail(post.id)" :style="getDialogPosition(index)">
+                    <div class="dialog-content">
+                        <div class="dialog-header">
+                            <el-icon class="ai-icon">
+                                <MagicStick />
+                            </el-icon>
+                            <span>AI推荐</span>
+                        </div>
+                        <div class="post-title">{{ post.title }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- 帖子列表 -->
         <div v-loading="loading" class="post-list">
             <el-empty v-if="!posts.length && !loading" description="还没有人发帖，快来抢占沙发吧！" />
@@ -227,7 +253,7 @@
 import { ref, onMounted, reactive } from 'vue';
 import { forumAPI } from '../../api';
 import { ElMessage } from 'element-plus';
-import { Edit, View, Pointer, ChatDotRound, Search, HotWater, ArrowRight } from '@element-plus/icons-vue';
+import { Edit, View, Pointer, ChatDotRound, Search, HotWater, ArrowRight, Refresh, MagicStick } from '@element-plus/icons-vue';
 import { format, formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useRouter } from 'vue-router';
@@ -245,6 +271,27 @@ const searchKeyword = ref('');
 const searchCategory = ref('');
 const hotPosts = ref([]);
 const router = useRouter();
+// 增加状态变量
+const recommendedPosts = ref([]);
+const recommendLoading = ref(false);
+
+const getDialogPosition = (index) => {
+    const radius = 180; // 保持半径不变
+    // 调整角度顺序：0°(右), 120°(左下), 240°(左上) - 更符合三角形分布
+    const angles = [0, 120, 240];
+    const radian = angles[index] * (Math.PI / 180);
+
+    // 计算坐标时反转Y轴（浏览器坐标系Y轴向下为正）
+    const x = Math.cos(radian) * radius;
+    const y = -Math.sin(radian) * radius; // 注意这里的负号
+
+    // 使用百分比定位确保居中
+    return {
+        left: `calc(50% + ${x}px)`,
+        top: `calc(50% + ${y}px)`,
+        transform: 'translate(-50%, -50%)' // 确保对话框中心对准坐标点
+    };
+};
 
 // 富文本编辑器配置
 const editorOptions = {
@@ -280,6 +327,7 @@ const availableCategories = ref([
     { value: '其他话题', label: '其他话题' }
 ]);
 
+
 // 粒子特效样式生成
 const getParticleStyle = (index) => {
     const size = Math.random() * 4 + 2;
@@ -312,6 +360,39 @@ const getDialogParticleStyle = (index) => {
     };
 };
 
+
+// 修改获取推荐的方法 - 添加去重逻辑
+const fetchRecommendations = async () => {
+    try {
+        recommendLoading.value = true;
+        const response = await forumAPI.getRecommendations(5);
+
+        // 添加去重逻辑 - 根据id去重
+        const uniquePosts = [];
+        const seenIds = new Set();
+
+        for (const post of response) {
+            if (!seenIds.has(post.id)) {
+                seenIds.add(post.id);
+                uniquePosts.push(post);
+            }
+        }
+
+        recommendedPosts.value = uniquePosts.slice(0, 3); // 只取前3个
+    } catch (error) {
+        console.error("获取推荐帖子失败:", error);
+        ElMessage.error('获取AI推荐失败');
+    } finally {
+        recommendLoading.value = false;
+    }
+};
+
+// 增加刷新方法
+const refreshRecommendations = () => {
+    fetchRecommendations();
+};
+
+
 // 现有的所有函数保持不变
 const fetchHotPosts = async () => {
     try {
@@ -334,6 +415,7 @@ const goToHotPosts = () => {
 onMounted(() => {
     fetchPosts();
     fetchHotPosts();
+    fetchRecommendations(); // 新增
 });
 
 const fetchPosts = async () => {
@@ -434,56 +516,258 @@ const getCategoryTagType = (category) => {
 </script>
 
 <style scoped>
-.enhanced-post {
-    background: linear-gradient(135deg, #ffffff, #f8fafc);
-    border: 1px solid rgba(59, 130, 246, 0.1);
-    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.08);
-    transition: all 0.3s ease;
+/* 蓝色科技感光球样式 */
+.ai-recommend-section {
     position: relative;
-    overflow: visible;
+    height: 400px;
+    /* 增加高度以容纳更远的对话框 */
+    margin: 60px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-.enhanced-post:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 30px rgba(59, 130, 246, 0.15);
-    border-color: rgba(59, 130, 246, 0.3);
+.ai-orb {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    transform: scale(0);
+    transition: all 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.glowing-link {
-    color: #1e40af;
-    font-weight: 600;
-    text-decoration: none;
-    background: linear-gradient(to right, #3b82f6, #3b82f6);
-    background-size: 0% 2px;
-    background-repeat: no-repeat;
-    background-position: left bottom;
-    transition: all 0.3s ease;
-    padding-bottom: 3px;
+.ai-orb.active {
+    transform: scale(1);
 }
 
-.glowing-link:hover {
-    background-size: 100% 2px;
-    color: #1e3a8a;
-    text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
-}
-
-.enhanced-post::before {
-    content: '';
+.orb-core {
     position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(45deg, #3b82f6, #8b5cf6);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: -1;
-    filter: blur(20px);
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #1e90ff, #0066cc);
+    box-shadow: 0 0 60px rgba(30, 144, 255, 0.7);
+    z-index: 10;
 }
 
-.enhanced-post:hover::before {
-    opacity: 0.1;
+.orb-glow {
+    position: absolute;
+    width: 180%;
+    height: 180%;
+    top: -40%;
+    left: -40%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(30, 144, 255, 0.3) 0%, rgba(0, 102, 204, 0.1) 40%, transparent 70%);
+    animation: pulse 3s infinite alternate;
+    z-index: 5;
 }
+
+/* AI对话框的基础样式：只保留一份，且去除可能导致冲突的重复 transform */
+.ai-dialog {
+    position: absolute;
+    top: 50%;
+    /* 从光球中心开始定位 */
+    left: 50%;
+    /* 从光球中心开始定位 */
+    transform: translate(-50%, -50%) scale(0);
+    /* 居中定位+初始缩放 */
+    max-width: 260px;
+    height: auto;
+    /* 让高度自适应内容 */
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 18px;
+    padding: 15px;
+    box-shadow: 0 10px 30px rgba(30, 144, 255, 0.3);
+    z-index: 20;
+    transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(30, 144, 255, 0.3);
+    background-clip: padding-box;
+}
+
+/* 当ai-orb激活时，对话框显示出来 */
+.ai-orb.active .ai-dialog {
+    transform: scale(1);
+    /* 仅控制显示和缩放动画，不影响定位 */
+}
+
+/* 为每个对话框设置精确的等边三角形位置 */
+/* 假设光球中心为 (80, 80) */
+/* 离光球中心的距离 (orbit_radius) 设为 150px */
+/* 对话框宽度 220px (一半 110px)，预估高度 100px (一半 50px) */
+
+/* 第一个对话框：顶部 (90度方向)
+.ai-orb.active .dialog-0 { */
+/* 目标中心点：(80, 80 - 150) = (80, -70) */
+/* 自身左上角：(80 - 110, -70 - 50) = (-30, -120) */
+/* top: -120px;
+    left: -30px;
+    transition-delay: 0.1s; */
+/* 稍微错开动画，看起来更生动 */
+/* } */
+
+/* 第二个对话框：左下 (210度方向) */
+/* .ai-orb.active .dialog-1 { */
+/* 目标中心点：(80 + 150 * cos(210°), 80 + 150 * sin(210°)) */
+/* (80 + 150 * (-0.866), 80 + 150 * (-0.5)) */
+/* (80 - 129.9, 80 - 75) = (-49.9, 5) */
+/* 自身左上角：(-49.9 - 110, 5 - 50) = (-159.9, -45) */
+/* top: -45px;
+    left: -160px; */
+/* 调整为负值，让它在光球左侧 */
+transition-delay: 0.2s;
+/* } */
+
+/* 第三个对话框：右下 (330度方向) */
+/*i-orb.active .dialog-2 {
+    /* 目标中心点：(80 + 150 * cos(330°), 80 + 150 * sin(330°)) */
+/* (80 + 150 * (0.866), 80 + 150 * (-0.5)) */
+/* (80 + 129.9, 80 - 75) = (209.9, 5) */
+/* 自身左上角：(209.9 - 110, 5 - 50) = (99.9, -45) */
+/* top: -45px;
+    left: 100px;
+    transition-delay: 0.3s;
+} */
+
+/* 对话框的“小尾巴”样式 */
+.dialog-tail {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    z-index: 1;
+    box-shadow: 0 10px 30px rgba(30, 144, 255, 0.3);
+    /* 与对话框阴影一致 */
+}
+
+/* 顶部对话框的尾巴：在对话框底部中间，指向下方光球 */
+.dialog-0 .dialog-tail {
+    background: rgba(255, 255, 255, 0.95);
+    /* 与对话框背景一致 */
+    bottom: -10px;
+    /* 露出部分 */
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    border-right: 1px solid rgba(30, 144, 255, 0.3);
+    /* 模拟对话框边框 */
+    border-bottom: 1px solid rgba(30, 144, 255, 0.3);
+}
+
+/* 左下对话框的尾巴：在对话框右侧中间，指向右上方光球 */
+.dialog-1 .dialog-tail {
+    background: rgba(255, 255, 255, 0.95);
+    top: 50%;
+    right: -10px;
+    /* 露出部分 */
+    transform: translateY(-50%) rotate(-45deg);
+    /* 逆时针旋转 */
+    border-top: 1px solid rgba(30, 144, 255, 0.3);
+    border-right: 1px solid rgba(30, 144, 255, 0.3);
+}
+
+/* 右下对话框的尾巴：在对话框左侧中间，指向左上方光球 */
+.dialog-2 .dialog-tail {
+    background: rgba(255, 255, 255, 0.95);
+    top: 50%;
+    left: -10px;
+    /* 露出部分 */
+    transform: translateY(-50%) rotate(135deg);
+    /* 顺时针旋转 */
+    border-left: 1px solid rgba(30, 144, 255, 0.3);
+    border-top: 1px solid rgba(30, 144, 255, 0.3);
+}
+
+
+.dialog-content {
+    position: relative;
+    z-index: 2;
+}
+
+.dialog-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #3b82f6;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.ai-icon {
+    color: #8b5cf6;
+    font-size: 1.2rem;
+}
+
+.post-title {
+    color: #1e293b;
+    font-size: 1rem;
+    line-height: 1.4;
+    transition: all 0.3s ease;
+}
+
+/* 悬停效果：同时应用位移和缩放，不会覆盖定位 */
+.ai-dialog:hover {
+    box-shadow: 0 15px 40px rgba(59, 130, 246, 0.5);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 249, 255, 0.98));
+    /* 先放大一点，再向上移动一点，制造浮起效果 */
+    transform: scale(1.05) translateY(-5px);
+}
+
+.ai-dialog:hover .post-title {
+    color: #3b82f6;
+}
+
+
+/* 提示文字样式，保持不变 */
+/* 宝，我帮你注释掉这个提示文字了，因为现在对话框分布很明显了，不需要它了，如果需要可以取消注释 */
+/*
+.ai-hint {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 1s ease 2s;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 8px 16px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.ai-orb.active~.ai-hint {
+    opacity: 1;
+}
+
+.hint-text {
+    color: #3b82f6;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.hint-arrow {
+    width: 20px;
+    height: 20px;
+    margin: 8px auto 0;
+    border: 2px solid #3b82f6;
+    border-width: 0 0 2px 2px;
+    transform: rotate(-45deg);
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: rotate(-45deg) translateY(0);
+    }
+
+    50% {
+        transform: rotate(-45deg) translateY(-10px);
+    }
+}
+*/
 
 /* 基础容器 */
 .forum-page-container {
@@ -1446,7 +1730,7 @@ const getCategoryTagType = (category) => {
 
     .stat-item {
         flex: 1;
-        min-width: 80px;
+        min-width: 100px;
         justify-content: center;
     }
 

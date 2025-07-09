@@ -184,7 +184,38 @@ export const forumAPI = {
     getPendingReports: (params) => api.get('/post/admin/reports', { params }),
     processReportAndDeletePost: (reportId) => api.put(`/post/admin/reports/${reportId}/deletePost`),
     processReportAndKeepPost: (reportId, reasonForKeeping) =>
-        api.put(`/post/admin/reports/${reportId}/keepPost`, null, { params: { reasonForKeeping } })
+        api.put(`/post/admin/reports/${reportId}/keepPost`, null, { params: { reasonForKeeping } }),
+
+    //AI功能
+    // 新增的 AI 功能接口
+    semanticSearch: (query, count) =>
+        api.get('/post/semantic-search', { params: { query, count } }),
+
+    getRelatedPosts: (postId, count) =>
+        api.get(`/post/${postId}/related`, { params: { count } }),
+
+    getRecommendations: (count) =>
+        api.get('/post/recommendations', { params: { count } }),
+
+    // 新增智学助手接口
+    askTutor: (questionData) =>
+        api.post('/ai/tutor/ask', questionData),
+};
+
+// =====================================
+// AI 相关 API
+// =====================================
+export const aiTutorAPI = {
+    // 智学助手问答
+    askQuestion: (questionData) =>
+        api.post('/ai/tutor/ask', questionData),
+
+    // 管理员数据洞察
+    getDashboardInsights: () =>
+        api.get('/admin/dashboard/insights'),
+
+    processNLQuery: (query) =>
+        api.post('/admin/nl-query', { query }),
 };
 
 // =====================================
