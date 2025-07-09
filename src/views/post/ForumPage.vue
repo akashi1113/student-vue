@@ -616,7 +616,7 @@ const getCategoryTagType = (category) => {
 /* top: -45px;
     left: -160px; */
 /* 调整为负值，让它在光球左侧 */
-transition-delay: 0.2s;
+//transition-delay: 0.2s;
 /* } */
 
 /* 第三个对话框：右下 (330度方向) */
