@@ -1,230 +1,149 @@
 <template>
   <div class="login-container">
-    <!-- 背景粒子特效 -->
-    <div class="particles" id="particles-js"></div>
-
-    <!-- 登录卡片 -->
-    <div class="login-card" :class="{'card-animate': cardAnimate}">
+    <div class="login-card">
       <div class="login-header">
         <h2>登录</h2>
         <p>智能化在线教学支持服务平台</p>
       </div>
-
+      
       <!-- 登录方式选项卡 -->
       <el-tabs v-model="activeTab" stretch class="login-tabs">
-        <!-- 账号密码登录 -->
         <el-tab-pane label="账号密码登录" name="password">
           <el-form
-              ref="passwordFormRef"
-              :model="passwordForm"
-              :rules="passwordRules"
-              class="login-form"
-              @submit.prevent="handlePasswordLogin"
+            ref="passwordFormRef"
+            :model="passwordForm"
+            :rules="passwordRules"
+            class="login-form"
+            @submit.prevent="handlePasswordLogin"
           >
             <el-form-item prop="username">
               <el-input
-                  v-model="passwordForm.username"
-                  placeholder="请输入用户名"
-                  size="large"
-                  :prefix-icon="User"
+                v-model="passwordForm.username"
+                placeholder="请输入用户名"
+                size="large"
+                :prefix-icon="User"
               />
             </el-form-item>
-
+            
             <el-form-item prop="password">
               <el-input
-                  v-model="passwordForm.password"
-                  type="password"
-                  placeholder="请输入密码"
-                  size="large"
-                  :prefix-icon="Lock"
-                  show-password
-                  @keyup.enter="handlePasswordLogin"
+                v-model="passwordForm.password"
+                type="password"
+                placeholder="请输入密码"
+                size="large"
+                :prefix-icon="Lock"
+                show-password
+                @keyup.enter="handlePasswordLogin"
               />
             </el-form-item>
-
+            
             <el-form-item>
               <el-button
-                  type="primary"
-                  size="large"
-                  class="login-btn"
-                  :loading="passwordLoading"
-                  @click="handlePasswordLogin"
+                type="primary"
+                size="large"
+                class="login-btn"
+                :loading="passwordLoading"
+                @click="handlePasswordLogin"
               >
                 {{ passwordLoading ? '登录中...' : '登录' }}
-                <span v-if="!passwordLoading" class="btn-wave"></span>
               </el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
-
-        <!-- 邮箱验证码登录 -->
+        
         <el-tab-pane label="邮箱验证码登录" name="email">
           <el-form
-              ref="emailFormRef"
-              :model="emailForm"
-              :rules="emailRules"
-              class="login-form"
-              @submit.prevent="handleEmailLogin"
+            ref="emailFormRef"
+            :model="emailForm"
+            :rules="emailRules"
+            class="login-form"
+            @submit.prevent="handleEmailLogin"
           >
             <el-form-item prop="email">
               <el-input
-                  v-model="emailForm.email"
-                  placeholder="请输入邮箱"
-                  size="large"
-                  :prefix-icon="Message"
+                v-model="emailForm.email"
+                placeholder="请输入邮箱"
+                size="large"
+                :prefix-icon="Message"
               />
             </el-form-item>
-
+            
             <el-form-item prop="code">
               <div class="code-input">
                 <el-input
-                    v-model="emailForm.code"
-                    placeholder="请输入验证码"
-                    size="large"
-                    :prefix-icon="Key"
-                    @keyup.enter="handleEmailLogin"
+                  v-model="emailForm.code"
+                  placeholder="请输入验证码"
+                  size="large"
+                  :prefix-icon="Key"
+                  @keyup.enter="handleEmailLogin"
                 />
                 <el-button
-                    type="primary"
-                    plain
-                    :disabled="countdown > 0 || sendingCode"
-                    :loading="sendingCode"
-                    @click="sendVerificationCodef"
-                    class="code-btn"
+                  type="primary"
+                  :disabled="countdown > 0 || sendingCode"
+                  :loading="sendingCode"
+                  @click="sendVerificationCodef"
                 >
                   {{ countdown > 0 ? `${countdown}秒后重试` : '获取验证码' }}
                 </el-button>
               </div>
             </el-form-item>
-
+            
             <el-form-item>
               <el-button
-                  type="primary"
-                  size="large"
-                  class="login-btn"
-                  :loading="emailLoading"
-                  @click="handleEmailLogin"
+                type="primary"
+                size="large"
+                class="login-btn"
+                :loading="emailLoading"
+                @click="handleEmailLogin"
               >
                 {{ emailLoading ? '登录中...' : '登录' }}
-                <span v-if="!emailLoading" class="btn-wave"></span>
               </el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
-
-        <!-- 人脸识别登录 -->
+        
         <el-tab-pane label="人脸识别登录" name="face">
-          <el-form class="login-form" @submit.prevent="handleFaceLogin">
-            <el-form-item prop="username">
-              <el-input
-                  v-model="faceForm.username"
-                  placeholder="请输入用户名"
-                  size="large"
-                  :prefix-icon="User"
-              />
+          <el-form @submit.prevent="handleFaceLogin" class="login-form">
+            <el-form-item label="用户名">
+              <el-input v-model="faceUsername" placeholder="请输入用户名" size="large" :prefix-icon="User" />
             </el-form-item>
-
-            <el-form-item label="人脸采集">
-              <div class="face-capture">
-                <video
-                    ref="videoRef"
-                    width="320"
-                    height="240"
-                    autoplay
-                    playsinline
-                    class="face-video"
-                    :class="{'video-active': isCameraActive}"
-                ></video>
-                <canvas ref="canvasRef" style="display:none;"></canvas>
-
-                <div class="face-actions">
-                  <el-button
-                      type="primary"
-                      size="small"
-                      @click="toggleCamera"
-                      :icon="isCameraActive ? 'el-icon-video-pause' : 'el-icon-video-play'"
-                  >
-                    {{ isCameraActive ? '关闭摄像头' : '打开摄像头' }}
-                  </el-button>
-
-                  <el-button
-                      type="success"
-                      size="small"
-                      @click="captureFace"
-                      :disabled="!isCameraActive"
-                      icon="el-icon-camera"
-                  >
-                    拍照
-                  </el-button>
-
-                  <el-upload
-                      :show-file-list="false"
-                      :before-upload="handleFaceUpload"
-                      accept="image/*"
-                  >
-                    <el-button
-                        size="small"
-                        icon="el-icon-upload"
-                    >
-                      上传照片
-                    </el-button>
-                  </el-upload>
-                </div>
-
-                <div class="face-preview" v-if="faceImage">
-                  <img :src="'data:image/jpeg;base64,'+faceImage" alt="人脸照片" />
-                  <div class="face-tip">已采集人脸照片</div>
-                </div>
-              </div>
+            <el-form-item label="人脸照片">
+              <video ref="videoRef" width="240" height="180" autoplay style="border-radius:8px;"></video>
+              <canvas ref="canvasRef" style="display:none;"></canvas>
+              <el-button @click="openCamera" size="small" style="margin:8px 8px 0 0;">打开摄像头</el-button>
+              <el-upload :show-file-list="false" :before-upload="handleUpload" accept="image/*">
+                <el-button size="small">上传照片</el-button>
+              </el-upload>
+              <img v-if="faceImage" :src="'data:image/jpeg;base64,'+faceImage" width="120" style="margin-top:8px;" />
             </el-form-item>
-
             <el-form-item>
-              <el-button
-                  type="primary"
-                  size="large"
-                  class="login-btn"
-                  :loading="faceLoading"
-                  :disabled="!faceImage || !faceForm.username"
-                  @click="handleFaceLogin"
-              >
-                {{ faceLoading ? '识别中...' : '人脸识别登录' }}
-                <span v-if="!faceLoading" class="btn-wave"></span>
-              </el-button>
+              <el-button type="primary" :disabled="!faceImage" size="large" @click="handleFaceLogin">手动重试登录</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
       </el-tabs>
-
+      
       <div class="login-footer">
         <span>还没有账号？</span>
         <el-link type="primary" @click="goToRegister">立即注册</el-link>
-        <el-divider direction="vertical"></el-divider>
-        <el-link type="info" @click="goToForget">忘记密码</el-link>
       </div>
-    </div>
-
-    <!-- 浮动气泡背景 -->
-    <div class="bubbles">
-      <span v-for="i in 15" :key="i" :style="bubbleStyle(i)"></span>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElLoading } from 'element-plus'
 import { User, Lock, Message, Key } from '@element-plus/icons-vue'
 import { login, loginByCode, sendVerificationCode, faceLogin } from '../api/userApi.js'
-import 'particles.js'
 
 export default {
   name: 'UserLogin',
   setup() {
     const router = useRouter()
     const activeTab = ref('password')
-    const cardAnimate = ref(false)
-
+    
     // 密码登录表单
     const passwordFormRef = ref()
     const passwordLoading = ref(false)
@@ -232,7 +151,7 @@ export default {
       username: '',
       password: ''
     })
-
+    
     const passwordRules = {
       username: [
         { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -243,16 +162,16 @@ export default {
         { min: 6, max: 20, message: '密码长度需在6到20字符之间', trigger: 'blur' }
       ]
     }
-
+    
     // 邮箱登录表单
     const emailFormRef = ref()
     const emailLoading = ref(false)
-    const sendingCode = ref(false)
+    const sendingCode = ref(false) // 发送验证码状态
     const emailForm = reactive({
       email: '',
       code: ''
     })
-
+    
     const emailRules = {
       email: [
         { required: true, message: '请输入邮箱', trigger: 'blur' },
@@ -263,204 +182,168 @@ export default {
         { len: 6, message: '验证码为6位数字', trigger: 'blur' }
       ]
     }
-
+    
     // 验证码倒计时
     const countdown = ref(0)
     let countdownTimer = null
-
+    
     // 人脸识别登录
-    const faceForm = reactive({
-      username: ''
-    })
-    const faceLoading = ref(false)
+    const faceUsername = ref('')
     const faceImage = ref('')
     const videoRef = ref(null)
     const canvasRef = ref(null)
-    const isCameraActive = ref(false)
-    let stream = null
-
-    // 气泡样式
-    const bubbleStyle = (i) => {
-      const size = Math.random() * 10 + 10
-      const duration = Math.random() * 15 + 10
-      const delay = Math.random() * 5
-      const left = Math.random() * 100
-      return {
-        width: `${size}px`,
-        height: `${size}px`,
-        left: `${left}%`,
-        animationDuration: `${duration}s`,
-        animationDelay: `${delay}s`
-      }
-    }
-
-    // 初始化粒子效果
-    const initParticles = () => {
-      if (window.particlesJS) {
-        window.particlesJS('particles-js', {
-          particles: {
-            number: { value: 80, density: { enable: true, value_area: 800 } },
-            color: { value: "#3a86ff" },
-            shape: { type: "circle" },
-            opacity: { value: 0.5, random: true },
-            size: { value: 3, random: true },
-            line_linked: {
-              enable: true,
-              distance: 150,
-              color: "#3a86ff",
-              opacity: 0.4,
-              width: 1
-            },
-            move: {
-              enable: true,
-              speed: 2,
-              direction: "none",
-              random: true,
-              straight: false,
-              out_mode: "out"
-            }
-          },
-          interactivity: {
-            detect_on: "canvas",
-            events: {
-              onhover: { enable: true, mode: "grab" },
-              onclick: { enable: true, mode: "push" }
-            }
-          }
-        })
-      }
-    }
-
-    // 打开/关闭摄像头
-    const toggleCamera = async () => {
-      if (isCameraActive.value) {
-        stopCamera()
-      } else {
-        await startCamera()
-      }
-    }
-
-    // 开启摄像头
-    const startCamera = async () => {
+    
+    const openCamera = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: 320,
-            height: 240,
-            facingMode: 'user' // 前置摄像头
-          },
-          audio: false
-        })
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true })
         videoRef.value.srcObject = stream
-        isCameraActive.value = true
-        ElMessage.success('摄像头已开启，请正对摄像头')
-      } catch (error) {
-        console.error('摄像头开启失败:', error)
-        ElMessage.error('无法访问摄像头: ' + error.message)
+        
+        // 优化：缩短等待时间为2秒
+        ElMessage.info('摄像头已打开，2秒后将自动拍照并尝试登录')
+        
+        // 等待摄像头稳定，2秒后自动拍照
+        setTimeout(() => {
+          if (videoRef.value && videoRef.value.readyState === 4) {
+            takePhoto()
+            // 拍照后自动尝试登录
+            if (faceUsername.value) {
+              handleFaceLogin()
+            } else {
+              ElMessage.warning('请先输入用户名再尝试自动登录')
+            }
+          } else {
+            ElMessage.warning('摄像头尚未准备好，请稍后手动点击重试登录')
+          }
+        }, 2000)  // 优化：2秒
+      } catch (e) {
+        ElMessage.error('无法打开摄像头，请检查权限')
       }
     }
-
-    // 关闭摄像头
-    const stopCamera = () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop())
-        videoRef.value.srcObject = null
-        isCameraActive.value = false
-      }
-    }
-
-    // 拍照
-    const captureFace = () => {
-      if (!isCameraActive.value) return
-
+    const takePhoto = () => {
       const video = videoRef.value
       const canvas = canvasRef.value
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-      // 转换为base64
-      faceImage.value = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
-      ElMessage.success('照片已采集')
+      // 提高分辨率
+      canvas.width = 320
+      canvas.height = 240
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
+      faceImage.value = canvas.toDataURL('image/jpeg', 0.7).split(',')[1]
     }
-
-    // 上传人脸照片
-    const handleFaceUpload = (file) => {
-      return new Promise((resolve) => {
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          faceImage.value = e.target.result.split(',')[1]
-          resolve(false) // 阻止自动上传
-        }
-        reader.readAsDataURL(file)
-      })
+    const handleUpload = (file) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        faceImage.value = e.target.result.split(',')[1]
+      }
+      reader.readAsDataURL(file)
+      return false
     }
-
-    // 人脸识别登录
-    const handleFaceLogin = async () => {
-      if (!faceForm.username || !faceImage.value) {
-        ElMessage.warning('请输入用户名并采集人脸照片')
+    // 添加重试次数跟踪
+    let faceLoginRetryCount = 0
+    const MAX_RETRY_COUNT = 1  // 减少重试次数以避免QPS限制
+    
+    const handleFaceLogin = async (isAutoRetry = false) => {
+      if (!faceUsername.value || !faceImage.value) {
+        ElMessage.warning('请填写用户名并拍照或上传照片')
         return
       }
-
-      faceLoading.value = true
       try {
-        const response = await faceLogin(faceForm.username, faceImage.value)
-
-        if (response.code === 200) {
-          loginSuccess(response.data)
+        if (!isAutoRetry) {
+          faceLoginRetryCount = 0
+        }
+        const res = await faceLogin(faceUsername.value, faceImage.value)
+        if (res.code === 200) {
+          ElMessage.success('人脸登录成功')
+          loginSuccess(res.data)
+          faceLoginRetryCount = 0
         } else {
-          let errorMsg = response.message || '人脸识别失败'
-
-          // 根据不同的错误类型提供更友好的提示
-          if (errorMsg.includes('得分')) {
-            const score = errorMsg.match(/得分:(\d+\.?\d*)/)?.[1] || '未知'
-            errorMsg = `人脸匹配度不足 (得分: ${score})，请确保正对摄像头、光线充足`
-          } else if (errorMsg.includes('未找到用户')) {
-            errorMsg = '用户名不存在，请检查或使用其他登录方式'
-          } else if (errorMsg.includes('未注册人脸')) {
-            errorMsg = '该用户未注册人脸信息，请使用其他登录方式'
+          // 检查是否包含得分信息，如果是得分问题，提供更友好的提示
+          let scoreMessage = ''
+          if (res.message && res.message.includes('得分:')) {
+            const score = res.message.match(/得分:(\d+\.?\d*)/)?.[1]
+            if (score) {
+              scoreMessage = `人脸匹配度不够(得分:${score})，${faceLoginRetryCount < MAX_RETRY_COUNT ? '正在自动调整重试...' : '请尝试调整光线或角度'}`
+              ElMessage.warning(scoreMessage)
+            } else {
+              ElMessage.error(res.message || '人脸登录失败')
+            }
+          } else {
+            // 检查是否达到API请求限制
+            if (res.message && res.message.includes('qps request limit')) {
+              ElMessage.error('人脸识别服务繁忙，请稍后再试(API调用频率限制)')
+              faceLoginRetryCount = MAX_RETRY_COUNT  // 不再自动重试
+            } else {
+              ElMessage.error(res.message || '人脸登录失败')
+            }
           }
-
-          ElMessage.error(errorMsg)
+          
+          // 自动重试逻辑
+          if (faceLoginRetryCount < MAX_RETRY_COUNT && videoRef.value && videoRef.value.srcObject) {
+            faceLoginRetryCount++
+            console.log(`人脸识别失败，正在进行第${faceLoginRetryCount}次重试...`)
+            setTimeout(() => {
+              takePhoto()  // 重新拍照
+              handleFaceLogin(true)  // 重试登录，标记为自动重试
+            }, 3000)  // 增加为3秒间隔，降低请求频率
+          } else if (faceLoginRetryCount >= MAX_RETRY_COUNT) {
+            ElMessage.info('多次识别未成功，请手动调整后重试')
+            faceLoginRetryCount = 0
+          }
         }
-      } catch (error) {
-        console.error('人脸识别登录失败:', error)
-        let errorMsg = error.message || '人脸识别服务异常'
-
-        if (errorMsg.includes('qps')) {
-          errorMsg = '识别服务繁忙，请稍后再试'
-        } else if (errorMsg.includes('face is fuzzy')) {
-          errorMsg = '人脸照片模糊，请调整光线后重试'
+      } catch (e) {
+        console.error('人脸登录失败:', e)
+        if (e.message && e.message.includes('face is fuzzy')) {
+          ElMessage.error('人脸照片模糊，请调整光线、保持摄像头稳定、正对摄像头后重试。')
+        } else if (e.message && e.message.includes('qps request limit')) {
+          ElMessage.error('人脸识别服务繁忙，请稍后再试(API调用次数限制)')
+          faceLoginRetryCount = MAX_RETRY_COUNT
+          return
+        } else if (e.message && e.message.includes('得分:')) {
+          const score = e.message.match(/得分:(\d+\.?\d*)/)
+          if (score) {
+            const scoreMessage = `人脸匹配度不够(得分:${score[1]})，${faceLoginRetryCount < MAX_RETRY_COUNT ? '正在自动调整重试...' : '请尝试调整光线或角度'}`
+            ElMessage.warning(scoreMessage)
+            if (faceLoginRetryCount < MAX_RETRY_COUNT && videoRef.value && videoRef.value.srcObject) {
+              faceLoginRetryCount++
+              setTimeout(() => {
+                takePhoto()
+                handleFaceLogin(true)
+              }, 3000)
+            } else if (faceLoginRetryCount >= MAX_RETRY_COUNT) {
+              ElMessage.info('多次识别未成功，请手动重试')
+              faceLoginRetryCount = 0
+            }
+          } else {
+            ElMessage.error(e.message || '人脸登录接口异常')
+          }
+        } else {
+          ElMessage.error(e.message || '人脸登录接口异常')
         }
-
-        ElMessage.error(errorMsg)
-      } finally {
-        faceLoading.value = false
       }
     }
-
+    
     // 密码登录
     const handlePasswordLogin = async () => {
       try {
         const valid = await passwordFormRef.value.validate()
         if (!valid) return
-
         passwordLoading.value = true
-        const response = await login(passwordForm.username, passwordForm.password)
-
-        if (response.code === 200) {
-          loginSuccess(response.data)
-        } else {
-          ElMessage.error(response.message || '用户名或密码错误')
+        try {
+          const response = await login(passwordForm.username, passwordForm.password)
+          if (response.code === 200) {
+            loginSuccess(response.data)
+          }
+        } catch (err) {
+          // 捕获登录失败异常并弹窗提示
+          ElMessage.error(err.message || '用户名或密码错误')
         }
+        console.log('提交的数据:', {
+          username: passwordForm.username,
+          password: passwordForm.password
+        })
       } finally {
         passwordLoading.value = false
       }
     }
-
+    
     // 邮箱登录
     const handleEmailLogin = async () => {
       try {
@@ -469,107 +352,118 @@ export default {
 
         emailLoading.value = true
         const response = await loginByCode(emailForm.email, emailForm.code)
-
+        
         if (response.code === 200) {
           loginSuccess(response.data)
-        } else {
-          ElMessage.error(response.message || '验证码错误或已过期')
         }
       } finally {
         emailLoading.value = false
       }
     }
-
+    
     // 登录成功处理
     const loginSuccess = (userData) => {
       ElMessage.success('登录成功！')
-
-      // 存储token和用户信息
-      localStorage.setItem('token', userData.token)
-      localStorage.setItem('userInfo', JSON.stringify(userData))
-      localStorage.setItem('role',userData.user)
-
-      // 关闭摄像头
-      stopCamera()
-
-      // 跳转到首页或管理员页面
-      if (userData.role === '管理员') {
-        router.push('/admin')
-      } else {
-        const redirect = router.currentRoute.value.query.redirect || '/'
-        router.push(redirect)
+      // 存储token，确保后续接口能自动带token
+      if (userData.token) {
+        localStorage.setItem('token', userData.token.trim())
       }
+      // 兼容后端返回userId但没有id的情况
+      if (userData.userId && !userData.id) {
+        userData.id = userData.userId
+      }
+      localStorage.setItem('userInfo', JSON.stringify(userData))
+      localStorage.setItem('role', userData.user.roleDesc)
+      localStorage.setItem('username',userData.user.username)
+      // 1. 检查是否为管理员
+      if (userData.user.roleDesc === '管理员') {
+        // 如果是管理员，直接跳转到后台管理页面，忽略任何 redirect 参数
+        router.push('/admin')
+        console.log('管理员登录，强制跳转到 /admin')
+      }
+      const redirect = router.currentRoute.value.query.redirect || '/';
+      router.push(redirect)
+      console.log('登录返回的数据:', userData)
     }
-
+    
     // 发送验证码
     const sendVerificationCodef = async () => {
       try {
-        // 验证邮箱
+        // 验证邮箱字段
         try {
           await emailFormRef.value.validateField('email')
         } catch (error) {
-          ElMessage.warning('请输入有效的邮箱地址')
+          console.log('邮箱验证失败:', error)
           return
         }
 
         // 防止重复点击
-        if (sendingCode.value || countdown.value > 0) return
-
-        sendingCode.value = true
-        const response = await sendVerificationCode({
-          email: emailForm.email
-        })
-
-        if (response.code === 200) {
-          ElMessage.success('验证码已发送至您的邮箱，请查收')
-          startCountdown()
-        } else {
-          ElMessage.error(response.message || '发送验证码失败')
+        if (sendingCode.value) {
+          console.log('操作被阻止: 倒计时中或正在发送')
+          return
         }
-      } finally {
-        sendingCode.value = false
+        
+        sendingCode.value = true
+        console.log('准备发送验证码到:', emailForm.email)
+
+        const loadingInstance = ElLoading.service({
+          lock: true,
+          text: '正在发送验证码...',
+          background: 'rgba(0, 0, 0, 0.7)'
+        })
+        
+        try {
+          const response = await sendVerificationCode({
+        email: emailForm.email
+      })
+
+        if (!response) {
+        throw new Error('未收到有效响应')
+      }
+          console.log('验证码发送响应:', response)
+          
+          if (response.code === 200) {
+            ElMessage.success('验证码已发送，请查看您的邮箱')
+            startCountdown()
+          } else {
+            console.error('验证码发送失败:', response.message)
+            ElMessage.error(response.message || '发送验证码失败')
+          }
+        } 
+        finally {
+          loadingInstance.close()
+          sendingCode.value = false
+        }
+      } catch (error) {
+        console.error('发送验证码失败:', error)
+        ElMessage.error(error.response?.data?.message || '发送验证码失败')
       }
     }
-
+    
     // 开始倒计时
     const startCountdown = () => {
-      countdown.value = 60
-      countdownTimer = setInterval(() => {
-        countdown.value--
-        if (countdown.value <= 0) {
-          clearInterval(countdownTimer)
-          countdownTimer = null
-        }
-      }, 1000)
+  // 清除已有定时器
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+  }
+  
+  countdown.value = 60
+  countdownTimer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
     }
-
+  }, 1000)
+}
+    
     // 跳转到注册页面
     const goToRegister = () => {
       router.push('/register')
     }
-
-    // 跳转到忘记密码页面
-    const goToForget = () => {
-      router.push('/forget-password')
-    }
-
-    // 组件挂载时初始化
-    onMounted(() => {
-      cardAnimate.value = true
-      initParticles()
-    })
-
-    // 组件卸载前清理
-    onBeforeUnmount(() => {
-      stopCamera()
-      if (countdownTimer) {
-        clearInterval(countdownTimer)
-      }
-    })
-
+    
     return {
       activeTab,
-      cardAnimate,
       passwordFormRef,
       passwordForm,
       passwordRules,
@@ -580,106 +474,74 @@ export default {
       emailLoading,
       sendingCode,
       countdown,
-      faceForm,
-      faceLoading,
-      faceImage,
-      videoRef,
-      canvasRef,
-      isCameraActive,
       User,
       Lock,
       Message,
       Key,
-      toggleCamera,
-      captureFace,
-      handleFaceUpload,
-      handleFaceLogin,
+      faceUsername,
+      faceImage,
+      videoRef,
+      canvasRef,
       handlePasswordLogin,
       handleEmailLogin,
       sendVerificationCodef,
       goToRegister,
-      goToForget,
-      bubbleStyle
+      openCamera,
+      takePhoto,
+      handleUpload,
+      handleFaceLogin
     }
   }
 }
 </script>
 
 <style scoped>
-/* 基础样式 */
 .login-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
-  position: relative;
-  overflow: hidden;
 }
 
-/* 粒子背景 */
-.particles {
-  --particle-color: #93c5fd;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-}
-
-/* 登录卡片 */
 .login-card {
   width: 100%;
-  max-width: 480px;
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(147, 197, 253, 0.2);
+  max-width: 450px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   padding: 40px;
-  position: relative;
-  z-index: 1;
-  transform: translateY(20px);
-  opacity: 0;
-  transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-.card-animate {
-  transform: translateY(0);
-  opacity: 1;
 }
 
 .login-header {
   text-align: center;
   margin-bottom: 30px;
-  animation: fadeInDown 0.8s;
 }
 
 .login-header h2 {
-  color: #1e40af;
+  color: #333;
   margin-bottom: 8px;
   font-size: 28px;
   font-weight: 600;
 }
 
 .login-header p {
-  color: #4b5563;
+  color: #666;
   font-size: 14px;
   margin: 0;
 }
 
 .login-tabs {
   margin-bottom: 20px;
-  animation: fadeIn 0.8s 0.3s both;
 }
 
 .login-form {
   margin-bottom: 20px;
-  animation: fadeIn 0.8s 0.4s both;
 }
 
 .login-form .el-form-item {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .code-input {
@@ -687,228 +549,35 @@ export default {
   gap: 10px;
 }
 
-.code-btn {
+.code-input .el-button {
   width: 120px;
-  transition: all 0.3s;
-  color: #1e40af;
-  border-color: #93c5fd;
-}
-
-.code-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(58, 12, 163, 0.2);
-  background: rgba(147, 197, 253, 0.1);
 }
 
 .login-btn {
   width: 100%;
-  height: 48px;
+  height: 44px;
   font-size: 16px;
   font-weight: 500;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s;
-  background: linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%);
-  box-shadow: 0 4px 12px rgba(147, 197, 253, 0.3);
-  border: none;
-}
-
-.login-btn:hover {
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
-}
-
-.login-btn:disabled {
-  opacity: 0.7;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-.btn-wave {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.5);
-  opacity: 0;
-  border-radius: 100%;
-  transform: scale(1, 1) translate(-50%, -50%);
-  transform-origin: 50% 50%;
-}
-
-.login-btn:hover .btn-wave {
-  animation: wave 0.5s linear;
 }
 
 .login-footer {
   text-align: center;
-  color: #8d99ae;
+  color: #666;
   font-size: 14px;
-  animation: fadeIn 0.8s 0.5s both;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
 }
 
 .login-footer .el-link {
   font-size: 14px;
-  color: #3b82f6;
+  margin-left: 4px;
 }
 
-.login-footer .el-link:hover {
-  color: #1e40af;
-}
-
-/* 标签页激活颜色 */
-:deep(.el-tabs__active-bar) {
-  background-color: #93c5fd;
-}
-
-:deep(.el-tabs__item.is-active) {
-  color: #1e40af;
-}
-
-:deep(.el-tabs__item:hover) {
-  color: #60a5fa;
-}
-
-/* 输入框焦点样式 */
-:deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px #93c5fd inset;
-}
-
-/* 人脸识别区域 */
-.face-capture {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.face-video {
-  border-radius: 8px;
-  background: #000;
-  border: 2px solid #e2e8f0;
-  transition: all 0.3s;
-}
-
-.face-video.video-active {
-  border-color: #93c5fd;
-  box-shadow: 0 0 10px rgba(147, 197, 253, 0.3);
-}
-
-.face-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.face-preview {
-  margin-top: 12px;
-  text-align: center;
-}
-
-.face-preview img {
-  border-radius: 8px;
-  border: 2px solid #e2e8f0;
-  max-width: 160px;
-}
-
-.face-tip {
-  font-size: 12px;
-  color: #8d99ae;
-  margin-top: 4px;
-}
-
-/* 浮动气泡 */
-.bubbles {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  overflow: hidden;
-}
-
-.bubbles span {
-  position: absolute;
-  bottom: -100px;
-  background: rgba(191, 219, 254, 0.3);
-  border-radius: 50%;
-  pointer-events: none;
-  animation: bubble-up linear infinite;
-}
-
-/* 动画定义 */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes bubble-up {
-  0% {
-    transform: translateY(0) rotate(0deg);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-100vh) rotate(360deg);
-    opacity: 0;
-  }
-}
-
-@keyframes wave {
-  0% {
-    transform: scale(1, 1) translate(-50%, -50%);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(50, 50) translate(-50%, -50%);
-    opacity: 0;
-  }
-}
-
-/* 响应式设计 */
-@media (max-width: 576px) {
+@media (max-width: 480px) {
   .login-card {
     padding: 30px 20px;
-    max-width: 90%;
   }
-
+  
   .login-header h2 {
     font-size: 24px;
-  }
-
-  .login-btn {
-    height: 44px;
-  }
-
-  .face-video {
-    width: 280px;
-    height: 210px;
-  }
-
-  .face-actions {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .face-actions .el-button {
-    width: 160px;
   }
 }
 </style>
