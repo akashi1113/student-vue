@@ -279,7 +279,7 @@
                         </div>
                         <template #tip>
                             <div class="el-upload__tip">
-                                支持 mp4, mov 等视频格式，文件大小不超过1G (实际后端限制)
+                                支持 mp4等视频格式
                             </div>
                         </template>
                     </el-upload>
@@ -903,7 +903,7 @@ onMounted(() => {
 }
 
 .admin-panel-container {
-    max-width: 1200px;
+    max-width: 4000px;
     margin: 0 auto;
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(10px);
@@ -911,6 +911,7 @@ onMounted(() => {
     padding: 40px;
     border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15);
+    min-height: 80vh;
 }
 
 .panel-title {

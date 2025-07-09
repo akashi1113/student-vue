@@ -67,10 +67,16 @@
 
                 <!-- 操作按钮 -->
                 <div class="actions">
-                    <el-button type="primary" :plain="!post.isLiked" @click="toggleLikePost" :icon="Pointer"
-                        class="like-btn">
-                        {{ post.isLiked ? '已赞' : '点赞' }} ({{ post.likeCount }})
-                    </el-button>
+                    <div class="like-btn-wrapper" @click="toggleLikePost" ref="likeBtnWrapper">
+                        <el-button type="primary" :plain="!post.isLiked" :icon="Pointer" class="like-btn">
+                            <span class="btn-text">{{ post.isLiked ? '已赞' : '点赞' }}</span>
+                            <span class="like-count" :key="post.likeCount">
+                                ({{ post.likeCount }})
+                            </span>
+                            <span v-for="i in 15" :key="i" class="particle" :class="`particle-${i}`"></span>
+                        </el-button>
+                    </div>
+
                     <div class="post-operations">
                         <template v-if="currentUserId && Number(post.userId) === Number(currentUserId)">
                             <el-button type="primary" link @click="openEditPostDialog" class="action-btn">编辑</el-button>
@@ -181,6 +187,39 @@ const getCategoryTagType = (category) => {
     return types[category] || 'info';
 };
 
+// 添加点赞动画的ref
+const likeBtnWrapper = ref(null);
+
+// 点赞/取消点赞帖子
+const toggleLikePost = async () => {
+    try {
+        if (!currentUserId.value) {
+            ElMessage.warning('请先登录');
+            return;
+        }
+
+        // 触发粒子动画
+        if (likeBtnWrapper.value) {
+            likeBtnWrapper.value.classList.add('animate');
+            setTimeout(() => {
+                likeBtnWrapper.value.classList.remove('animate');
+            }, 1000);
+        }
+
+        if (post.value.isLiked) {
+            await forumAPI.unlikePost(postId);
+            post.value.likeCount--;
+        } else {
+            await forumAPI.likePost(postId);
+            post.value.likeCount++;
+        }
+        post.value.isLiked = !post.value.isLiked;
+    } catch (error) {
+        ElMessage.error('操作失败: ' + (error.message || '未知错误'));
+    }
+};
+
+
 const fetchPostDetail = async () => {
     try {
         const isAdminMode = route.query.mode === 'admin';
@@ -225,26 +264,26 @@ const fetchComments = async () => {
     }
 };
 
-// 点赞/取消点赞帖子
-const toggleLikePost = async () => {
-    try {
-        if (!currentUserId.value) {
-            ElMessage.warning('请先登录');
-            return;
-        }
+// // 点赞/取消点赞帖子
+// const toggleLikePost = async () => {
+//     try {
+//         if (!currentUserId.value) {
+//             ElMessage.warning('请先登录');
+//             return;
+//         }
 
-        if (post.value.isLiked) {
-            await forumAPI.unlikePost(postId);
-            post.value.likeCount--;
-        } else {
-            await forumAPI.likePost(postId);
-            post.value.likeCount++;
-        }
-        post.value.isLiked = !post.value.isLiked;
-    } catch (error) {
-        ElMessage.error('操作失败: ' + (error.message || '未知错误'));
-    }
-};
+//         if (post.value.isLiked) {
+//             await forumAPI.unlikePost(postId);
+//             post.value.likeCount--;
+//         } else {
+//             await forumAPI.likePost(postId);
+//             post.value.likeCount++;
+//         }
+//         post.value.isLiked = !post.value.isLiked;
+//     } catch (error) {
+//         ElMessage.error('操作失败: ' + (error.message || '未知错误'));
+//     }
+// };
 
 // 日期格式化
 const formatTime = (time) => {
@@ -708,7 +747,17 @@ const closeWindow = () => {
     padding: 20px 30px;
 }
 
+/* 点赞按钮容器 */
+.like-btn-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+/* 点赞按钮样式 */
 .like-btn {
+    position: relative;
+    z-index: 1;
+    overflow: visible;
     border-radius: 30px;
     padding: 10px 25px;
     font-weight: 600;
@@ -716,18 +765,267 @@ const closeWindow = () => {
     border: none;
     color: white;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
-}
-
-.like-btn:hover:not(.is-plain) {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    transform: scale(1);
 }
 
 .like-btn.is-plain {
     background: white;
     color: #3b82f6;
     border: 1px solid #3b82f6;
+}
+
+.like-btn:hover:not(.is-plain) {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.like-btn:hover .btn-text {
+    animation: pulse 0.5s infinite alternate;
+}
+
+/* 点赞文本动画 */
+@keyframes pulse {
+    from {
+        transform: scale(1);
+    }
+
+    to {
+        transform: scale(1.1);
+    }
+}
+
+/* 心跳动画 */
+@keyframes heartbeat {
+    0% {
+        transform: scale(1);
+    }
+
+    25% {
+        transform: scale(1.15);
+    }
+
+    50% {
+        transform: scale(0.95);
+    }
+
+    75% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.animate .like-btn {
+    animation: heartbeat 0.5s ease;
+}
+
+/* 粒子效果 */
+.particle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #3b82f6;
+    opacity: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.animate .particle {
+    opacity: 1;
+}
+
+/* 粒子动画 */
+.animate .particle-1 {
+    animation: particle-ani 1s ease-in-out;
+}
+
+.animate .particle-2 {
+    animation: particle-ani 1s ease-in-out 0.1s;
+}
+
+.animate .particle-3 {
+    animation: particle-ani 1s ease-in-out 0.2s;
+}
+
+.animate .particle-4 {
+    animation: particle-ani 1s ease-in-out 0.3s;
+}
+
+.animate .particle-5 {
+    animation: particle-ani 1s ease-in-out 0.4s;
+}
+
+.animate .particle-6 {
+    animation: particle-ani 1s ease-in-out 0.5s;
+}
+
+.animate .particle-7 {
+    animation: particle-ani 1s ease-in-out 0.6s;
+}
+
+.animate .particle-8 {
+    animation: particle-ani 1s ease-in-out 0.7s;
+}
+
+.animate .particle-9 {
+    animation: particle-ani 1s ease-in-out 0.8s;
+}
+
+.animate .particle-10 {
+    animation: particle-ani 1s ease-in-out 0.9s;
+}
+
+.animate .particle-11 {
+    animation: particle-ani 1s ease-in-out 1.0s;
+}
+
+.animate .particle-12 {
+    animation: particle-ani 1s ease-in-out 1.1s;
+}
+
+.animate .particle-13 {
+    animation: particle-ani 1s ease-in-out 1.2s;
+}
+
+.animate .particle-14 {
+    animation: particle-ani 1s ease-in-out 1.3s;
+}
+
+.animate .particle-15 {
+    animation: particle-ani 1s ease-in-out 1.4s;
+}
+
+@keyframes particle-ani {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) scale(1);
+        opacity: 0;
+    }
+}
+
+.animate .particle-1 {
+    --tx: -30px;
+    --ty: -30px;
+    background: #ff6b6b;
+}
+
+.animate .particle-2 {
+    --tx: 30px;
+    --ty: -30px;
+    background: #3b82f6;
+}
+
+.animate .particle-3 {
+    --tx: -30px;
+    --ty: 30px;
+    background: #10b981;
+}
+
+.animate .particle-4 {
+    --tx: 30px;
+    --ty: 30px;
+    background: #f59e0b;
+}
+
+.animate .particle-5 {
+    --tx: 0;
+    --ty: -40px;
+    background: #8b5cf6;
+}
+
+.animate .particle-6 {
+    --tx: 0;
+    --ty: 40px;
+    background: #ec4899;
+}
+
+.animate .particle-7 {
+    --tx: -40px;
+    --ty: 0;
+    background: #06b6d4;
+}
+
+.animate .particle-8 {
+    --tx: 40px;
+    --ty: 0;
+    background: #f43f5e;
+}
+
+.animate .particle-9 {
+    --tx: -20px;
+    --ty: -35px;
+    background: #3b82f6;
+}
+
+.animate .particle-10 {
+    --tx: 20px;
+    --ty: -35px;
+    background: #10b981;
+}
+
+.animate .particle-11 {
+    --tx: -20px;
+    --ty: 35px;
+    background: #f59e0b;
+}
+
+.animate .particle-12 {
+    --tx: 20px;
+    --ty: 35px;
+    background: #8b5cf6;
+}
+
+.animate .particle-13 {
+    --tx: -35px;
+    --ty: -20px;
+    background: #ec4899;
+}
+
+.animate .particle-14 {
+    --tx: 35px;
+    --ty: -20px;
+    background: #06b6d4;
+}
+
+.animate .particle-15 {
+    --tx: -35px;
+    --ty: 20px;
+    background: #f43f5e;
+}
+
+/* 点赞数字动画 */
+.like-count {
+    display: inline-block;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.like-btn:active .like-count {
+    animation: count-pop 0.5s ease;
+}
+
+@keyframes count-pop {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.5);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 .post-operations {
