@@ -2,132 +2,167 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <h2>登录</h2>
+        <div class="logo-circle">
+          <svg viewBox="0 0 100 100" class="logo-svg">
+            <path d="M50 10 L90 50 L50 90 L10 50 Z" fill="none" stroke="#3a86ff" stroke-width="8"/>
+            <circle cx="50" cy="50" r="30" fill="#3a86ff" fill-opacity="0.2"/>
+          </svg>
+        </div>
+        <h2>欢迎登录</h2>
         <p>智能化在线教学支持服务平台</p>
       </div>
-      
+
       <!-- 登录方式选项卡 -->
       <el-tabs v-model="activeTab" stretch class="login-tabs">
         <el-tab-pane label="账号密码登录" name="password">
           <el-form
-            ref="passwordFormRef"
-            :model="passwordForm"
-            :rules="passwordRules"
-            class="login-form"
-            @submit.prevent="handlePasswordLogin"
+              ref="passwordFormRef"
+              :model="passwordForm"
+              :rules="passwordRules"
+              class="login-form"
+              @submit.prevent="handlePasswordLogin"
           >
             <el-form-item prop="username">
               <el-input
-                v-model="passwordForm.username"
-                placeholder="请输入用户名"
-                size="large"
-                :prefix-icon="User"
+                  v-model="passwordForm.username"
+                  placeholder="请输入用户名"
+                  size="large"
+                  :prefix-icon="User"
+                  class="custom-input"
               />
             </el-form-item>
-            
+
             <el-form-item prop="password">
               <el-input
-                v-model="passwordForm.password"
-                type="password"
-                placeholder="请输入密码"
-                size="large"
-                :prefix-icon="Lock"
-                show-password
-                @keyup.enter="handlePasswordLogin"
+                  v-model="passwordForm.password"
+                  type="password"
+                  placeholder="请输入密码"
+                  size="large"
+                  :prefix-icon="Lock"
+                  show-password
+                  class="custom-input"
+                  @keyup.enter="handlePasswordLogin"
               />
             </el-form-item>
-            
+
             <el-form-item>
               <el-button
-                type="primary"
-                size="large"
-                class="login-btn"
-                :loading="passwordLoading"
-                @click="handlePasswordLogin"
+                  type="primary"
+                  size="large"
+                  class="login-btn"
+                  :loading="passwordLoading"
+                  @click="handlePasswordLogin"
               >
                 {{ passwordLoading ? '登录中...' : '登录' }}
               </el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
-        
+
         <el-tab-pane label="邮箱验证码登录" name="email">
           <el-form
-            ref="emailFormRef"
-            :model="emailForm"
-            :rules="emailRules"
-            class="login-form"
-            @submit.prevent="handleEmailLogin"
+              ref="emailFormRef"
+              :model="emailForm"
+              :rules="emailRules"
+              class="login-form"
+              @submit.prevent="handleEmailLogin"
           >
             <el-form-item prop="email">
               <el-input
-                v-model="emailForm.email"
-                placeholder="请输入邮箱"
-                size="large"
-                :prefix-icon="Message"
+                  v-model="emailForm.email"
+                  placeholder="请输入邮箱"
+                  size="large"
+                  :prefix-icon="Message"
+                  class="custom-input"
               />
             </el-form-item>
-            
+
             <el-form-item prop="code">
               <div class="code-input">
                 <el-input
-                  v-model="emailForm.code"
-                  placeholder="请输入验证码"
-                  size="large"
-                  :prefix-icon="Key"
-                  @keyup.enter="handleEmailLogin"
+                    v-model="emailForm.code"
+                    placeholder="请输入验证码"
+                    size="large"
+                    :prefix-icon="Key"
+                    class="custom-input"
+                    @keyup.enter="handleEmailLogin"
                 />
                 <el-button
-                  type="primary"
-                  :disabled="countdown > 0 || sendingCode"
-                  :loading="sendingCode"
-                  @click="sendVerificationCodef"
+                    type="primary"
+                    plain
+                    :disabled="countdown > 0 || sendingCode"
+                    :loading="sendingCode"
+                    @click="sendVerificationCodef"
+                    class="code-btn"
                 >
                   {{ countdown > 0 ? `${countdown}秒后重试` : '获取验证码' }}
                 </el-button>
               </div>
             </el-form-item>
-            
+
             <el-form-item>
               <el-button
-                type="primary"
-                size="large"
-                class="login-btn"
-                :loading="emailLoading"
-                @click="handleEmailLogin"
+                  type="primary"
+                  size="large"
+                  class="login-btn"
+                  :loading="emailLoading"
+                  @click="handleEmailLogin"
               >
                 {{ emailLoading ? '登录中...' : '登录' }}
               </el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
-        
+
         <el-tab-pane label="人脸识别登录" name="face">
           <el-form @submit.prevent="handleFaceLogin" class="login-form">
             <el-form-item label="用户名">
-              <el-input v-model="faceUsername" placeholder="请输入用户名" size="large" :prefix-icon="User" />
+              <el-input
+                  v-model="faceUsername"
+                  placeholder="请输入用户名"
+                  size="large"
+                  :prefix-icon="User"
+                  class="custom-input"
+              />
             </el-form-item>
             <el-form-item label="人脸照片">
-              <video ref="videoRef" width="240" height="180" autoplay style="border-radius:8px;"></video>
-              <canvas ref="canvasRef" style="display:none;"></canvas>
-              <el-button @click="openCamera" size="small" style="margin:8px 8px 0 0;">打开摄像头</el-button>
-              <el-upload :show-file-list="false" :before-upload="handleUpload" accept="image/*">
-                <el-button size="small">上传照片</el-button>
-              </el-upload>
-              <img v-if="faceImage" :src="'data:image/jpeg;base64,'+faceImage" width="120" style="margin-top:8px;" />
+              <div class="face-recognition-box">
+                <video ref="videoRef" width="240" height="180" autoplay class="face-video"></video>
+                <canvas ref="canvasRef" style="display:none;"></canvas>
+                <div class="face-buttons">
+                  <el-button @click="openCamera" size="small" class="face-btn">打开摄像头</el-button>
+                  <el-upload :show-file-list="false" :before-upload="handleUpload" accept="image/*">
+                    <el-button size="small" class="face-btn">上传照片</el-button>
+                  </el-upload>
+                </div>
+                <img v-if="faceImage" :src="'data:image/jpeg;base64,'+faceImage" class="face-preview" />
+              </div>
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" :disabled="!faceImage" size="large" @click="handleFaceLogin">手动重试登录</el-button>
+              <el-button
+                  type="primary"
+                  :disabled="!faceImage"
+                  size="large"
+                  class="login-btn"
+                  @click="handleFaceLogin"
+              >
+                人脸识别登录
+              </el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
       </el-tabs>
-      
+
       <div class="login-footer">
         <span>还没有账号？</span>
-        <el-link type="primary" @click="goToRegister">立即注册</el-link>
+        <el-link type="primary" @click="goToRegister" class="register-link">立即注册</el-link>
       </div>
     </div>
+
+    <!-- 装饰性元素 -->
+    <div class="decor-circle circle-1"></div>
+    <div class="decor-circle circle-2"></div>
+    <div class="decor-circle circle-3"></div>
   </div>
 </template>
 
@@ -143,7 +178,7 @@ export default {
   setup() {
     const router = useRouter()
     const activeTab = ref('password')
-    
+
     // 密码登录表单
     const passwordFormRef = ref()
     const passwordLoading = ref(false)
@@ -151,7 +186,7 @@ export default {
       username: '',
       password: ''
     })
-    
+
     const passwordRules = {
       username: [
         { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -162,7 +197,7 @@ export default {
         { min: 6, max: 20, message: '密码长度需在6到20字符之间', trigger: 'blur' }
       ]
     }
-    
+
     // 邮箱登录表单
     const emailFormRef = ref()
     const emailLoading = ref(false)
@@ -171,7 +206,7 @@ export default {
       email: '',
       code: ''
     })
-    
+
     const emailRules = {
       email: [
         { required: true, message: '请输入邮箱', trigger: 'blur' },
@@ -182,25 +217,25 @@ export default {
         { len: 6, message: '验证码为6位数字', trigger: 'blur' }
       ]
     }
-    
+
     // 验证码倒计时
     const countdown = ref(0)
     let countdownTimer = null
-    
+
     // 人脸识别登录
     const faceUsername = ref('')
     const faceImage = ref('')
     const videoRef = ref(null)
     const canvasRef = ref(null)
-    
+
     const openCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true })
         videoRef.value.srcObject = stream
-        
+
         // 优化：缩短等待时间为2秒
         ElMessage.info('摄像头已打开，2秒后将自动拍照并尝试登录')
-        
+
         // 等待摄像头稳定，2秒后自动拍照
         setTimeout(() => {
           if (videoRef.value && videoRef.value.readyState === 4) {
@@ -239,7 +274,7 @@ export default {
     // 添加重试次数跟踪
     let faceLoginRetryCount = 0
     const MAX_RETRY_COUNT = 1  // 减少重试次数以避免QPS限制
-    
+
     const handleFaceLogin = async (isAutoRetry = false) => {
       if (!faceUsername.value || !faceImage.value) {
         ElMessage.warning('请填写用户名并拍照或上传照片')
@@ -274,7 +309,7 @@ export default {
               ElMessage.error(res.message || '人脸登录失败')
             }
           }
-          
+
           // 自动重试逻辑
           if (faceLoginRetryCount < MAX_RETRY_COUNT && videoRef.value && videoRef.value.srcObject) {
             faceLoginRetryCount++
@@ -319,7 +354,7 @@ export default {
         }
       }
     }
-    
+
     // 密码登录
     const handlePasswordLogin = async () => {
       try {
@@ -343,7 +378,7 @@ export default {
         passwordLoading.value = false
       }
     }
-    
+
     // 邮箱登录
     const handleEmailLogin = async () => {
       try {
@@ -352,7 +387,7 @@ export default {
 
         emailLoading.value = true
         const response = await loginByCode(emailForm.email, emailForm.code)
-        
+
         if (response.code === 200) {
           loginSuccess(response.data)
         }
@@ -360,7 +395,7 @@ export default {
         emailLoading.value = false
       }
     }
-    
+
     // 登录成功处理
     const loginSuccess = (userData) => {
       ElMessage.success('登录成功！')
@@ -385,7 +420,7 @@ export default {
       router.push(redirect)
       console.log('登录返回的数据:', userData)
     }
-    
+
     // 发送验证码
     const sendVerificationCodef = async () => {
       try {
@@ -402,7 +437,7 @@ export default {
           console.log('操作被阻止: 倒计时中或正在发送')
           return
         }
-        
+
         sendingCode.value = true
         console.log('准备发送验证码到:', emailForm.email)
 
@@ -411,7 +446,7 @@ export default {
           text: '正在发送验证码...',
           background: 'rgba(0, 0, 0, 0.7)'
         })
-        
+
         try {
           const response = await sendVerificationCode({
         email: emailForm.email
@@ -421,7 +456,7 @@ export default {
         throw new Error('未收到有效响应')
       }
           console.log('验证码发送响应:', response)
-          
+
           if (response.code === 200) {
             ElMessage.success('验证码已发送，请查看您的邮箱')
             startCountdown()
@@ -429,7 +464,7 @@ export default {
             console.error('验证码发送失败:', response.message)
             ElMessage.error(response.message || '发送验证码失败')
           }
-        } 
+        }
         finally {
           loadingInstance.close()
           sendingCode.value = false
@@ -439,14 +474,14 @@ export default {
         ElMessage.error(error.response?.data?.message || '发送验证码失败')
       }
     }
-    
+
     // 开始倒计时
     const startCountdown = () => {
   // 清除已有定时器
   if (countdownTimer) {
     clearInterval(countdownTimer)
   }
-  
+
   countdown.value = 60
   countdownTimer = setInterval(() => {
     countdown.value--
@@ -456,12 +491,12 @@ export default {
     }
   }, 1000)
 }
-    
+
     // 跳转到注册页面
     const goToRegister = () => {
       router.push('/register')
     }
-    
+
     return {
       activeTab,
       passwordFormRef,
@@ -501,17 +536,27 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
   padding: 20px;
+  position: relative;
+  overflow: hidden;
 }
 
 .login-card {
   width: 100%;
   max-width: 450px;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(58, 134, 255, 0.15);
+  padding: 40px 30px;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(58, 134, 255, 0.1);
+}
+
+.login-card:hover {
+  box-shadow: 0 15px 50px rgba(58, 134, 255, 0.2);
 }
 
 .login-header {
@@ -519,15 +564,46 @@ export default {
   margin-bottom: 30px;
 }
 
+.logo-circle {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(58, 134, 255, 0.1);
+  border-radius: 50%;
+  animation: pulse 2s infinite alternate;
+}
+
+.logo-svg {
+  width: 50px;
+  height: 50px;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(58, 134, 255, 0.4);
+  }
+  100% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(58, 134, 255, 0);
+  }
+}
+
 .login-header h2 {
-  color: #333;
+  color: #2c3e50;
   margin-bottom: 8px;
   font-size: 28px;
   font-weight: 600;
+  background: linear-gradient(90deg, #3a86ff, #4361ee);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .login-header p {
-  color: #666;
+  color: #7f8c8d;
   font-size: 14px;
   margin: 0;
 }
@@ -536,12 +612,47 @@ export default {
   margin-bottom: 20px;
 }
 
+.login-tabs :deep(.el-tabs__item) {
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+.login-tabs :deep(.el-tabs__item.is-active) {
+  color: #3a86ff;
+}
+
+.login-tabs :deep(.el-tabs__active-bar) {
+  background-color: #3a86ff;
+}
+
 .login-form {
   margin-bottom: 20px;
 }
 
 .login-form .el-form-item {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.custom-input {
+  margin: 8px 0; /* 增加输入框上下边距 */
+}
+
+.custom-input :deep(.el-input__wrapper) {
+  border-radius: 8px;
+  border: 1px solid #e0e0e0; /* 改为明确的border属性 */
+  box-shadow: none !important; /* 移除阴影避免冲突 */
+  padding: 0 15px;
+  height: 48px;
+  transition: all 0.3s ease;
+}
+
+.custom-input :deep(.el-input__wrapper:hover) {
+  border-color: #3a86ff;
+}
+
+.custom-input :deep(.el-input__wrapper.is-focus) {
+  border-color: #3a86ff;
+  box-shadow: 0 0 0 1px #3a86ff !important; /* 聚焦时添加轻微阴影 */
 }
 
 .code-input {
@@ -549,35 +660,113 @@ export default {
   gap: 10px;
 }
 
-.code-input .el-button {
+.code-btn {
   width: 120px;
+  border-radius: 8px;
 }
 
 .login-btn {
   width: 100%;
-  height: 44px;
+  height: 48px;
   font-size: 16px;
   font-weight: 500;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #3a86ff, #4361ee);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.login-btn {
+  margin-top: 8px;
+}
+
+.login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(58, 134, 255, 0.4);
 }
 
 .login-footer {
   text-align: center;
-  color: #666;
+  color: #95a5a6;
   font-size: 14px;
+  margin-top: 20px;
 }
 
-.login-footer .el-link {
+.register-link {
   font-size: 14px;
   margin-left: 4px;
+  font-weight: 500;
+}
+
+/* 人脸识别部分样式 */
+.face-recognition-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.face-video {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e0e0e0;
+}
+
+.face-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.face-btn {
+  border-radius: 6px;
+}
+
+.face-preview {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+}
+
+/* 装饰性圆圈 */
+.decor-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(58, 134, 255, 0.05);
+  z-index: 1;
+}
+
+.circle-1 {
+  width: 300px;
+  height: 300px;
+  top: -100px;
+  left: -100px;
+}
+
+.circle-2 {
+  width: 200px;
+  height: 200px;
+  bottom: -50px;
+  right: -50px;
+}
+
+.circle-3 {
+  width: 150px;
+  height: 150px;
+  top: 50%;
+  right: 10%;
 }
 
 @media (max-width: 480px) {
   .login-card {
     padding: 30px 20px;
   }
-  
+
   .login-header h2 {
     font-size: 24px;
+  }
+
+  .decor-circle {
+    display: none;
   }
 }
 </style>
