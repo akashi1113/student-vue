@@ -1,58 +1,44 @@
-import axios from 'axios'
+import axios from 'axios';
 
-const instance = axios.create({
-  baseURL: '/api',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  // 禁用大请求头
-//   withCredentials: false,
-  // 限制请求头大小
-//   maxHeaderSize: 8192 // 8KB
-})
+const API_URL = 'http://localhost:8080/api/notes';
 
-// 请求拦截器：清理冗余头
-instance.interceptors.request.use(
-    config => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-},
-  error => {
-    // 对请求错误做些什么
-    return Promise.reject(error);
-  }
-);
+// 构建认证头的辅助函数
+const buildAuthHeader = () => {
+    const token = localStorage.getItem('token')
+    if (!token) return {};
+    const cleanToken = token.replace('Bearer ', '');
+    return { Authorization: cleanToken };
+};
 
 export default {
-  createNote(noteData) {
-    return instance.post('/notes', {
-      ...noteData,
-      // 确保类型正确
-      userId: Number(noteData.userId),
-      courseId: noteData.courseId ? Number(noteData.courseId) : null
-    })
-  },
-  
-  updateNote(id, noteData) {
-    return instance.put(`/notes/${id}`, {
-      ...noteData,
-      id: Number(id),
-      userId: Number(noteData.userId)
-    })
-  },
-  
-  getUserNotes(userId) {
-    return instance.get(`/notes/user/${Number(userId)}`)
-  },
-  
-  getNoteById(id) {
-    return instance.get(`/notes/${id}`)
-  },
-  
-  deleteNote(id) {
-    return instance.delete(`/notes/${id}`)
-  }
-}
+    // 创建笔记
+    createNote(noteData) {
+        return axios.post(API_URL, noteData, {
+            headers: buildAuthHeader()
+        });
+    },
+
+    // 更新笔记
+    updateNote(id, noteData) {
+        return axios.put(`${API_URL}/${id}`, noteData);
+    },
+
+    // 获取用户所有笔记
+    getUserNotes() {
+        return axios.get(API_URL, {
+            headers: buildAuthHeader()
+        });
+    },
+
+    // 获取单个笔记
+    getNoteById(id, token) {
+        return axios.get(`${API_URL}/${id}`);
+    },
+
+    // 删除笔记
+    deleteNote(id) {
+        return axios.delete(`${API_URL}/${id}`, {
+            headers: buildAuthHeader()
+        });
+    }
+};

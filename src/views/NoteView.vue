@@ -221,10 +221,6 @@ export default {
     Plus
   },
   setup() {
-    // 临时用户ID解决方案
-    const TEMP_USER_ID = 1
-    const getCurrentUserId = () => localStorage.getItem('tempUserId') || TEMP_USER_ID
-
     // 状态定义
     const notes = ref([])
     const activeNoteId = ref(null)
@@ -261,9 +257,10 @@ export default {
       isDrawingMode.value = false
     }
 
+
     const fetchNotes = async () => {
       try {
-        const response = await noteApi.getUserNotes(getCurrentUserId())
+        const response = await noteApi.getUserNotes()
         notes.value = response.data.data
         
         if (notes.value.length > 0 && !activeNoteId.value) {
@@ -276,13 +273,9 @@ export default {
 
     const createNewNote = () => {
       const newNote = {
-        id: 'temp_' + Date.now(),
-        userId: getCurrentUserId(),
         title: '未命名笔记',
         content: '',
         drawingData: null,
-        createTime: new Date().toISOString(),
-        updateTime: new Date().toISOString()
       }
       notes.value.unshift(newNote)
       selectNote(newNote)
@@ -295,80 +288,76 @@ export default {
     }
 
     const saveNote = async () => {
-  if (!activeNote.value) {
-    ElMessage.warning('没有活动的笔记可保存')
-    return
-  }
+      try {
+        // 1. 检查是否有活动笔记
+        if (!activeNote.value) {
+          ElMessage.warning('没有活动的笔记可保存')
+          return false
+        }
 
-  try {
-    // 确保获取最新的编辑器内容
-    if (editor.value) {
-      activeNote.value.content = editor.value.innerHTML
-    }
+        // 2. 确保获取最新的编辑器内容
+        if (editor.value && !isDrawingMode.value) {
+          activeNote.value.content = editor.value.innerHTML
+        }
 
-    // 准备请求数据
-    const now = new Date().toISOString()
-    const payload = {
-      title: activeNote.value.title || '未命名笔记',
-      content: activeNote.value.content || '',
-      drawingData: isDrawingMode.value ? drawingCanvas.value?.getCanvasData() : null,
-      userId: Number(getCurrentUserId()),
-      updateTime: now
-    }
+        // 3. 准备请求数据
+        const payload = {
+          title: activeNote.value.title || '未命名笔记',
+          content: activeNote.value.content || '',
+          drawingData: isDrawingMode.value ? drawingCanvas.value?.getCanvasData() : null,
+        }
 
-    // 如果是现有笔记，添加ID
-    if (!activeNote.value.id.toString().startsWith('temp_')) {
-      payload.id = Number(activeNote.value.id)
-    }
+        // 4. 调试输出
+        console.log('保存请求数据:', payload)
 
-    // 调试输出
-    console.log('保存请求数据:', JSON.stringify(payload, null, 2))
+        // 5. 确定是创建还是更新
+        let response
+        const isNewNote = !activeNote.value.id || activeNote.value.id.toString().startsWith('temp_')
 
-    let response
-    const isNewNote = activeNote.value.id.toString().startsWith('temp_')
+        if (isNewNote) {
+          // 创建新笔记
+          response = await noteApi.createNote(payload)
+        } else {
+          // 更新现有笔记
+          payload.id = activeNote.value.id
+          response = await noteApi.updateNote(activeNote.value.id, payload)
+        }
 
-    if (isNewNote) {
-      payload.createTime = now
-      response = await noteApi.createNote(payload)
-    } else {
-      response = await noteApi.updateNote(activeNote.value.id, payload)
-    }
+        // 6. 处理响应
+        if (response.data && (response.data.code === 200 || response.data.success)) {
+          const savedNote = response.data.data || response.data.result
 
-    // 检查响应
-    if (!response.data) {
-      throw new Error('无效的API响应')
-    }
+          // 更新本地状态
+          const index = notes.value.findIndex(n =>
+              n.id === activeNote.value.id ||
+              (isNewNote && n.id.toString().startsWith('temp_'))
+          )
 
-    // 根据你的后端API结构调整
-    if (response.data.code === 200 || response.data.success) {
-      const savedNote = response.data.data || response.data.result
-      
-      // 更新本地状态
-      const index = notes.value.findIndex(n => n.id === activeNote.value.id)
-      if (index !== -1) {
-        notes.value.splice(index, 1, savedNote)
-      } else {
-        notes.value.unshift(savedNote)
+          if (index !== -1) {
+            notes.value.splice(index, 1, savedNote)
+          } else {
+            notes.value.unshift(savedNote)
+          }
+
+          // 更新活动笔记
+          activeNote.value = { ...savedNote }
+          activeNoteId.value = savedNote.id
+
+          ElMessage.success('笔记保存成功')
+          return true
+        } else {
+          throw new Error(response.data?.message || '保存失败')
+        }
+      } catch (error) {
+        console.error('保存笔记错误:', error)
+        let errorMsg = error.message
+        if (error.response?.data) {
+          errorMsg = error.response.data.message || JSON.stringify(error.response.data)
+        }
+        ElMessage.error(`保存失败: ${errorMsg}`)
+        return false
       }
-
-      activeNote.value = { ...savedNote }
-      activeNoteId.value = savedNote.id
-      
-      ElMessage.success('笔记保存成功')
-      return true
-    } else {
-      throw new Error(response.data.message || '保存失败')
     }
-  } catch (error) {
-    console.error('保存笔记错误:', error)
-    let errorMsg = error.message
-    if (error.response && error.response.data) {
-      errorMsg = error.response.data.message || JSON.stringify(error.response.data)
-    }
-    ElMessage.error(`保存失败: ${errorMsg}`)
-    return false
-  }
-}
 
     const deleteNote = async (id) => {
       try {
@@ -490,9 +479,6 @@ export default {
 
     // 初始化
     onMounted(() => {
-      if (!localStorage.getItem('tempUserId')) {
-        localStorage.setItem('tempUserId', TEMP_USER_ID.toString())
-      }
       fetchNotes()
     })
 
