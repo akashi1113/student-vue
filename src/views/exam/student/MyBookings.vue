@@ -417,103 +417,212 @@ export default {
 
 <style scoped>
 .my-bookings {
-  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  background-color: #f8fafc;
 }
 
+/* 顶部标题区域 - 白底蓝调 */
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  padding: 20px 24px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.08);
+  border-left: 4px solid #3b82f6;
 }
 
 .page-header h1 {
   margin: 0;
-  color: #303133;
+  font-size: 22px;
+  font-weight: 600;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-header h1 .el-icon {
+  color: #3b82f6;
+  font-size: 24px;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
+  gap: 16px;
 }
 
+/* 统计卡片 - 蓝色主题 */
 .stats-cards {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .stats-card {
   position: relative;
   overflow: hidden;
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  height: 120px;
+  color: white;
+}
+
+.stats-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+}
+
+/* 总预约卡片 - 改为白底蓝字 */
+.stats-card:not(.active):not(.completed):not(.cancelled) {
+  background: white;
+  color: #1e293b; /* 深灰色文字 */
+  border-top: 4px solid #3b82f6; /* 顶部蓝色边框 */
 }
 
 .stats-card.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
 }
 
 .stats-card.completed {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
 
 .stats-card.cancelled {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  color: white;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
 }
 
 .stats-content {
   position: relative;
   z-index: 2;
+  padding: 20px;
 }
 
 .stats-number {
   font-size: 32px;
-  font-weight: bold;
+  font-weight: 700;
   margin-bottom: 8px;
 }
 
 .stats-label {
   font-size: 14px;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 .stats-icon {
   position: absolute;
-  right: 16px;
+  right: 20px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 48px;
-  opacity: 0.3;
+  font-size: 60px;
+  opacity: 0.2;
   z-index: 1;
 }
 
+.stats-card:not(.active):not(.completed):not(.cancelled) .stats-icon {
+  color: #3b82f6; /* 蓝色图标 */
+}
+
+/* 预约列表 */
 .bookings-list {
+  background: white;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.05);
   min-height: 400px;
 }
 
 .empty-state {
-  padding: 60px 0;
+  padding: 80px 0;
   text-align: center;
 }
 
+/* 对话框样式 */
 .check-in-content {
   text-align: center;
   padding: 20px 0;
 }
 
 .exam-info {
-  background: #f8f9fa;
+  background: #f8fafc;
   padding: 16px;
   border-radius: 8px;
   margin-top: 16px;
+  border-left: 3px solid #3b82f6;
 }
 
 .exam-info p {
   margin: 8px 0;
-  color: #606266;
+  color: #64748b;
+}
+
+.exam-info p strong {
+  color: #1e293b;
+  font-size: 16px;
 }
 
 .booking-details {
   padding: 16px 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 992px) {
+  .my-bookings {
+    padding: 16px;
+  }
+
+  .stats-card {
+    height: 110px;
+  }
+
+  .stats-number {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .stats-cards .el-col {
+    margin-bottom: 16px;
+  }
+
+  .stats-card {
+    height: 100px;
+  }
+
+  .stats-number {
+    font-size: 24px;
+  }
+
+  .stats-icon {
+    font-size: 50px;
+  }
+}
+
+@media (max-width: 576px) {
+  .my-bookings {
+    padding: 12px;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .stats-cards .el-col {
+    width: 100%;
+  }
 }
 </style>
