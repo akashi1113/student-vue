@@ -1,44 +1,55 @@
 <template>
   <div class="student-submission-detail">
     <div class="header">
-      <button @click="$router.go(-1)" class="back-btn">← 返回</button>
+      <button @click="$router.go(-1)" class="back-btn">
+        <i class="el-icon-arrow-left"></i> 返回
+      </button>
       <h1>提交详情</h1>
       <div class="submission-info">
-        <span v-if="currentSubmission.studentName">学生: {{ currentSubmission.studentName }}</span>
-        <span v-if="currentSubmission.submitTime">提交时间: {{ formatDate(currentSubmission.submitTime) }}</span>
+        <span v-if="currentSubmission.studentName" class="info-item">
+          <i class="el-icon-user"></i> 学生: {{ currentSubmission.studentName }}
+        </span>
+        <span v-if="currentSubmission.submitTime" class="info-item">
+          <i class="el-icon-time"></i> 提交时间: {{ formatDate(currentSubmission.submitTime) }}
+        </span>
       </div>
     </div>
 
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="loading-state">
+      <i class="el-icon-loading"></i>
+      <span>加载中...</span>
+    </div>
 
     <div v-else-if="allSubmissions.length > 0" class="content">
       <!-- 提交次数选择器 -->
-      <div class="submission-selector">
-        <h3>选择查看提交记录</h3>
+      <div class="submission-selector card">
+        <h3><i class="el-icon-notebook-2"></i> 提交记录</h3>
         <div class="selector-container">
-          <label for="submission-select">提交次数:</label>
-          <select
-              id="submission-select"
-              v-model="selectedSubmissionIndex"
-              @change="onSubmissionChange"
-              class="submission-select">
-            <option
-                v-for="(submission, index) in allSubmissions"
-                :key="submission.id"
-                :value="index">
-              第{{ index + 1 }}次提交
-              ({{ formatDate(submission.submitTime) }})
-              <span v-if="submission.totalScore !== null"> - {{ submission.totalScore }}分</span>
-              <span v-else> - 待批改</span>
-            </option>
-          </select>
-          <div class="submission-summary">
-            <span class="total-submissions">共 {{ allSubmissions.length }} 次提交</span>
-            <span
-                v-if="latestSubmission && latestSubmission.totalScore !== null"
-                class="latest-score">
-              最新得分: {{ latestSubmission.totalScore }}分
-            </span>
+          <div class="select-wrapper">
+            <label for="submission-select">提交次数:</label>
+            <el-select
+                id="submission-select"
+                v-model="selectedSubmissionIndex"
+                @change="onSubmissionChange"
+                class="submission-select"
+                placeholder="请选择提交记录">
+              <el-option
+                  v-for="(submission, index) in allSubmissions"
+                  :key="submission.id"
+                  :label="`第${index + 1}次提交 (${formatDate(submission.submitTime)})${submission.totalScore !== null ? ' - ' + submission.totalScore + '分' : ' - 待批改'}`"
+                  :value="index">
+              </el-option>
+            </el-select>
+          </div>
+          <div class="summary-stats">
+            <div class="stat-item">
+              <span class="stat-label">提交总数</span>
+              <span class="stat-value">{{ allSubmissions.length }}</span>
+            </div>
+            <div class="stat-item" v-if="latestSubmission && latestSubmission.totalScore !== null">
+              <span class="stat-label">最新得分</span>
+              <span class="stat-value score">{{ latestSubmission.totalScore }}分</span>
+            </div>
           </div>
         </div>
       </div>
@@ -46,36 +57,36 @@
       <!-- 当前选中提交的详细信息 -->
       <div class="current-submission-detail">
         <!-- 作业基本信息 -->
-        <div class="homework-info">
-          <h3>{{ currentSubmission.homeworkTitle }}</h3>
+        <div class="homework-info card">
+          <h3><i class="el-icon-document"></i> {{ currentSubmission.homeworkTitle }}</h3>
           <div class="info-grid">
             <div class="info-item">
-              <span class="label">课程:</span>
+              <span class="label"><i class="el-icon-collection"></i> 课程:</span>
               <span>{{ currentSubmission.courseTitle }}</span>
             </div>
             <div class="info-item">
-              <span class="label">作业总分:</span>
-              <span>{{ homework.totalScore }}</span>
+              <span class="label"><i class="el-icon-medal"></i> 作业总分:</span>
+              <span>{{ homework.totalScore }}分</span>
             </div>
             <div class="info-item">
-              <span class="label">当前提交得分:</span>
-              <span v-if="currentSubmission.totalScore !== null" class="score">
-                {{ currentSubmission.totalScore }} 分
+              <span class="label"><i class="el-icon-star-off"></i> 当前得分:</span>
+              <span v-if="currentSubmission.totalScore !== null" class="score-value">
+                {{ currentSubmission.totalScore }}分
               </span>
               <span v-else class="pending">待批改</span>
             </div>
             <div class="info-item">
-              <span class="label">提交状态:</span>
+              <span class="label"><i class="el-icon-s-flag"></i> 提交状态:</span>
               <span :class="['status', currentSubmission.status.toLowerCase()]">
                 {{ getStatusText(currentSubmission.status) }}
               </span>
             </div>
             <div class="info-item">
-              <span class="label">提交时间:</span>
+              <span class="label"><i class="el-icon-time"></i> 提交时间:</span>
               <span>{{ formatDate(currentSubmission.submitTime) }}</span>
             </div>
             <div class="info-item">
-              <span class="label">是否最新:</span>
+              <span class="label"><i class="el-icon-s-data"></i> 提交状态:</span>
               <span :class="['latest-indicator', isLatestSubmission ? 'latest' : 'old']">
                 {{ isLatestSubmission ? '最新提交' : '历史提交' }}
               </span>
@@ -84,33 +95,56 @@
         </div>
 
         <!-- 提交对比信息 -->
-        <div v-if="allSubmissions.length > 1" class="submission-comparison">
-          <h3>提交记录对比</h3>
+        <div v-if="allSubmissions.length > 1" class="submission-comparison card">
+          <h3><i class="el-icon-trend-charts"></i> 成绩分析</h3>
           <div class="comparison-grid">
             <div class="comparison-item">
-              <span class="label">最高分:</span>
-              <span class="value">{{ getHighestScore() }}分</span>
+              <div class="stat-icon">
+                <i class="el-icon-top"></i>
+              </div>
+              <div class="stat-content">
+                <span class="label">最高分</span>
+                <span class="value">{{ getHighestScore() }}分</span>
+              </div>
             </div>
             <div class="comparison-item">
-              <span class="label">最低分:</span>
-              <span class="value">{{ getLowestScore() }}分</span>
+              <div class="stat-icon">
+                <i class="el-icon-bottom"></i>
+              </div>
+              <div class="stat-content">
+                <span class="label">最低分</span>
+                <span class="value">{{ getLowestScore() }}分</span>
+              </div>
             </div>
             <div class="comparison-item">
-              <span class="label">平均分:</span>
-              <span class="value">{{ getAverageScore() }}分</span>
+              <div class="stat-icon">
+                <i class="el-icon-s-data"></i>
+              </div>
+              <div class="stat-content">
+                <span class="label">平均分</span>
+                <span class="value">{{ getAverageScore() }}分</span>
+              </div>
             </div>
             <div class="comparison-item">
-              <span class="label">改进情况:</span>
-              <span :class="['improvement', getImprovementClass()]">
-                {{ getImprovementText() }}
-              </span>
+              <div class="stat-icon">
+                <i :class="getImprovementIcon()"></i>
+              </div>
+              <div class="stat-content">
+                <span class="label">进步情况</span>
+                <span :class="['improvement', getImprovementClass()]">
+                  {{ getImprovementText() }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 答题详情 -->
-        <div class="answers-section">
-          <h3>第{{ selectedSubmissionIndex + 1 }}次提交 - 答题详情</h3>
+        <div class="answers-section card">
+          <div class="section-header">
+            <h3><i class="el-icon-edit-outline"></i> 答题详情</h3>
+            <span class="submission-count">第{{ selectedSubmissionIndex + 1 }}次提交</span>
+          </div>
           <div class="answers-list">
             <div
                 v-for="(answer, index) in currentAnswers"
@@ -121,18 +155,18 @@
                 <span class="question-type">{{ getQuestionTypeText(answer.questionType) }}</span>
                 <span class="question-score">{{ answer.questionScore }}分</span>
                 <span v-if="answer.score !== null" class="earned-score">
-                  得分: {{ answer.score }}
+                  <i class="el-icon-star-on"></i> 得分: {{ answer.score }}
                 </span>
               </div>
 
               <div class="question-content">
-                <h4>题目:</h4>
+                <h4><i class="el-icon-question"></i> 题目</h4>
                 <p>{{ answer.questionContent }}</p>
               </div>
 
               <!-- 选择题选项 -->
               <div v-if="answer.questionOptions" class="question-options">
-                <h4>选项:</h4>
+                <h4><i class="el-icon-circle-check"></i> 选项</h4>
                 <div class="options-list">
                   <div
                       v-for="(option, optIndex) in parseOptions(answer.questionOptions)"
@@ -142,21 +176,25 @@
                       'correct': isCorrectOption(answer.correctAnswer, optIndex)
                     }]">
                     {{ String.fromCharCode(65 + optIndex) }}. {{ option }}
-                    <span v-if="isOptionSelected(answer.studentAnswer, optIndex)" class="selected-mark">✓ 已选</span>
-                    <span v-if="isCorrectOption(answer.correctAnswer, optIndex)" class="correct-mark">✓ 正确</span>
+                    <span v-if="isOptionSelected(answer.studentAnswer, optIndex)" class="selected-mark">
+                      <i class="el-icon-check"></i> 已选
+                    </span>
+                    <span v-if="isCorrectOption(answer.correctAnswer, optIndex)" class="correct-mark">
+                      <i class="el-icon-success"></i> 正确
+                    </span>
                   </div>
                 </div>
               </div>
 
               <!-- 参考答案 -->
               <div v-if="answer.correctAnswer" class="correct-answer">
-                <h4>参考答案:</h4>
+                <h4><i class="el-icon-lightbulb"></i> 参考答案</h4>
                 <p class="answer-text">{{ answer.correctAnswer }}</p>
               </div>
 
               <!-- 学生答案 -->
               <div class="student-answer">
-                <h4>我的答案:</h4>
+                <h4><i class="el-icon-user"></i> 我的答案</h4>
                 <p v-if="answer.studentAnswer" class="answer-text">
                   {{ answer.studentAnswer }}
                 </p>
@@ -166,13 +204,14 @@
               <!-- 正确性标识 -->
               <div v-if="answer.isCorrect !== null" class="correctness">
                 <span :class="['correct-indicator', answer.isCorrect ? 'correct' : 'incorrect']">
-                  {{ answer.isCorrect ? '✓ 正确' : '✗ 错误' }}
+                  <i :class="answer.isCorrect ? 'el-icon-success' : 'el-icon-error'"></i>
+                  {{ answer.isCorrect ? '正确' : '错误' }}
                 </span>
               </div>
 
               <!-- 教师评语 -->
               <div v-if="answer.teacherComment" class="teacher-comment">
-                <h4>教师评语:</h4>
+                <h4><i class="el-icon-chat-line-round"></i> 教师评语</h4>
                 <p>{{ answer.teacherComment }}</p>
               </div>
             </div>
@@ -180,8 +219,8 @@
         </div>
 
         <!-- 教师总体反馈 -->
-        <div v-if="currentSubmission.teacherFeedback" class="overall-feedback">
-          <h3>教师总体反馈</h3>
+        <div v-if="currentSubmission.teacherFeedback" class="overall-feedback card">
+          <h3><i class="el-icon-chat-line-square"></i> 教师总体反馈</h3>
           <div class="feedback-content">
             <p>{{ currentSubmission.teacherFeedback }}</p>
           </div>
@@ -189,31 +228,34 @@
 
         <!-- 操作按钮 -->
         <div class="actions">
-          <button @click="viewHomework" class="view-homework-btn">
-            查看作业详情
-          </button>
-          <button
+          <el-button @click="viewHomework" type="primary" plain>
+            <i class="el-icon-document"></i> 查看作业详情
+          </el-button>
+          <el-button
               v-if="canResubmit"
               @click="resubmit"
-              class="resubmit-btn">
-            重新提交
-          </button>
-          <button @click="downloadSubmission" class="download-btn">
-            下载当前提交
-          </button>
-          <button @click="downloadAllSubmissions" class="download-all-btn">
-            下载所有提交
-          </button>
+              type="warning" plain>
+            <i class="el-icon-refresh-right"></i> 重新提交
+          </el-button>
+          <el-button @click="downloadSubmission" type="info" plain>
+            <i class="el-icon-download"></i> 下载当前提交
+          </el-button>
+          <el-button @click="downloadAllSubmissions" type="info" plain>
+            <i class="el-icon-download"></i> 下载所有提交
+          </el-button>
         </div>
       </div>
     </div>
 
-    <div v-else class="no-submission">
-      <h3>暂无提交记录</h3>
-      <p>您还没有提交过这份作业</p>
-      <button @click="startSubmit" class="start-submit-btn">
-        开始作业
-      </button>
+    <div v-else class="no-submission card">
+      <div class="empty-state">
+        <i class="el-icon-document-delete"></i>
+        <h3>暂无提交记录</h3>
+        <p>您还没有提交过这份作业</p>
+        <el-button @click="startSubmit" type="primary">
+          <i class="el-icon-edit"></i> 开始作业
+        </el-button>
+      </div>
     </div>
   </div>
 </template>
@@ -377,6 +419,15 @@ export default {
       if (lastScore > firstScore) return 'improved';
       if (lastScore < firstScore) return 'declined';
       return 'neutral';
+    },
+
+    getImprovementIcon() {
+      const improvementClass = this.getImprovementClass();
+      switch (improvementClass) {
+        case 'improved': return 'el-icon-top';
+        case 'declined': return 'el-icon-bottom';
+        default: return 'el-icon-right';
+      }
     },
 
     getImprovementText() {
@@ -554,293 +605,407 @@ export default {
 };
 </script>
 
-<style scoped>
-/* 保持原有样式并添加新样式 */
+<style scoped lang="scss">
 .student-submission-detail {
-  padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
+  padding: 20px;
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
 }
 
+/* 卡片通用样式 */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid #ebeef5;
+}
+
+/* 头部样式 */
 .header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 20px;
   margin-bottom: 30px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #e6e6e6;
+
+  h1 {
+    flex: 1;
+    margin: 0;
+    color: #303133;
+    font-size: 24px;
+    font-weight: 500;
+    min-width: 200px;
+  }
 }
 
 .back-btn {
+  display: inline-flex;
+  align-items: center;
   padding: 8px 16px;
-  background: #6c757d;
+  background: #409eff;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-}
+  transition: all 0.3s;
 
-.header h1 {
-  flex: 1;
-  margin: 0;
-  color: #333;
+  &:hover {
+    background: #66b1ff;
+  }
+
+  i {
+    margin-right: 5px;
+  }
 }
 
 .submission-info {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  flex-wrap: wrap;
+  gap: 15px;
   font-size: 14px;
-  color: #666;
+  color: #606266;
+  width: 100%;
+
+  .info-item {
+    display: inline-flex;
+    align-items: center;
+
+    i {
+      margin-right: 5px;
+      color: #909399;
+    }
+  }
 }
 
-/* 新增：提交选择器样式 */
+/* 加载状态 */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  color: #909399;
+
+  i {
+    font-size: 32px;
+    margin-bottom: 15px;
+    animation: rotating 2s linear infinite;
+  }
+
+  span {
+    font-size: 16px;
+  }
+}
+
+@keyframes rotating {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 提交选择器 */
 .submission-selector {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 30px;
-  border: 2px solid #007bff;
-}
+  h3 {
+    margin: 0 0 20px 0;
+    color: #303133;
+    font-size: 18px;
+    font-weight: 500;
 
-.submission-selector h3 {
-  margin: 0 0 15px 0;
-  color: #333;
+    i {
+      color: #409eff;
+      margin-right: 8px;
+    }
+  }
 }
 
 .selector-container {
   display: flex;
-  flex-direction: column;
-  gap: 15px;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
 }
 
-.submission-select {
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 16px;
-  background: white;
+.select-wrapper {
+  flex: 1;
+  min-width: 300px;
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+    color: #606266;
+    font-size: 14px;
+  }
 }
 
-.submission-summary {
+.summary-stats {
   display: flex;
   gap: 20px;
-  font-size: 14px;
 }
 
-.total-submissions {
-  color: #007bff;
-  font-weight: bold;
-}
-
-.latest-score {
-  color: #28a745;
-  font-weight: bold;
-}
-
-/* 新增：提交对比信息样式 */
-.submission-comparison {
-  background: #e3f2fd;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 30px;
-}
-
-.submission-comparison h3 {
-  margin: 0 0 15px 0;
-  color: #333;
-}
-
-.comparison-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 15px;
-}
-
-.comparison-item {
+.stat-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px;
-  background: white;
-  border-radius: 6px;
-  border: 1px solid #ddd;
+  padding: 10px 15px;
+  background: #f5f7fa;
+  border-radius: 4px;
+
+  .stat-label {
+    font-size: 12px;
+    color: #909399;
+    margin-bottom: 5px;
+  }
+
+  .stat-value {
+    font-size: 16px;
+    font-weight: 500;
+    color: #303133;
+
+    &.score {
+      color: #67c23a;
+    }
+  }
 }
 
-.comparison-item .label {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 5px;
-}
-
-.comparison-item .value {
-  font-size: 16px;
-  font-weight: bold;
-  color: #333;
-}
-
-.improvement.improved {
-  color: #28a745;
-  font-weight: bold;
-}
-
-.improvement.declined {
-  color: #dc3545;
-  font-weight: bold;
-}
-
-.improvement.neutral {
-  color: #6c757d;
-  font-weight: bold;
-}
-
-/* 修改后的基本信息样式 */
+/* 作业信息 */
 .homework-info {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 30px;
-}
+  h3 {
+    margin: 0 0 20px 0;
+    color: #303133;
+    font-size: 18px;
+    font-weight: 500;
 
-.homework-info h3 {
-  margin: 0 0 15px 0;
-  color: #333;
+    i {
+      color: #409eff;
+      margin-right: 8px;
+    }
+  }
 }
 
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
 }
 
 .info-item {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  line-height: 1.5;
+
+  .label {
+    color: #909399;
+    margin-right: 8px;
+    display: inline-flex;
+    align-items: center;
+
+    i {
+      margin-right: 5px;
+    }
+  }
+
+  span:not(.label) {
+    color: #303133;
+  }
+
+  .score-value {
+    color: #67c23a;
+    font-weight: 500;
+  }
+
+  .pending {
+    color: #e6a23c;
+    font-style: italic;
+  }
+
+  .status {
+    &.submitted {
+      color: #409eff;
+    }
+    &.graded {
+      color: #67c23a;
+    }
+    &.returned {
+      color: #f56c6c;
+    }
+  }
+
+  .latest-indicator {
+    &.latest {
+      color: #67c23a;
+    }
+    &.old {
+      color: #909399;
+    }
+  }
 }
 
-.info-item .label {
-  font-weight: bold;
-  color: #666;
-  min-width: 80px;
+/* 提交对比信息 */
+.submission-comparison {
+  h3 {
+    margin: 0 0 20px 0;
+    color: #303133;
+    font-size: 18px;
+    font-weight: 500;
+
+    i {
+      color: #409eff;
+      margin-right: 8px;
+    }
+  }
 }
 
-.score {
-  color: #28a745;
-  font-weight: bold;
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
 }
 
-.pending {
-  color: #ffc107;
-  font-style: italic;
+.comparison-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background: #f5f7fa;
+  border-radius: 8px;
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #409eff;
+    color: white;
+    border-radius: 50%;
+    margin-right: 15px;
+    font-size: 18px;
+  }
+
+  .stat-content {
+    display: flex;
+    flex-direction: column;
+
+    .label {
+      font-size: 12px;
+      color: #909399;
+      margin-bottom: 5px;
+    }
+
+    .value {
+      font-size: 16px;
+      font-weight: 500;
+      color: #303133;
+    }
+
+    .improvement {
+      font-weight: 500;
+
+      &.improved {
+        color: #67c23a;
+      }
+      &.declined {
+        color: #f56c6c;
+      }
+      &.neutral {
+        color: #909399;
+      }
+    }
+  }
 }
 
-.latest-indicator.latest {
-  color: #28a745;
-  font-weight: bold;
-}
-
-.latest-indicator.old {
-  color: #6c757d;
-  font-style: italic;
-}
-
-.status.submitted {
-  color: #1976d2;
-}
-
-.status.graded {
-  color: #388e3c;
-}
-
-.status.returned {
-  color: #7b1fa2;
-}
-
-/* 新增：选项高亮样式 */
-.option.selected {
-  background: #fff3cd;
-  border-left: 4px solid #ffc107;
-  padding-left: 10px;
-}
-
-.option.correct {
-  background: #d4edda;
-  border-left: 4px solid #28a745;
-  padding-left: 10px;
-}
-
-.selected-mark {
-  color: #ffc107;
-  font-weight: bold;
-  margin-left: 10px;
-}
-
-.correct-mark {
-  color: #28a745;
-  font-weight: bold;
-  margin-left: 10px;
-}
-
-/* 答题详情样式保持不变 */
+/* 答题详情 */
 .answers-section {
-  margin-bottom: 30px;
-}
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
 
-.answers-section h3 {
-  margin: 0 0 20px 0;
-  color: #333;
+    h3 {
+      margin: 0;
+      color: #303133;
+      font-size: 18px;
+      font-weight: 500;
+
+      i {
+        color: #409eff;
+        margin-right: 8px;
+      }
+    }
+
+    .submission-count {
+      color: #909399;
+      font-size: 14px;
+    }
+  }
 }
 
 .answers-list {
   display: grid;
-  gap: 25px;
+  gap: 20px;
 }
 
 .answer-item {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
   padding: 20px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background: #fafafa;
+
+  &:hover {
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  }
 }
 
 .question-header {
   display: flex;
-  gap: 15px;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 10px;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
-}
+  border-bottom: 1px dashed #dcdfe6;
 
-.question-number {
-  font-weight: bold;
-  color: #007bff;
-  font-size: 16px;
-}
+  .question-number {
+    font-weight: 500;
+    color: #409eff;
+    font-size: 16px;
+  }
 
-.question-type {
-  background: #e3f2fd;
-  color: #1976d2;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
+  .question-type {
+    background: #ecf5ff;
+    color: #409eff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
 
-.question-score {
-  background: #f3e5f5;
-  color: #7b1fa2;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
+  .question-score {
+    background: #f0f9eb;
+    color: #67c23a;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
 
-.earned-score {
-  background: #e8f5e8;
-  color: #388e3c;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
+  .earned-score {
+    background: #fdf6ec;
+    color: #e6a23c;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+
+    i {
+      margin-right: 3px;
+    }
+  }
 }
 
 .question-content,
@@ -849,23 +1014,26 @@ export default {
 .student-answer,
 .teacher-comment {
   margin-bottom: 15px;
-}
 
-.question-content h4,
-.question-options h4,
-.correct-answer h4,
-.student-answer h4,
-.teacher-comment h4 {
-  margin: 0 0 8px 0;
-  color: #333;
-  font-size: 14px;
-}
+  h4 {
+    margin: 0 0 10px 0;
+    color: #606266;
+    font-size: 15px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
 
-.question-content p,
-.correct-answer p {
-  margin: 0;
-  line-height: 1.6;
-  color: #666;
+    i {
+      margin-right: 5px;
+      color: #409eff;
+    }
+  }
+
+  p {
+    margin: 0;
+    line-height: 1.6;
+    color: #606266;
+  }
 }
 
 .options-list {
@@ -873,146 +1041,227 @@ export default {
 }
 
 .option {
-  margin: 5px 0;
-  color: #666;
-  padding: 5px;
+  margin: 8px 0;
+  padding: 8px 12px;
   border-radius: 4px;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  transition: all 0.3s;
+  position: relative;
+
+  &.selected {
+    background: #fff3e0;
+    border-color: #ffb74d;
+
+    .selected-mark {
+      color: #ff9800;
+      position: absolute;
+      right: 10px;
+      top: 8px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+
+      i {
+        margin-right: 3px;
+      }
+    }
+  }
+
+  &.correct {
+    background: #f0f9eb;
+    border-color: #c2e7b0;
+
+    .correct-mark {
+      color: #67c23a;
+      position: absolute;
+      right: 10px;
+      top: 8px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+
+      i {
+        margin-right: 3px;
+      }
+    }
+  }
 }
 
 .answer-text {
-  background: #f8f9fa;
-  padding: 10px;
+  background: #f5f7fa;
+  padding: 12px;
   border-radius: 4px;
-  border-left: 4px solid #007bff;
+  border-left: 4px solid #409eff;
   margin: 0;
   line-height: 1.6;
-  color: #333;
+  color: #303133;
 }
 
 .no-answer {
-  color: #dc3545;
+  color: #f56c6c;
   font-style: italic;
   margin: 0;
 }
 
 .correctness {
-  margin-bottom: 15px;
-}
+  margin: 15px 0;
 
-.correct-indicator {
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-weight: bold;
-  font-size: 14px;
-}
+  .correct-indicator {
+    padding: 8px 15px;
+    border-radius: 4px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
 
-.correct-indicator.correct {
-  background: #d4edda;
-  color: #155724;
-}
+    i {
+      margin-right: 5px;
+    }
 
-.correct-indicator.incorrect {
-  background: #f8d7da;
-  color: #721c24;
+    &.correct {
+      background: #f0f9eb;
+      color: #67c23a;
+    }
+
+    &.incorrect {
+      background: #fef0f0;
+      color: #f56c6c;
+    }
+  }
 }
 
 .teacher-comment {
-  background: #fff8e1;
+  background: #f5f7fa;
   padding: 15px;
   border-radius: 6px;
-  border: 1px solid #ffecb3;
+  border-left: 4px solid #e6a23c;
+
+  p {
+    color: #303133;
+  }
 }
 
-.teacher-comment p {
-  margin: 0;
-  line-height: 1.6;
-  color: #333;
-}
-
+/* 教师总体反馈 */
 .overall-feedback {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 30px;
+  h3 {
+    margin: 0 0 15px 0;
+    color: #303133;
+    font-size: 18px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+
+    i {
+      color: #409eff;
+      margin-right: 8px;
+    }
+  }
+
+  .feedback-content {
+    p {
+      margin: 0;
+      line-height: 1.6;
+      color: #606266;
+      padding: 12px;
+      background: #f5f7fa;
+      border-radius: 4px;
+    }
+  }
 }
 
-.overall-feedback h3 {
-  margin: 0 0 15px 0;
-  color: #333;
-}
-
-.feedback-content p {
-  margin: 0;
-  line-height: 1.6;
-  color: #666;
-}
-
-/* 修改后的操作按钮样式 */
+/* 操作按钮 */
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 15px;
   justify-content: center;
-  padding: 20px;
-  flex-wrap: wrap;
+  padding: 20px 0;
 }
 
-.view-homework-btn,
-.resubmit-btn,
-.download-btn,
-.download-all-btn,
-.start-submit-btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.view-homework-btn {
-  background: #007bff;
-  color: white;
-}
-
-.resubmit-btn {
-  background: #ffc107;
-  color: #212529;
-}
-
-.download-btn {
-  background: #6c757d;
-  color: white;
-}
-
-.download-all-btn {
-  background: #17a2b8;
-  color: white;
-}
-
-.start-submit-btn {
-  background: #28a745;
-  color: white;
-}
-
+/* 无提交状态 */
 .no-submission {
-  text-align: center;
-  padding: 60px 20px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+
+  .empty-state {
+    text-align: center;
+    max-width: 400px;
+
+    i {
+      font-size: 60px;
+      color: #c0c4cc;
+      margin-bottom: 20px;
+    }
+
+    h3 {
+      margin: 0 0 10px 0;
+      color: #303133;
+      font-size: 20px;
+    }
+
+    p {
+      margin: 0 0 20px 0;
+      color: #909399;
+      font-size: 14px;
+    }
+  }
 }
 
-.no-submission h3 {
-  margin: 0 0 10px 0;
-  color: #333;
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+
+    h1 {
+      font-size: 20px;
+    }
+  }
+
+  .info-grid,
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .selector-container {
+    flex-direction: column;
+  }
+
+  .select-wrapper {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .summary-stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .actions {
+    flex-direction: column;
+
+    .el-button {
+      width: 100%;
+    }
+  }
 }
 
-.no-submission p {
-  margin: 0 0 20px 0;
-  color: #666;
-}
+@media (max-width: 480px) {
+  .student-submission-detail {
+    padding: 15px;
+  }
 
-.loading {
-  text-align: center;
-  padding: 40px;
-  color: #666;
+  .card {
+    padding: 15px;
+  }
+
+  .question-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
 }
 </style>
