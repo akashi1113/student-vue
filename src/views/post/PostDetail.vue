@@ -1,8 +1,18 @@
 <template>
     <div class="post-detail-container">
+        <!-- 背景装饰元素 -->
+        <div class="bg-decorations">
+            <div class="circle circle-1"></div>
+            <div class="circle circle-2"></div>
+            <div class="circle circle-3"></div>
+            <div class="circle circle-4"></div>
+            <div class="wave wave-1"></div>
+            <div class="wave wave-2"></div>
+        </div>
+
         <!-- 管理员模式返回按钮 -->
         <div v-if="isAdminMode" class="admin-back-btn">
-            <el-button type="primary" @click="closeWindow">
+            <el-button type="primary" @click="closeWindow" class="admin-btn">
                 <el-icon>
                     <ArrowLeft />
                 </el-icon> 返回管理面板
@@ -10,95 +20,115 @@
         </div>
 
         <!-- 骨架屏 -->
-        <el-skeleton :rows="10" animated v-if="loading" />
+        <el-skeleton :rows="10" animated v-if="loading" class="skeleton-loader" />
 
         <!-- 帖子详情卡片 -->
-        <el-card v-if="post && !loading" class="post-card" shadow="never">
-            <template #header>
-                <h1>{{ post.title }}</h1>
+        <transition name="fade-slide">
+            <el-card v-if="post && !loading" class="post-card" shadow="hover">
+                <div class="post-header">
+                    <h1>{{ post.title }}</h1>
+                    <div class="category-tag">
+                        <el-tag size="small" :type="getCategoryTagType(post.category)">{{ post.category }}</el-tag>
+                    </div>
+                </div>
+
                 <div class="meta-info">
                     <div class="author">
-                        <el-avatar :size="32" :src="post.userAvatar || defaultAvatar" />
-                        <span class="username">{{ post.userName }}</span>
+                        <el-avatar :size="42" :src="post.userAvatar || defaultAvatar" class="author-avatar" />
+                        <div class="author-details">
+                            <span class="username">{{ post.userName }}</span>
+                            <span class="time">发布于 {{ formatTime(post.createTime) }}</span>
+                        </div>
                     </div>
                     <div class="stats">
-                        <span>发布于 {{ formatTime(post.createTime) }}</span>
-                        <span><el-icon>
+                        <div class="stat-item">
+                            <el-icon>
                                 <View />
-                            </el-icon> {{ post.viewCount }}</span>
-                        <span><el-icon>
+                            </el-icon>
+                            <span>{{ post.viewCount }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <el-icon>
                                 <Pointer />
-                            </el-icon> {{ post.likeCount }}</span>
-                        <span><el-icon>
+                            </el-icon>
+                            <span>{{ post.likeCount }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <el-icon>
                                 <ChatDotRound />
-                            </el-icon> {{ post.commentCount }}</span>
+                            </el-icon>
+                            <span>{{ post.commentCount }}</span>
+                        </div>
                     </div>
                 </div>
-            </template>
 
-            <!-- 帖子内容 -->
-            <div class="post-content" v-html="post.content"></div>
+                <!-- 帖子内容 -->
+                <div class="post-content" v-html="post.content"></div>
 
-            <!-- 操作按钮 -->
-            <div class="actions">
-                <el-button type="primary" :plain="!post.isLiked" @click="toggleLikePost" :icon="Pointer">
-                    {{ post.isLiked ? '已赞' : '点赞' }} ({{ post.likeCount }})
-                </el-button>
-                <!-- 修复后的操作按钮区域 -->
-                <div class="post-operations">
-                    <!-- 自己的帖子：显示编辑和删除 -->
-                    <template v-if="currentUserId && Number(post.userId) === Number(currentUserId)">
-                        <el-button type="primary" link @click="openEditPostDialog">编辑</el-button>
-                        <el-button type="danger" link @click="handleDeletePost">删除</el-button>
-                    </template>
-                    <!-- 别人的帖子：只显示举报 -->
-                    <template v-else-if="currentUserId">
-                        <el-button type="warning" link @click="handleReportPost">举报</el-button>
-                    </template>
-                    <!-- 未登录：不显示任何操作按钮 -->
-                    <template v-else>
-                        <el-button type="info" link @click="toLogin">请登录后操作</el-button>
-                    </template>
+                <!-- 操作按钮 -->
+                <div class="actions">
+                    <el-button type="primary" :plain="!post.isLiked" @click="toggleLikePost" :icon="Pointer"
+                        class="like-btn">
+                        {{ post.isLiked ? '已赞' : '点赞' }} ({{ post.likeCount }})
+                    </el-button>
+                    <div class="post-operations">
+                        <template v-if="currentUserId && Number(post.userId) === Number(currentUserId)">
+                            <el-button type="primary" link @click="openEditPostDialog" class="action-btn">编辑</el-button>
+                            <el-button type="danger" link @click="handleDeletePost" class="action-btn">删除</el-button>
+                        </template>
+                        <template v-else-if="currentUserId">
+                            <el-button type="warning" link @click="handleReportPost" class="action-btn">举报</el-button>
+                        </template>
+                        <template v-else>
+                            <el-button type="info" link @click="toLogin" class="action-btn">请登录后操作</el-button>
+                        </template>
+                    </div>
                 </div>
-            </div>
-        </el-card>
+            </el-card>
+        </transition>
 
         <!-- 评论区 -->
-        <el-card class="comments-section" shadow="never" v-if="post && !loading">
-            <h2 class="comment-title">评论区 ({{ post.commentCount }})</h2>
-            <div class="comment-form">
-                <el-input v-model="newCommentContent" placeholder="发表你的看法..." type="textarea" :rows="3" />
-                <el-button type="primary" @click="submitComment(null, newCommentContent)"
-                    :disabled="!newCommentContent.trim()">发布评论</el-button>
-            </div>
+        <transition name="fade-slide" appear>
+            <el-card class="comments-section" shadow="hover" v-if="post && !loading">
+                <h2 class="comment-title">
+                    <span>评论区</span>
+                    <span class="comment-count">{{ post.commentCount }}</span>
+                </h2>
+                <div class="comment-form">
+                    <el-input v-model="newCommentContent" placeholder="发表你的看法..." type="textarea" :rows="3"
+                        class="comment-input" />
+                    <el-button type="primary" @click="submitComment(null, newCommentContent)"
+                        :disabled="!newCommentContent.trim()" class="comment-submit">发布评论</el-button>
+                </div>
 
-            <div class="comment-list">
-                <el-empty v-if="!comments.length" description="还没有评论，快来发表第一条评论吧！" />
-                <CommentItem v-for="comment in comments" :key="comment.id" :comment="comment"
-                    :current-user-id="currentUserId" @toggle-like="toggleLikeComment" @delete="handleDeleteComment"
-                    @update="handleUpdateComment" @reply="handleReply" @load-replies="loadReplies" />
-            </div>
-        </el-card>
+                <div class="comment-list">
+                    <el-empty v-if="!comments.length" description="还没有评论，快来发表第一条评论吧！" />
+                    <CommentItem v-for="comment in comments" :key="comment.id" :comment="comment"
+                        :current-user-id="currentUserId" @toggle-like="toggleLikeComment" @delete="handleDeleteComment"
+                        @update="handleUpdateComment" @reply="handleReply" @load-replies="loadReplies" />
+                </div>
+            </el-card>
+        </transition>
 
         <!-- 编辑帖子弹窗 -->
-        <el-dialog v-model="editPostDialogVisible" title="编辑帖子" width="60%">
+        <el-dialog v-model="editPostDialogVisible" title="编辑帖子" width="60%" class="edit-dialog">
             <el-form v-if="editPostForm" :model="editPostForm" :rules="rules" ref="editPostFormRef" label-width="80px">
                 <el-form-item label="标题" prop="title">
-                    <el-input v-model="editPostForm.title" />
+                    <el-input v-model="editPostForm.title" class="edit-input" />
                 </el-form-item>
                 <el-form-item label="分类" prop="category">
-                    <el-select v-model="editPostForm.category" placeholder="请选择分类">
+                    <el-select v-model="editPostForm.category" placeholder="请选择分类" class="edit-select">
                         <el-option v-for="category in availableCategories" :key="category.value" :label="category.label"
                             :value="category.value" />
                     </el-select>
                 </el-form-item>
                 <el-form-item label="内容" prop="content">
-                    <el-input v-model="editPostForm.content" type="textarea" :rows="10" />
+                    <el-input v-model="editPostForm.content" type="textarea" :rows="10" class="edit-textarea" />
                 </el-form-item>
             </el-form>
             <template #footer>
-                <el-button @click="editPostDialogVisible = false">取消</el-button>
-                <el-button type="primary" @click="submitUpdatePost">保存修改</el-button>
+                <el-button @click="editPostDialogVisible = false" class="dialog-btn cancel-btn">取消</el-button>
+                <el-button type="primary" @click="submitUpdatePost" class="dialog-btn save-btn">保存修改</el-button>
             </template>
         </el-dialog>
     </div>
@@ -120,7 +150,8 @@ const postId = Number(route.params.id);
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
 // ✅ 修改：移除硬编码的用户ID，从JWT获取
 // const currentUserId = ref(null);
-const currentUserId = ref(localStorage.getItem('userId') || null);
+const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+const currentUserId = ref(userInfo.user ? userInfo.user.id : null);
 
 // 响应式数据
 const post = ref(null);
@@ -136,6 +167,19 @@ const availableCategories = ref([
     { value: '求职交流', label: '求职交流' },
     { value: '其他话题', label: '其他话题' }
 ]);
+
+const getCategoryTagType = (category) => {
+    const types = {
+        '技术问答': 'danger',
+        '学习分享': 'success',
+        '资源推荐': 'warning',
+        '课程讨论': '',
+        '项目展示': 'info',
+        '求职交流': 'primary',
+        '其他话题': 'info'
+    };
+    return types[category] || 'info';
+};
 
 const fetchPostDetail = async () => {
     try {
@@ -428,126 +472,493 @@ const closeWindow = () => {
 
 <style scoped>
 .post-detail-container {
-    max-width: 800px;
-    margin: 20px auto;
-    padding: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px 20px;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.bg-decorations {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.circle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.08;
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    z-index: -1;
+}
+
+.circle-1 {
+    width: 300px;
+    height: 300px;
+    top: -100px;
+    left: -100px;
+    animation: float 15s infinite ease-in-out;
+}
+
+.circle-2 {
+    width: 200px;
+    height: 200px;
+    bottom: 50px;
+    right: -50px;
+    animation: float 18s infinite ease-in-out;
+    animation-delay: 2s;
+}
+
+.circle-3 {
+    width: 150px;
+    height: 150px;
+    top: 200px;
+    right: 200px;
+    animation: float 12s infinite ease-in-out;
+    animation-delay: 4s;
+}
+
+.circle-4 {
+    width: 100px;
+    height: 100px;
+    bottom: 200px;
+    left: 150px;
+    animation: float 14s infinite ease-in-out;
+    animation-delay: 1s;
+}
+
+.wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 200%;
+    height: 100px;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none"><path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25" fill="%233b82f6"></path><path d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z" opacity=".5" fill="%233b82f6"></path><path d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z" fill="%233b82f6"></path></svg>');
+    background-size: 50% 100px;
+    opacity: 0.1;
+    z-index: -1;
+}
+
+.wave-1 {
+    height: 150px;
+    animation: wave-animation 25s linear infinite;
+}
+
+.wave-2 {
+    height: 120px;
+    animation: wave-animation 20s linear infinite reverse;
+    opacity: 0.15;
+}
+
+.admin-back-btn {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.admin-btn {
+    border-radius: 30px;
+    padding: 10px 20px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    border: none;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    transition: all 0.3s ease;
+}
+
+.admin-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.admin-btn:active {
+    transform: translateY(1px);
+}
+
+.skeleton-loader {
+    border-radius: 16px;
+    overflow: hidden;
 }
 
 .post-card,
 .comments-section {
     border: none;
-    background-color: #fff;
-    border-radius: 8px;
-    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(235, 245, 255, 0.8);
 }
 
-h1 {
-    font-size: 2em;
-    margin-bottom: 20px;
+.post-card:hover,
+.comments-section:hover {
+    box-shadow: 0 15px 40px rgba(59, 130, 246, 0.2);
+    transform: translateY(-5px);
+}
+
+.post-header {
+    padding: 25px 30px 10px;
+    position: relative;
+}
+
+.post-header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 15px;
+    color: #1e293b;
+    font-weight: 700;
+    line-height: 1.3;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    letter-spacing: -0.5px;
+}
+
+.category-tag {
+    position: absolute;
+    top: 25px;
+    right: 30px;
+    z-index: 10;
+    transform: rotate(3deg);
 }
 
 .meta-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: #909399;
-    font-size: 0.9em;
+    padding: 0 30px 20px;
+    border-bottom: 1px solid #f1f5f9;
 }
 
-.author,
-.stats {
+.author {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
-.author .username {
-    margin-left: 8px;
-    font-weight: bold;
+.author-avatar {
+    transition: all 0.3s ease;
+    border: 2px solid #dbeafe;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.author-avatar:hover {
+    transform: scale(1.1);
+    box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+}
+
+.author-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.username {
+    font-weight: 600;
+    color: #334155;
+    font-size: 1.1rem;
+}
+
+.time {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.stats {
+    display: flex;
+    gap: 25px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #64748b;
+    font-weight: 500;
+    font-size: 1rem;
+    padding: 5px 12px;
+    background: #f1f5f9;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+    background: #dbeafe;
+    color: #3b82f6;
+    transform: translateY(-2px);
 }
 
 .post-content {
     line-height: 1.8;
     font-size: 1.1em;
-    margin: 20px 0;
-    word-wrap: break-word;
+    margin: 30px;
+    padding: 20px 0;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
 }
 
 .actions {
     display: flex;
     justify-content: space-between;
-    /* 修改 */
     align-items: center;
-    /* 修改 */
-    margin-top: 20px;
-    border-top: 1px solid #e4e7ed;
-    padding-top: 20px;
+    padding: 20px 30px;
+}
+
+.like-btn {
+    border-radius: 30px;
+    padding: 10px 25px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    border: none;
+    color: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+}
+
+.like-btn:hover:not(.is-plain) {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
+}
+
+.like-btn.is-plain {
+    background: white;
+    color: #3b82f6;
+    border: 1px solid #3b82f6;
+}
+
+.post-operations {
+    display: flex;
+    gap: 15px;
+}
+
+.action-btn {
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+    background: #f1f5f9;
+    transform: translateY(-2px);
+}
+
+/* 评论区样式 */
+.comments-section {
+    padding: 30px;
 }
 
 .comment-title {
-    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    font-size: 1.6rem;
+    color: #1e293b;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.comment-count {
+    background: #3b82f6;
+    color: white;
+    padding: 2px 12px;
+    border-radius: 20px;
+    font-size: 1rem;
 }
 
 .comment-form {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
     margin-bottom: 30px;
 }
 
-.comment-form .el-button {
+.comment-input :deep(.el-textarea__inner) {
+    border-radius: 16px;
+    padding: 15px 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+}
+
+.comment-input :deep(.el-textarea__inner):focus {
+    border-color: #3b82f6;
+    box-shadow: 0 2px 15px rgba(59, 130, 246, 0.2);
+}
+
+.comment-submit {
     align-self: flex-end;
+    border-radius: 30px;
+    padding: 10px 30px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    border: none;
+    transition: all 0.3s ease;
 }
 
-.comment-item {
-    display: flex;
-    gap: 15px;
-    padding: 15px 0;
-    border-top: 1px solid #f2f2f2;
+.comment-submit:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
 }
 
-.comment-body {
-    flex: 1;
+.comment-submit:disabled {
+    opacity: 0.6;
 }
 
-.comment-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
+.comment-list {
+    max-height: 800px;
+    overflow-y: auto;
+    padding-right: 10px;
 }
 
-.comment-username {
-    font-weight: bold;
-    color: #303133;
+/* 弹窗样式 */
+.edit-dialog :deep(.el-dialog) {
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
 }
 
-.comment-time {
-    color: #909399;
-    font-size: 0.8em;
+.edit-dialog :deep(.el-dialog__header) {
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    margin: 0;
+    padding: 20px;
 }
 
-.comment-content {
-    margin: 5px 0;
-    line-height: 1.6;
+.edit-dialog :deep(.el-dialog__title) {
+    color: white;
+    font-weight: 700;
+    font-size: 1.4rem;
 }
 
-.el-button.liked {
-    color: var(--el-color-primary);
+.edit-dialog :deep(.el-dialog__body) {
+    padding: 30px;
 }
 
-.comment-actions {
-    display: flex;
-    /* 新增 */
-    align-items: center;
-    /* 新增 */
-    gap: 10px;
-    /* 新增 */
+.edit-input :deep(.el-input__wrapper),
+.edit-select :deep(.el-select__wrapper) {
+    border-radius: 12px;
+    padding: 0 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
 }
 
-.admin-back-btn {
-    margin-bottom: 20px;
-    display: flex;
-    justify-content: flex-start;
+.edit-input :deep(.el-input__wrapper):hover,
+.edit-select :deep(.el-select__wrapper):hover {
+    box-shadow: 0 2px 12px rgba(59, 130, 246, 0.15);
+}
+
+.edit-textarea :deep(.el-textarea__inner) {
+    border-radius: 16px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    min-height: 300px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.edit-textarea :deep(.el-textarea__inner):focus {
+    border-color: #3b82f6;
+    box-shadow: 0 2px 15px rgba(59, 130, 246, 0.2);
+}
+
+.dialog-btn {
+    border-radius: 12px;
+    padding: 10px 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.cancel-btn {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.cancel-btn:hover {
+    background: #e2e8f0;
+    transform: translateY(-2px);
+}
+
+.save-btn {
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    border: none;
+    color: white;
+}
+
+.save-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
+}
+
+/* 动画效果 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+    transition: all 0.5s ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+@keyframes float {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(20px, 20px);
+    }
+
+    100% {
+        transform: translate(0, 0);
+    }
+}
+
+@keyframes wave-animation {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .post-detail-container {
+        padding: 20px 15px;
+    }
+
+    .post-header h1 {
+        font-size: 1.8rem;
+        padding-right: 80px;
+    }
+
+    .meta-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+
+    .post-content {
+        margin: 20px 15px;
+        padding: 15px 0;
+    }
+
+    .actions {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
 }
 </style>

@@ -110,6 +110,32 @@ const handleImageError = (event) => {
     event.target.src = defaultCoverImg
 }
 
+// // 获取课程详情
+// const fetchCourseDetail = async () => {
+//     loading.value = true
+//     try {
+//         const courseId = parseInt(route.params.id)
+//         if (isNaN(courseId)) {
+//             ElMessage.error('课程ID无效')
+//             course.value = null
+//             return
+//         }
+
+//         // ✅ 修改：不再传递userId
+//         const response = await courseAPI.getCourseDetail(courseId)
+//         course.value = response.data
+
+//         if (course.value) {
+//             await fetchVideosByCourse(courseId)
+//         }
+//     } catch (error) {
+//         ElMessage.error('获取课程详情失败：' + (error.message || '未知错误'))
+//         course.value = null
+//     } finally {
+//         loading.value = false
+//     }
+// }
+
 // 获取课程详情
 const fetchCourseDetail = async () => {
     loading.value = true
@@ -120,11 +146,9 @@ const fetchCourseDetail = async () => {
             course.value = null
             return
         }
-
-        // ✅ 修改：不再传递userId
+        // 调用API获取课程详情
         const response = await courseAPI.getCourseDetail(courseId)
-        course.value = response.data
-
+        course.value = response   // 修改点：直接使用response，因为拦截器已经返回了data.data（即课程对象）
         if (course.value) {
             await fetchVideosByCourse(courseId)
         }
@@ -136,23 +160,56 @@ const fetchCourseDetail = async () => {
     }
 }
 
+// // 获取课程视频列表
+// const fetchVideosByCourse = async (courseId) => {
+//     videosLoading.value = true
+//     try {
+//         // ✅ 修改：不再传递userId
+//         const response = await videoAPI.getVideosByCourse(courseId)
+//         const videos = response.data || []
+
+//         // 并行获取每个视频的学习记录
+//         videoList.value = await Promise.all(videos.map(async v => {
+//             try {
+//                 // ✅ 修改：不再传递userId
+//                 const recordResponse = await studyRecordAPI.getStudyRecordForVideo(v.id)
+//                 return {
+//                     ...v,
+//                     progress: recordResponse.data.lastPlaybackPosition || 0,
+//                     completed: recordResponse.data.isCompleted || false
+//                 }
+//             } catch (error) {
+//                 console.error(`获取视频${v.id}学习记录失败:`, error)
+//                 return {
+//                     ...v,
+//                     progress: 0,
+//                     completed: false
+//                 }
+//             }
+//         }))
+//     } catch (error) {
+//         ElMessage.error('获取视频列表失败：' + (error.message || '未知错误'))
+//         videoList.value = []
+//     } finally {
+//         videosLoading.value = false
+//     }
+// }
+
 // 获取课程视频列表
 const fetchVideosByCourse = async (courseId) => {
     videosLoading.value = true
     try {
-        // ✅ 修改：不再传递userId
         const response = await videoAPI.getVideosByCourse(courseId)
-        const videos = response.data || []
-
+        const videos = response || []   // 修改点：直接使用response，因为拦截器返回了data.data（视频列表数组）
         // 并行获取每个视频的学习记录
         videoList.value = await Promise.all(videos.map(async v => {
             try {
-                // ✅ 修改：不再传递userId
                 const recordResponse = await studyRecordAPI.getStudyRecordForVideo(v.id)
+                // 注意：recordResponse 已经是学习记录对象了（即后端返回的data.data）
                 return {
                     ...v,
-                    progress: recordResponse.data.lastPlaybackPosition || 0,
-                    completed: recordResponse.data.isCompleted || false
+                    progress: recordResponse.lastPlaybackPosition || 0,
+                    completed: recordResponse.isCompleted || false
                 }
             } catch (error) {
                 console.error(`获取视频${v.id}学习记录失败:`, error)

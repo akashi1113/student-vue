@@ -191,8 +191,8 @@ export const forumAPI = {
 // 通知相关 API
 // =====================================
 export const notificationAPI = {
-    getNotifications: (page = 1, size = 10) =>
-        api.get('/notifications', { params: { page, size } }),
+    getNotifications: (params) =>
+        api.get('/notifications', { params }),
 
     getUnreadCount: () => api.get('/notifications/unread/count'),
 
