@@ -7,7 +7,6 @@
       <h1>{{ homework.title }} - 作业提交</h1>
       <div class="time-info" v-if="homework.endTime">
         <span :class="{ 'time-warning': isNearDeadline, 'time-expired': isExpired }">
-          <span class="icon">⏰</span>
           {{ isExpired ? '已过期' : '截止时间' }}: {{ formatDate(homework.endTime) }}
         </span>
       </div>
@@ -19,20 +18,17 @@
     </div>
 
     <div v-else-if="!homework.id" class="error">
-      <div class="error-icon">❌</div>
       <p>作业不存在或已被删除</p>
       <button @click="goBack" class="back-btn">返回</button>
     </div>
 
     <div v-else-if="isExpired && !canSubmitAfterExpired" class="expired-notice">
-      <div class="expired-icon">⏰</div>
       <h3>作业已过期</h3>
       <p>该作业已超过截止时间，无法提交</p>
       <button @click="goBack" class="back-btn">返回</button>
     </div>
 
     <div v-else-if="!hasAccess" class="no-access">
-      <div class="no-access-icon">🔒</div>
       <h3>无权限访问</h3>
       <p>您没有权限提交此作业</p>
       <button @click="goBack" class="back-btn">返回</button>
@@ -89,10 +85,7 @@
 
       <form @submit.prevent="submitHomework" class="submit-form">
         <div class="questions-section">
-          <h3>
-            <span class="icon">📝</span>
-            答题区域 (共{{ homework.questions?.length || 0 }}题)
-          </h3>
+          <h3>答题区域 (共{{ homework.questions?.length || 0 }}题)</h3>
 
           <div
               v-for="(question, index) in homework.questions"
@@ -181,27 +174,22 @@
 
             <div class="submit-rules">
               <p v-if="homework.allowResubmit">
-                <span class="icon">🔄</span>
                 允许重新提交，最多 {{ homework.maxSubmitTimes || '无限' }} 次
               </p>
               <p v-else>
-                <span class="icon">⚠️</span>
                 仅允许提交一次，请仔细检查后提交
               </p>
-              <p v-if="isNearDeadline">
-                <span class="icon">⏰</span>
-                <span class="warning-text">距离截止时间不足1小时，请尽快提交</span>
+              <p v-if="isNearDeadline" class="warning-text">
+                距离截止时间不足1小时，请尽快提交
               </p>
             </div>
           </div>
 
           <div class="submit-actions">
             <button type="button" @click="saveDraft" class="save-btn" :disabled="saving">
-              <span class="icon">💾</span>
               {{ saving ? '保存中...' : '保存草稿' }}
             </button>
             <button type="submit" :disabled="submitting || isExpired" class="submit-btn">
-              <span class="icon">📤</span>
               {{ submitting ? '提交中...' : '提交作业' }}
             </button>
           </div>
@@ -399,7 +387,6 @@ export default {
     },
 
     async submitHomework() {
-      // 检查是否所有题目都已回答
       const unansweredQuestions = this.homework.questions?.filter(question => {
         const answer = this.answers[question.id];
         return !answer || answer.toString().trim() === '';
@@ -434,12 +421,9 @@ export default {
           })) || []
         };
 
-        console.log('提交数据:', submitData);
-
         const response = await homeworkApi.submitHomework(this.homeworkId, submitData, token);
 
         if (response.data.success) {
-          // 清除草稿
           const draftKey = `homework_draft_${this.homeworkId}`;
           localStorage.removeItem(draftKey);
 
@@ -561,58 +545,53 @@ export default {
   margin-bottom: 30px;
   padding: 20px;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  flex-wrap: wrap;
 }
 
 .back-btn {
   padding: 8px 16px;
-  background: #6c757d;
+  background: #1e88e5;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  transition: all 0.2s;
 }
 
 .back-btn:hover {
-  background: #5a6268;
-  transform: translateY(-2px);
+  background: #1565c0;
 }
 
 .header h1 {
   flex: 1;
   margin: 0;
   color: #333;
-  font-size: 24px;
+  font-size: 22px;
+  min-width: 200px;
 }
 
 .time-info {
   font-size: 14px;
   color: #666;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .time-warning {
-  color: #ff8c00 !important;
-  font-weight: bold;
+  color: #ff8c00;
+  font-weight: 500;
 }
 
 .time-expired {
-  color: #dc3545 !important;
-  font-weight: bold;
+  color: #e53935;
+  font-weight: 500;
 }
 
 .loading {
   text-align: center;
   padding: 60px 20px;
   background: white;
-  border-radius: 12px;
+  border-radius: 8px;
   margin-top: 20px;
 }
 
@@ -620,9 +599,9 @@ export default {
   width: 40px;
   height: 40px;
   margin: 0 auto 16px;
-  border: 4px solid rgba(0,123,255,0.1);
+  border: 4px solid rgba(30, 136, 229, 0.1);
   border-radius: 50%;
-  border-top-color: #007bff;
+  border-top-color: #1e88e5;
   animation: spin 1s ease-in-out infinite;
 }
 
@@ -634,27 +613,27 @@ export default {
   text-align: center;
   padding: 60px 20px;
   background: white;
-  border-radius: 12px;
+  border-radius: 8px;
   margin-top: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.error-icon, .expired-icon, .no-access-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
+.error p, .expired-notice p, .no-access p {
+  margin-bottom: 20px;
 }
 
 .homework-info {
   background: white;
   padding: 20px;
-  border-radius: 12px;
+  border-radius: 8px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
@@ -666,13 +645,11 @@ export default {
 
 .label {
   font-weight: 500;
-  color: #666;
-  min-width: 80px;
+  color: #555;
 }
 
 .value {
   color: #333;
-  font-weight: 500;
 }
 
 .description {
@@ -682,24 +659,21 @@ export default {
 
 .description p {
   margin: 8px 0 0 0;
-  color: #666;
+  color: #555;
   line-height: 1.6;
 }
 
 .submission-history {
   background: white;
   padding: 20px;
-  border-radius: 12px;
+  border-radius: 8px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .submission-history h3 {
   margin: 0 0 16px 0;
   color: #333;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .history-list {
@@ -709,10 +683,10 @@ export default {
 }
 
 .history-item {
-  background: #f8f9fa;
+  background: #f5f5f5;
   padding: 12px;
-  border-radius: 8px;
-  border-left: 4px solid #007bff;
+  border-radius: 6px;
+  border-left: 4px solid #1e88e5;
 }
 
 .history-header {
@@ -720,6 +694,8 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .submission-number {
@@ -740,31 +716,30 @@ export default {
 }
 
 .submission-status.submitted {
-  background: #fff3cd;
-  color: #856404;
+  background: #e3f2fd;
+  color: #1565c0;
 }
 
 .submission-status.graded {
-  background: #d4edda;
-  color: #155724;
+  background: #e8f5e9;
+  color: #2e7d32;
 }
 
 .submission-status.returned {
-  background: #d1ecf1;
-  color: #0c5460;
+  background: #e1f5fe;
+  color: #0277bd;
 }
 
 .submission-score {
   font-size: 14px;
-  color: #28a745;
+  color: #43a047;
   font-weight: 500;
 }
 
 .submit-form {
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .questions-section {
@@ -774,45 +749,43 @@ export default {
 .questions-section h3 {
   margin: 0 0 20px 0;
   color: #333;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 18px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
 }
 
 .question-item {
-  border: 1px solid #eee;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #fff;
 }
 
 .question-header {
   display: flex;
-  gap: 15px;
+  gap: 12px;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
 .question-number {
   font-weight: bold;
-  color: #007bff;
-  font-size: 16px;
+  color: #1e88e5;
 }
 
 .question-type {
   background: #e3f2fd;
-  color: #1976d2;
+  color: #1565c0;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
 }
 
 .question-score {
-  background: #f3e5f5;
-  color: #7b1fa2;
+  background: #e8f5e9;
+  color: #2e7d32;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
@@ -827,18 +800,16 @@ export default {
 }
 
 .question-content {
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   line-height: 1.6;
   color: #333;
-  font-size: 16px;
-  background: white;
-  padding: 15px;
-  border-radius: 6px;
-  border: 1px solid #ddd;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 4px;
 }
 
 .answer-section {
-  margin-top: 15px;
+  margin-top: 12px;
 }
 
 .option {
@@ -847,74 +818,67 @@ export default {
 
 .option label {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   cursor: pointer;
   padding: 8px;
-  border-radius: 6px;
-  transition: all 0.3s;
-  background: white;
-  border: 1px solid #ddd;
+  border-radius: 4px;
+  transition: all 0.2s;
 }
 
 .option label:hover {
-  background-color: #f8f9fa;
-  border-color: #007bff;
+  background-color: #f5f5f5;
 }
 
 .option input[type="radio"],
 .option input[type="checkbox"] {
-  margin-top: 2px;
-}
-
-.option-text {
-  flex: 1;
-  line-height: 1.5;
+  accent-color: #1e88e5;
 }
 
 .text-input {
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
   font-size: 14px;
-  transition: border-color 0.3s;
+  transition: border-color 0.2s;
 }
 
 .text-input:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+  border-color: #1e88e5;
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.1);
 }
 
 .textarea-input {
   width: 100%;
   padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
   font-size: 14px;
   resize: vertical;
   min-height: 120px;
-  transition: border-color 0.3s;
+  transition: border-color 0.2s;
 }
 
 .textarea-input:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+  border-color: #1e88e5;
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.1);
 }
 
 .char-count {
   text-align: right;
   font-size: 12px;
-  color: #666;
+  color: #757575;
   margin-top: 4px;
 }
 
 .submit-section {
-  background: #f8f9fa;
+  background: #f5f5f5;
   padding: 20px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid #e0e0e0;
+  border-radius: 0 0 8px 8px;
 }
 
 .submit-info {
@@ -927,34 +891,31 @@ export default {
 
 .progress-bar {
   width: 100%;
-  height: 8px;
-  background: #e9ecef;
-  border-radius: 4px;
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
   overflow: hidden;
   margin-bottom: 8px;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #007bff, #0056b3);
+  background: #1e88e5;
   transition: width 0.3s ease;
 }
 
 .progress-text {
   font-size: 14px;
-  color: #666;
+  color: #555;
 }
 
 .submit-rules {
-  color: #666;
+  color: #555;
   font-size: 14px;
 }
 
 .submit-rules p {
   margin: 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .warning-text {
@@ -962,70 +923,52 @@ export default {
   font-weight: 500;
 }
 
-
 .submit-actions {
   display: flex;
-  gap: 15px;
-  justify-content: center;
+  gap: 12px;
+  justify-content: flex-end;
 }
 
 .save-btn {
-  padding: 12px 24px;
-  background: #6c757d;
+  padding: 10px 20px;
+  background: #757575;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
 }
 
 .save-btn:hover {
-  background: #5a6268;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  background: #616161;
 }
 
 .save-btn:disabled {
-  background: #adb5bd;
+  background: #bdbdbd;
   cursor: not-allowed;
-  transform: none;
 }
 
 .submit-btn {
-  padding: 12px 24px;
-  background: #28a745;
+  padding: 10px 20px;
+  background: #1e88e5;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
 }
 
 .submit-btn:hover {
-  background: #218838;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(40,167,69,0.3);
+  background: #1565c0;
 }
 
 .submit-btn:disabled {
-  background: #6c757d;
+  background: #90caf9;
   cursor: not-allowed;
-  transform: none;
 }
 
-.icon {
-  font-size: 16px;
-}
-
-/* 响应式设计 */
 @media (max-width: 768px) {
   .homework-submit {
     padding: 16px;
@@ -1039,11 +982,6 @@ export default {
 
   .header h1 {
     font-size: 20px;
-  }
-
-  .time-info {
-    width: 100%;
-    justify-content: center;
   }
 
   .info-grid {
@@ -1062,7 +1000,6 @@ export default {
 
   .save-btn, .submit-btn {
     width: 100%;
-    justify-content: center;
   }
 
   .history-header {
@@ -1090,23 +1027,18 @@ export default {
   }
 
   .question-item {
-    padding: 16px;
+    padding: 12px;
   }
 
   .submit-section {
     padding: 16px;
   }
 
-  .option label {
-    padding: 6px;
-  }
-
   .text-input, .textarea-input {
-    font-size: 16px; /* 防止iOS缩放 */
+    font-size: 16px;
   }
 }
 
-/* 打印样式 */
 @media print {
   .header, .submit-section {
     display: none;

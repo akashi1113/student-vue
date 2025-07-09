@@ -487,12 +487,13 @@ export default {
       // 存储token和用户信息
       localStorage.setItem('token', userData.token)
       localStorage.setItem('userInfo', JSON.stringify(userData))
+      localStorage.setItem('role',userData.user)
 
       // 关闭摄像头
       stopCamera()
 
       // 跳转到首页或管理员页面
-      if (userData.role === 'admin') {
+      if (userData.role === '管理员') {
         router.push('/admin')
       } else {
         const redirect = router.currentRoute.value.query.redirect || '/'
