@@ -69,7 +69,6 @@ export default {
       { title: '考试中心', path: '/exams', icon: CollectionTag, color: '#E6A23C' },
       { title: '作业中心', path: '/student/homework', icon: Document, color: '#67C23A' },
       { title: '课程中心', path: '/course-home', icon: Notebook, color: '#F56C6C' },
-      { title: '智学助手', path: '/ai-chat', icon: Star, color: '#FFD700' }
     ])
 
     // 导航方法

@@ -75,9 +75,8 @@ export default {
      * 更新会话标题 (不需要token)
      */
     updateSessionTitle(sessionId, title) {
-        return axios.put(`${API_URL}/session/${sessionId}/title`, null, {
-            params: { title }
-        }).catch(this.handleError);
+        return axios.put(`${API_URL}/session/${sessionId}/title?title=${encodeURIComponent(title)}`)
+            .catch(this.handleError);
     },
 
     /**
