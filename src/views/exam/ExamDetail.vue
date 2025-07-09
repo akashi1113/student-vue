@@ -41,7 +41,6 @@
           @click="startExam"
           :disabled="!canStartExam"
           class="start-btn"
-          :icon="canStartExam ? 'el-icon-arrow-right' : 'el-icon-warning-outline'"
           :loading="startingExam"
       >
         {{ startingExam ? '正在开始...' : (canStartExam ? '开始考试' : '考试未开放') }}
@@ -50,7 +49,6 @@
           size="large"
           @click="goBack"
           class="back-btn"
-          icon="el-icon-arrow-left"
       >
         返回
       </el-button>
@@ -315,22 +313,29 @@ export default {
 </script>
 
 <style scoped>
+/* 全局样式 - 蓝色主题 */
 .exam-detail-container {
-  max-width: 2000px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 24px;
+  background-color: #f8fafc;
 }
 
+/* 考试头部 - 白底蓝调 */
 .exam-header {
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #ebeef5;
+  margin-bottom: 32px;
+  padding: 24px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.08);
+  border-left: 4px solid #3b82f6;
 }
 
 .exam-header h1 {
-  margin-bottom: 15px;
-  color: #303133;
+  margin-bottom: 16px;
+  color: #1e293b;
   font-size: 24px;
+  font-weight: 600;
   text-align: center;
 }
 
@@ -339,49 +344,58 @@ export default {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 16px;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
-  color: #606266;
+  color: #64748b;
   font-size: 14px;
 }
 
 .meta-item i {
-  margin-right: 5px;
-  color: #409EFF;
+  margin-right: 6px;
+  color: #3b82f6;
 }
 
+/* 考试说明 - 卡片式设计 */
 .exam-description {
-  margin-bottom: 30px;
-  padding: 20px;
-  background-color: #f5f7fa;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 32px;
+  padding: 24px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.05);
 }
 
 .exam-description h3 {
   margin-top: 0;
-  margin-bottom: 15px;
-  color: #303133;
+  margin-bottom: 16px;
+  color: #1e293b;
   font-size: 18px;
-  border-left: 4px solid #409EFF;
-  padding-left: 10px;
+  font-weight: 600;
+  border-left: 4px solid #3b82f6;
+  padding-left: 12px;
 }
 
+.exam-description p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.8;
+}
+
+/* 题目统计 - 卡片网格 */
 .question-statistics {
-  margin: 30px 0;
+  margin: 32px 0;
 }
 
 .question-statistics h3 {
   font-size: 18px;
-  color: #333;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .stat-grid {
@@ -393,32 +407,27 @@ export default {
 .stat-item {
   display: flex;
   align-items: center;
-  padding: 15px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.05);
   transition: all 0.3s ease;
 }
 
 .stat-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
 }
 
 .stat-icon {
   font-size: 24px;
-  margin-right: 15px;
-  width: 40px;
-  height: 40px;
+  margin-right: 16px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: rgba(64, 158, 255, 0.1);
-}
-
-.stat-icon i {
-  font-size: 20px;
 }
 
 .stat-info {
@@ -427,22 +436,23 @@ export default {
 
 .stat-count {
   font-size: 20px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 5px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
 }
 
 .stat-name {
   font-size: 14px;
-  color: #909399;
+  color: #64748b;
 }
 
+/* 操作按钮 - 蓝色主题 */
 .action-buttons {
   margin-top: 40px;
   text-align: center;
   display: flex;
   justify-content: center;
-  gap: 30px;
+  gap: 24px;
 }
 
 .start-btn {
@@ -450,14 +460,18 @@ export default {
   font-size: 16px;
   font-weight: 500;
   letter-spacing: 1px;
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   transition: all 0.3s ease;
   border-radius: 8px;
 }
 
 .start-btn:hover:not(.is-disabled) {
+  background-color: #2563eb;
+  border-color: #2563eb;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
 }
 
 .start-btn:active:not(.is-disabled) {
@@ -474,50 +488,104 @@ export default {
   padding: 12px 36px;
   font-size: 16px;
   font-weight: 500;
-  color: #606266;
-  border: 1px solid #dcdfe6;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   transition: all 0.3s ease;
-  background-color: #fff;
+  background-color: white;
 }
 
 .back-btn:hover {
-  color: #409EFF;
-  border-color: #c6e2ff;
-  background-color: #ecf5ff;
+  color: #3b82f6;
+  border-color: #93c5fd;
+  background-color: #f0f7ff;
 }
 
-.back-btn:active {
-  color: #3a8ee6;
-}
-
+/* 题目类型颜色 */
 .stat-item:nth-child(1) .stat-icon {
-  color: #409EFF;
-  background: rgba(64, 158, 255, 0.1);
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
 }
 
 .stat-item:nth-child(2) .stat-icon {
-  color: #67C23A;
-  background: rgba(103, 194, 58, 0.1);
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
 }
 
 .stat-item:nth-child(3) .stat-icon {
-  color: #E6A23C;
-  background: rgba(230, 162, 60, 0.1);
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
 }
 
 .stat-item:nth-child(4) .stat-icon {
-  color: #F56C6C;
-  background: rgba(245, 108, 108, 0.1);
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .stat-item:nth-child(5) .stat-icon {
-  color: #9B59B6;
-  background: rgba(155, 89, 182, 0.1);
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.1);
 }
 
 .stat-item:nth-child(6) .stat-icon {
-  color: #2ECC71;
-  background: rgba(46, 204, 113, 0.1);
+  color: #06b6d4;
+  background: rgba(6, 182, 212, 0.1);
+}
+
+/* 响应式设计 */
+@media (max-width: 992px) {
+  .exam-detail-container {
+    padding: 16px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .exam-header {
+    padding: 16px;
+  }
+
+  .exam-description {
+    padding: 16px;
+  }
+
+  .stat-item {
+    padding: 12px;
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 576px) {
+  .exam-header h1 {
+    font-size: 20px;
+  }
+
+  .exam-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .start-btn,
+  .back-btn {
+    width: 100%;
+  }
 }
 </style>

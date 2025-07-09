@@ -30,6 +30,7 @@
     "jspdf-autotable": "^5.0.2",
     "lottie-web": "^5.13.0",
     "marked": "^16.0.0",
+    "particles.js": "^2.0.0",
     "pinia": "^3.0.3",
     "vue": "^3.3.0",
     "vue-class-component": "^8.0.0-0",

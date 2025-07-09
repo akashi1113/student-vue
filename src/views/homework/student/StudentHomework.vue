@@ -1,12 +1,7 @@
 <template>
   <div class="homework-list">
     <div class="header">
-      <h1>我的作业</h1>
-      <div class="controls">
-        <div class="user-info">
-          <span class="user-name">{{ userName || '未登录' }}</span>
-        </div>
-      </div>
+      <h1>作业中心</h1>
     </div>
 
     <div class="homework-tabs">

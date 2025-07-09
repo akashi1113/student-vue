@@ -175,9 +175,6 @@ export default {
   components: {
     Refresh,
     Plus,
-    View,
-    Upload,
-    Close,
     List,
     Clock,
     Document,
@@ -383,44 +380,85 @@ export default {
 </script>
 
 <style scoped>
-/* 样式保持不变，与之前相同 */
 .teacher-exam-container {
-  padding: 20px;
+  padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
+  background-color: #f8fafc;
+  min-height: 100vh;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding: 20px;
+  margin-bottom: 24px;
+  padding: 24px;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
-  border-left: 4px solid #409eff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-left: 5px solid #5b8cff;
+  background: linear-gradient(135deg, #f8fafc 0%, #ebf0f7 100%);
 }
 
 .page-title {
   margin: 0;
-  color: #303133;
-  font-size: 24px;
+  color: #2c3e50;
+  font-size: 26px;
   font-weight: 600;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+}
+
+.header-actions .el-button {
+  padding: 10px 20px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.header-actions .el-button--primary {
+  background-color: #5b8cff;
+  border-color: #5b8cff;
+}
+
+.header-actions .el-button--primary:hover {
+  background-color: #4a7df5;
+  border-color: #4a7df5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(91, 140, 255, 0.3);
 }
 
 .exam-tabs {
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
+}
+
+.exam-tabs :deep(.el-tabs__nav-wrap) {
+  padding: 0 24px;
+}
+
+.exam-tabs :deep(.el-tabs__item) {
+  padding: 0 20px;
+  height: 56px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.exam-tabs :deep(.el-tabs__item.is-active) {
+  color: #5b8cff;
+}
+
+.exam-tabs :deep(.el-tabs__active-bar) {
+  background-color: #5b8cff;
+  height: 3px;
 }
 
 .tab-label {
@@ -431,17 +469,31 @@ export default {
 }
 
 .tab-content {
-  padding: 20px;
+  padding: 24px;
   min-height: 400px;
 }
 
 .exam-filter {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
-  padding: 10px;
-  background: #f5f7fa;
-  border-radius: 4px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #f1f5f9;
+  border-radius: 8px;
+}
+
+.exam-filter .el-input {
+  --el-input-focus-border-color: #5b8cff;
+  --el-input-hover-border-color: #cbd5e1;
+}
+
+.exam-filter .el-input__inner {
+  height: 40px;
+  border-radius: 8px;
+}
+
+.exam-filter .el-select {
+  --el-select-input-focus-border-color: #5b8cff;
 }
 
 .empty-state {
@@ -449,39 +501,119 @@ export default {
   justify-content: center;
   align-items: center;
   min-height: 300px;
+  background: white;
+  border-radius: 8px;
+  padding: 40px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.el-table {
+  margin-top: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.el-table :deep(.el-table__header) th {
+  background-color: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+}
+
+.el-table :deep(.el-table__cell) {
+  padding: 14px 0;
+}
+
+.el-table :deep(.cell) {
+  padding: 0 12px;
+}
+
+.el-table :deep(.el-table__row:hover) {
+  background-color: #f8fafc !important;
+}
+
+.el-tag {
+  font-weight: 500;
+  padding: 0 10px;
+  height: 26px;
+  line-height: 26px;
+}
+
+.el-tag--primary {
+  background-color: #ebf2ff;
+  border-color: #d6e4ff;
+  color: #5b8cff;
+}
+
+.el-tag--success {
+  background-color: #f0fdf4;
+  border-color: #dcfce7;
+  color: #22c55e;
+}
+
+.el-tag--warning {
+  background-color: #fefce8;
+  border-color: #fef08a;
+  color: #eab308;
+}
+
+.el-tag--info {
+  background-color: #f0f9ff;
+  border-color: #e0f2fe;
+  color: #0ea5e9;
+}
+
+.el-tag--danger {
+  background-color: #fef2f2;
+  border-color: #fee2e2;
+  color: #ef4444;
+}
+
+.el-button + .el-button {
+  margin-left: 10px;
+}
+
+.el-button--small {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.el-button--success {
+  --el-button-bg-color: #22c55e;
+  --el-button-border-color: #22c55e;
+  --el-button-hover-bg-color: #16a34a;
+  --el-button-hover-border-color: #16a34a;
+}
+
+.el-button--danger {
+  --el-button-bg-color: #ef4444;
+  --el-button-border-color: #ef4444;
+  --el-button-hover-bg-color: #dc2626;
+  --el-button-hover-border-color: #dc2626;
 }
 
 .pagination-container {
   display: flex;
   justify-content: flex-end;
-  margin-top: 20px;
-}
-
-.el-table {
-  margin-top: 10px;
-}
-
-.el-table :deep(.el-table__cell) {
-  padding: 12px 0;
-}
-
-.el-table :deep(.cell) {
-  padding: 0 10px;
-}
-
-.el-button + .el-button {
-  margin-left: 8px;
+  margin-top: 24px;
 }
 
 @media (max-width: 768px) {
   .page-header {
     flex-direction: column;
     gap: 16px;
+    padding: 20px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .exam-filter {
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
   }
 
   .exam-filter .el-input,
@@ -492,6 +624,11 @@ export default {
 
   .pagination-container {
     justify-content: center;
+  }
+
+  .exam-tabs :deep(.el-tabs__item) {
+    padding: 0 12px;
+    font-size: 14px;
   }
 }
 </style>
