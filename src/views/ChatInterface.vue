@@ -47,9 +47,6 @@
             <i class="fas fa-circle"></i>
             {{ isOnline ? '在线' : '离线' }}
           </span>
-          <button @click="refreshSession" class="refresh-btn" title="刷新">
-            <i class="fas fa-sync-alt"></i>
-          </button>
         </div>
       </div>
 
@@ -218,7 +215,17 @@ const loadUserSessions = async () => {
   try {
     const response = await chatApi.getUserSessions(token.value)
     if (response.data && response.data.success) {
-      sessions.value = response.data.data
+      // 处理会话列表，确保标题正确显示
+      sessions.value = response.data.data.map((session: any) => {
+        // 如果标题包含AssistantMessage格式，需要解析
+        if (session.title && session.title.includes('AssistantMessage')) {
+          return {
+            ...session,
+            title: extractTextContent(session.title)
+          }
+        }
+        return session
+      })
     } else {
       console.warn('获取会话列表失败:', response.data?.message)
     }
@@ -259,7 +266,21 @@ const selectSession = async (sessionId: string) => {
     currentSessionId.value = sessionId
     const response = await chatApi.getChatHistory(sessionId)
     if (response.data && response.data.success) {
-      messages.value = response.data.data.messages || []
+      const historyMessages = response.data.data.messages || []
+
+      // 处理历史消息，确保Assistant消息内容正确解析
+      messages.value = historyMessages.map((msg: any) => {
+        // 如果是AI消息且内容包含AssistantMessage格式，需要解析
+        if (msg.messageType === 'ASSISTANT' && msg.content && msg.content.includes('AssistantMessage')) {
+          return {
+            ...msg,
+            content: extractTextContent(msg.content)
+          }
+        }
+        // 用户消息或已经是纯文本的消息直接返回
+        return msg
+      })
+
       await scrollToBottom()
     } else {
       ElMessage.error('加载历史记录失败')
@@ -270,7 +291,34 @@ const selectSession = async (sessionId: string) => {
   }
 }
 
-// 发送消息
+// 在组件中添加通用的文本提取函数
+const extractTextContent = (content: string): string => {
+  // 如果不包含AssistantMessage，直接返回原内容
+  if (!content.includes('AssistantMessage')) {
+    return content
+  }
+
+  // 使用正则表达式提取textContent
+  const regex = /textContent=([^,\]]+?)(?:,\s*reasoningContent|,\s*prefix|])/s
+  const match = content.match(regex)
+
+  if (match && match[1]) {
+    return match[1].trim()
+  }
+
+  // 如果正则匹配失败，尝试更简单的匹配
+  const simpleRegex = /textContent=(.+?)(?:,\s*reasoningContent)/s
+  const simpleMatch = content.match(simpleRegex)
+
+  if (simpleMatch && simpleMatch[1]) {
+    return simpleMatch[1].trim()
+  }
+
+  // 都失败则返回原内容
+  return content
+}
+
+// 发送消息，在AI回复后生成标题
 const sendMessage = async () => {
   if (!currentMessage.value.trim() || isTyping.value) return
 
@@ -279,6 +327,9 @@ const sendMessage = async () => {
     ElMessage.error('消息长度不能超过2000字符')
     return
   }
+
+  // 检查是否是第一条消息（用于判断是否需要生成标题）
+  const isFirstMessage = messages.value.length === 0
 
   const userMessage: ChatMessage = {
     id: Date.now(),
@@ -291,7 +342,6 @@ const sendMessage = async () => {
   messages.value.push(userMessage)
   currentMessage.value = ''
   isTyping.value = true
-
   await scrollToBottom()
 
   try {
@@ -305,13 +355,7 @@ const sendMessage = async () => {
       let aiContent = ''
 
       if (aiResponse && aiResponse.content) {
-        const contentStr = aiResponse.content
-        const textContentMatch = contentStr.match(/textContent=([^,\]]+?)(?:,|\s*reasoningContent)/s)
-        if (textContentMatch && textContentMatch[1]) {
-          aiContent = textContentMatch[1].trim()
-        } else {
-          aiContent = contentStr
-        }
+        aiContent = extractTextContent(aiResponse.content)
       } else {
         aiContent = '回复内容解析失败'
       }
@@ -325,6 +369,15 @@ const sendMessage = async () => {
       }
 
       messages.value.push(aiMessage)
+
+      // 在AI回复后生成标题
+      if (isFirstMessage) {
+        // 延迟一点时间，确保消息已经添加到界面
+        setTimeout(async () => {
+          await generateTitleFromConversation(currentSessionId.value, messageText, aiContent)
+        }, 100)
+      }
+
       await loadUserSessions()
 
     } else {
@@ -350,7 +403,6 @@ const sendMessage = async () => {
     messageInput.value?.focus()
   }
 }
-
 // 删除会话
 const deleteSession = async (sessionId: string) => {
   try {
@@ -456,6 +508,138 @@ const checkTokenValidity = async () => {
     }
   }
 }
+// 智能标题生成函数
+const generateSmartTitle = (userMessage: string, aiResponse: string): string => {
+  const cleanUserMessage = userMessage.trim()
+  const cleanAiResponse = aiResponse.trim()
+
+  // 定义学科关键词模式
+  const subjectPatterns = [
+    { regex: /数学|计算|求解|方程|公式|几何|代数|微积分|统计/i, prefix: '数学' },
+    { regex: /英语|单词|语法|翻译|词汇|语言|english/i, prefix: '英语' },
+    { regex: /物理|力学|电学|光学|热学|声学|波动|电磁/i, prefix: '物理' },
+    { regex: /化学|反应|元素|分子|原子|化合物|有机|无机/i, prefix: '化学' },
+    { regex: /编程|代码|算法|程序|软件|开发|python|java|javascript/i, prefix: '编程' },
+    { regex: /历史|朝代|事件|年代|古代|近代|现代|文明/i, prefix: '历史' },
+    { regex: /地理|地球|气候|地图|国家|城市|山脉|河流/i, prefix: '地理' },
+    { regex: /生物|细胞|遗传|进化|动物|植物|基因|DNA/i, prefix: '生物' },
+    { regex: /语文|作文|写作|文章|段落|诗歌|文学|阅读/i, prefix: '语文' },
+    { regex: /考试|复习|学习方法|技巧|记忆|背诵/i, prefix: '学习方法' }
+  ]
+
+  // 检查问题类型
+  const questionTypes = [
+    { regex: /什么是|什么叫|定义|概念/i, type: '概念解释' },
+    { regex: /怎么做|如何|怎样|方法|步骤/i, type: '方法指导' },
+    { regex: /为什么|原因|缘由|why/i, type: '原因分析' },
+    { regex: /区别|差异|不同|比较/i, type: '对比分析' },
+    { regex: /解题|求解|计算|答案/i, type: '解题' },
+    { regex: /翻译|translate|英文|中文/i, type: '翻译' },
+    { regex: /检查|修改|纠正|错误/i, type: '检查修正' }
+  ]
+
+  let titlePrefix = ''
+  let titleType = ''
+
+  // 确定学科
+  const combinedContent = `${cleanUserMessage} ${cleanAiResponse}`
+  for (const pattern of subjectPatterns) {
+    if (pattern.regex.test(combinedContent)) {
+      titlePrefix = pattern.prefix
+      break
+    }
+  }
+
+  // 确定问题类型
+  for (const type of questionTypes) {
+    if (type.regex.test(cleanUserMessage)) {
+      titleType = type.type
+      break
+    }
+  }
+
+  // 提取关键词
+  const extractKeywords = (text: string): string => {
+    // 移除常见停用词
+    const stopWords = ['的', '是', '我', '你', '他', '她', '它', '我们', '你们', '他们', '这', '那', '这个', '那个', '请', '帮助', '帮忙', '一下', '问题', '关于']
+    const words = text.split(/[\s，。！？；：、]/g)
+        .filter(word => word.length > 1 && !stopWords.includes(word))
+        .slice(0, 3) // 取前3个关键词
+
+    return words.join(' ')
+  }
+
+  const keywords = extractKeywords(cleanUserMessage)
+
+  // 生成标题
+  let title = ''
+
+  if (titlePrefix && titleType) {
+    title = `${titlePrefix}-${titleType}`
+  } else if (titlePrefix) {
+    title = titlePrefix
+  } else if (titleType) {
+    title = titleType
+  }
+
+  // 添加关键词
+  if (keywords && title) {
+    title += `: ${keywords}`
+  } else if (keywords) {
+    title = keywords
+  }
+
+  // 如果还是没有合适的标题，使用用户消息的前部分
+  if (!title) {
+    title = cleanUserMessage.length > 20 ? cleanUserMessage.substring(0, 20) + '...' : cleanUserMessage
+  }
+
+  // 确保标题长度合适
+  if (title.length > 30) {
+    title = title.substring(0, 30) + '...'
+  }
+
+  return title
+}
+
+// 延迟生成标题，基于用户消息和AI回复
+const generateTitleFromConversation = async (sessionId: string, userMessage: string, aiResponse: string) => {
+  try {
+    // 使用智能规则生成标题
+    const title = generateSmartTitle(userMessage, aiResponse)
+
+    console.log('生成的标题:', title)
+
+    // 更新会话标题
+    await updateSessionTitle(sessionId, title)
+
+    return title
+  } catch (error) {
+    console.error('标题生成失败:', error)
+    // 失败时使用简单的标题
+    const fallbackTitle = userMessage.length > 20 ? userMessage.substring(0, 20) + '...' : userMessage
+    await updateSessionTitle(sessionId, fallbackTitle)
+    return fallbackTitle
+  }
+}
+
+// 更新会话标题
+const updateSessionTitle = async (sessionId: string, newTitle: string) => {
+  try {
+    console.log(newTitle)
+    const response = await chatApi.updateSessionTitle(sessionId, newTitle)
+    if (response.data && response.data.success) {
+      // 更新本地会话列表中的标题
+      const sessionIndex = sessions.value.findIndex(s => s.sessionId === sessionId)
+      if (sessionIndex !== -1) {
+        sessions.value[sessionIndex].title = newTitle
+      }
+      console.log('会话标题更新成功:', newTitle)
+    }
+  } catch (error) {
+    console.error('更新会话标题失败:', error)
+  }
+}
 
 // 定期检查连接状态
 onMounted(() => {
@@ -464,31 +648,34 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 基础设置 */
+/* Base Styles */
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 .chat-container {
   display: flex;
   height: 100vh;
-  background: linear-gradient(135deg, #faf7ff 0%, #f0f4ff 50%, #e6f3ff 100%);
-  font-family: 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  color: #374151;
+  background: linear-gradient(135deg, #f8fbff 0%, #f0f7ff 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: #2d3748;
   overflow: hidden;
 }
 
-/* 侧边栏样式 */
+/* Sidebar - Modern Blue Gradient */
 .sidebar {
-  width: 340px;
-  background: linear-gradient(180deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
+  width: 360px;
+  background: linear-gradient(180deg, #4a8cff 0%, #6ba8ff 100%);
   color: white;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 40px rgba(139, 92, 246, 0.15);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 0 40px rgba(74, 140, 255, 0.15);
   position: relative;
   overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 10;
 }
 
 .sidebar::before {
@@ -499,26 +686,25 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   background:
-      radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 40%),
-      radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 40%);
+      radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.1) 0%, transparent 40%);
   pointer-events: none;
 }
 
 .sidebar-header {
   padding: 2rem 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(5px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
   position: relative;
   z-index: 2;
 }
 
 .user-info h3 {
   margin: 0 0 0.5rem 0;
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: 0.5px;
-  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #e6f2ff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -526,56 +712,42 @@ onMounted(() => {
 
 .username {
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
   padding: 0.3rem 0.8rem;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 20px;
   display: inline-block;
   margin-bottom: 1.5rem;
+  backdrop-filter: blur(5px);
 }
 
 .new-chat-btn {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: none;
   padding: 0.8rem 1.5rem;
-  border-radius: 25px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 1rem;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
   width: 100%;
   justify-content: center;
   backdrop-filter: blur(10px);
-  position: relative;
-  overflow: hidden;
-}
-
-.new-chat-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
-}
-
-.new-chat-btn:hover::before {
-  left: 100%;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .new-chat-btn:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.25) 100%);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 8px 25px rgba(74, 140, 255, 0.3);
 }
 
+/* Session List - Modern Card Design */
 .session-list {
   flex: 1;
   overflow-y: auto;
@@ -601,42 +773,26 @@ onMounted(() => {
 .session-item {
   padding: 1.2rem;
   margin-bottom: 1rem;
-  border-radius: 15px;
+  border-radius: 14px;
   cursor: pointer;
   position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-}
-
-.session-item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.session-item:hover::before {
-  opacity: 1;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
 .session-item:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.2);
   transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
 .session-item.active {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 8px 25px rgba(74, 140, 255, 0.25);
 }
 
 .session-item.active::after {
@@ -700,90 +856,98 @@ onMounted(() => {
   transform: translateY(-50%) scale(1.1);
 }
 
-/* 主聊天区域 */
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 250px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  padding: 2rem;
+  position: relative;
+  z-index: 2;
+}
+
+.empty-state i {
+  font-size: 3.5rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.6;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.empty-state p {
+  margin: 0.8rem 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Main Chat Area */
 .main-chat {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: white;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
   position: relative;
   overflow: hidden;
 }
 
 .chat-header {
   padding: 1.5rem 2rem;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  background: white;
+  border-bottom: 1px solid rgba(203, 213, 225, 0.3);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
   position: relative;
   z-index: 10;
-}
-
-.chat-header::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.02) 0%, rgba(59, 130, 246, 0.02) 100%);
-  pointer-events: none;
 }
 
 .chat-header h3 {
   margin: 0;
   font-size: 1.4rem;
-  color: #1e293b;
+  color: #1e3a8a;
   font-weight: 700;
   letter-spacing: 0.3px;
-  position: relative;
-  z-index: 2;
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  position: relative;
-  z-index: 2;
-}
-
+/* Status Indicator */
 .status {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   padding: 0.4rem 1rem;
-  border-radius: 25px;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  color: #64748b;
+  border-radius: 12px;
+  background: #f0f7ff;
+  color: #3b82f6;
   display: flex;
   align-items: center;
   gap: 0.6rem;
   font-weight: 600;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.2);
   transition: all 0.3s ease;
 }
 
 .status.online {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #16a34a;
-  border-color: rgba(34, 197, 94, 0.3);
+  background: #e6ffed;
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.2);
 }
 
 .status i {
-  font-size: 0.7rem;
-  animation: pulse 2s infinite;
+  font-size: 0.6rem;
 }
 
 .refresh-btn {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: #f0f7ff;
+  border: 1px solid rgba(59, 130, 246, 0.2);
   padding: 0.6rem;
   border-radius: 50%;
   cursor: pointer;
-  color: #64748b;
+  color: #3b82f6;
   width: 42px;
   height: 42px;
   display: flex;
@@ -794,39 +958,18 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.refresh-btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  transform: translate(-50%, -50%);
-}
-
-.refresh-btn:hover::before {
-  width: 100%;
-  height: 100%;
-}
-
 .refresh-btn:hover {
   color: #2563eb;
   border-color: #2563eb;
   transform: rotate(180deg);
 }
 
-/* 聊天消息区域 */
+/* Chat Messages */
 .chat-messages {
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
-  background:
-      linear-gradient(135deg, #fefefe 0%, #f9fafb 100%),
-      radial-gradient(ellipse at top left, rgba(37, 99, 235, 0.03) 0%, transparent 50%),
-      radial-gradient(ellipse at bottom right, rgba(59, 130, 246, 0.03) 0%, transparent 50%);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
   position: relative;
 }
 
@@ -835,7 +978,7 @@ onMounted(() => {
 }
 
 .chat-messages::-webkit-scrollbar-track {
-  background: rgba(148, 163, 184, 0.1);
+  background: rgba(203, 213, 225, 0.1);
   border-radius: 4px;
 }
 
@@ -846,7 +989,7 @@ onMounted(() => {
 
 .message {
   display: flex;
-  margin-bottom: 2rem;
+  margin-bottom: 1.8rem;
   animation: messageSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -879,38 +1022,34 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.avatar-circle::before {
+.user-avatar {
+  background: linear-gradient(135deg, #4a8cff 0%, #6ba8ff 100%);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Enhanced Bot Avatar with Floating Effect */
+.bot-avatar {
+  background: linear-gradient(135deg, #4a8cff 0%, #6ba8ff 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 5px 15px rgba(74, 140, 255, 0.3);
+  position: relative;
+  overflow: visible;
+  animation: gentleFloat 4s ease-in-out infinite;
+}
+
+.bot-avatar::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.avatar-circle:hover::before {
-  opacity: 1;
-}
-
-.avatar-circle:hover {
-  transform: scale(1.1);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.user-avatar {
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.bot-avatar {
-  background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  animation: gentleFloat 4s ease-in-out infinite;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(74, 140, 255, 0.3) 0%, transparent 70%);
+  z-index: -1;
+  animation: pulse 2s infinite;
 }
 
 .message-content {
@@ -919,30 +1058,28 @@ onMounted(() => {
   position: relative;
   line-height: 1.7;
   word-wrap: break-word;
-  border-radius: 20px;
+  border-radius: 18px;
   transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
 }
 
 .message.user .message-content {
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #4a8cff 0%, #6ba8ff 100%);
   color: white;
-  border-radius: 20px 20px 6px 20px;
-  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px 18px 4px 18px;
+  box-shadow: 0 5px 15px rgba(74, 140, 255, 0.2);
 }
 
 .message.assistant .message-content {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  color: #374151;
-  border-radius: 20px 20px 20px 6px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: white;
+  color: #2d3748;
+  border-radius: 18px 18px 18px 4px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(203, 213, 225, 0.4);
 }
 
 .message-content:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
 }
 
 .message-text {
@@ -970,12 +1107,12 @@ onMounted(() => {
 }
 
 .message-text :deep(blockquote) {
-  border-left: 4px solid #2563eb;
+  border-left: 4px solid #4a8cff;
   padding-left: 1.2rem;
   margin: 1rem 0;
   color: #6b7280;
   font-style: italic;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, transparent 100%);
+  background: linear-gradient(135deg, rgba(74, 140, 255, 0.05) 0%, transparent 100%);
   padding: 1rem 1.2rem;
   border-radius: 0 8px 8px 0;
 }
@@ -1006,7 +1143,7 @@ onMounted(() => {
   color: #9ca3af;
 }
 
-/* 打字指示器 */
+/* Typing Indicator */
 .typing-indicator {
   display: flex;
   align-items: center;
@@ -1038,25 +1175,13 @@ onMounted(() => {
   font-style: italic;
 }
 
-/* 输入区域 */
+/* Chat Input - Modern Design */
 .chat-input {
   padding: 1.5rem 2rem;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border-top: 1px solid rgba(148, 163, 184, 0.1);
-  backdrop-filter: blur(10px);
+  background: white;
+  border-top: 1px solid rgba(203, 213, 225, 0.4);
   position: relative;
   z-index: 10;
-}
-
-.chat-input::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.02) 0%, rgba(59, 130, 246, 0.02) 100%);
-  pointer-events: none;
 }
 
 .input-container {
@@ -1069,74 +1194,46 @@ onMounted(() => {
 
 .input-container textarea {
   flex: 1;
-  border: 2px solid rgba(148, 163, 184, 0.2);
-  border-radius: 20px;
-  padding: 1rem 1.5rem;
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  border-radius: 16px;
+  padding: 1.2rem 1.8rem;
   resize: none;
-  min-height: 54px;
+  min-height: 56px;
   max-height: 150px;
   font-size: 1rem;
   line-height: 1.6;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
-  color: #374151;
-  font-family: inherit;
-}
-
-.input-container textarea::placeholder {
-  color: #9ca3af;
-  transition: color 0.3s ease;
+  background: white;
+  color: #2d3748;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .input-container textarea:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-  background: #ffffff;
-}
-
-.input-container textarea:focus::placeholder {
-  color: rgba(37, 99, 235, 0.6);
+  border-color: #4a8cff;
+  box-shadow: 0 0 0 3px rgba(74, 140, 255, 0.15);
 }
 
 .send-btn {
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #4a8cff 0%, #6ba8ff 100%);
   color: white;
   border: none;
   padding: 0;
-  border-radius: 50%;
+  border-radius: 14px;
   cursor: pointer;
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
-}
-
-.send-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.send-btn:hover::before {
-  opacity: 1;
+  font-size: 1.2rem;
+  box-shadow: 0 5px 15px rgba(74, 140, 255, 0.3);
 }
 
 .send-btn:hover:not(:disabled) {
   transform: scale(1.05);
-  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 8px 20px rgba(74, 140, 255, 0.4);
 }
 
 .send-btn:active:not(:disabled) {
@@ -1176,37 +1273,7 @@ onMounted(() => {
   border: 1px solid rgba(220, 38, 38, 0.2);
 }
 
-/* 空状态 */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 250px;
-  color: rgba(255, 255, 255, 0.8);
-  text-align: center;
-  padding: 2rem;
-  position: relative;
-  z-index: 2;
-}
-
-.empty-state i {
-  font-size: 3.5rem;
-  margin-bottom: 1.5rem;
-  opacity: 0.6;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.empty-state p {
-  margin: 0.8rem 0;
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-/* 欢迎消息 */
+/* Welcome Message - Enhanced Design */
 .welcome-message {
   display: flex;
   justify-content: center;
@@ -1217,11 +1284,11 @@ onMounted(() => {
 .welcome-content {
   max-width: 650px;
   text-align: center;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  background: white;
   padding: 3rem;
-  border-radius: 25px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 24px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(203, 213, 225, 0.4);
   position: relative;
   overflow: hidden;
 }
@@ -1234,15 +1301,16 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   background:
-      radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.05) 0%, transparent 40%),
+      radial-gradient(circle at 20% 20%, rgba(74, 140, 255, 0.05) 0%, transparent 40%),
       radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
   pointer-events: none;
 }
 
+/* Enhanced Robot Icon */
 .welcome-icon {
   width: 100px;
   height: 100px;
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #4a8cff 0%, #6ba8ff 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1250,15 +1318,28 @@ onMounted(() => {
   margin: 0 auto 2rem;
   color: white;
   font-size: 3rem;
-  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 10px 30px rgba(74, 140, 255, 0.3);
   position: relative;
   z-index: 2;
   animation: gentleFloat 4s ease-in-out infinite;
 }
 
+.welcome-icon::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(74, 140, 255, 0.3) 0%, transparent 70%);
+  z-index: -1;
+  animation: pulse 2s infinite;
+}
+
 .welcome-content h4 {
   margin: 0 0 1.5rem 0;
-  color: #1e293b;
+  color: #1e3a8a;
   font-size: 1.8rem;
   font-weight: 700;
   position: relative;
@@ -1292,25 +1373,25 @@ onMounted(() => {
   font-size: 1rem;
   font-weight: 500;
   padding: 0.8rem 1.2rem;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, transparent 100%);
+  background: linear-gradient(135deg, rgba(74, 140, 255, 0.05) 0%, transparent 100%);
   border-radius: 12px;
-  border-left: 3px solid #2563eb;
+  border-left: 3px solid #4a8cff;
   transition: all 0.3s ease;
 }
 
 .welcome-content li:hover {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, transparent 100%);
+  background: linear-gradient(135deg, rgba(74, 140, 255, 0.1) 0%, transparent 100%);
   transform: translateX(8px);
 }
 
 .welcome-content li i {
-  color: #2563eb;
+  color: #4a8cff;
   width: 1.8rem;
   font-size: 1.2rem;
   text-align: center;
 }
 
-/* 动画效果 */
+/* Animations */
 @keyframes messageSlideIn {
   from {
     opacity: 0;
@@ -1355,17 +1436,19 @@ onMounted(() => {
 
 @keyframes pulse {
   0%, 100% {
+    transform: scale(1);
     opacity: 1;
   }
   50% {
-    opacity: 0.5;
+    transform: scale(1.05);
+    opacity: 0.8;
   }
 }
 
-/* 响应式设计 */
+/* Responsive Design */
 @media (max-width: 1024px) {
   .sidebar {
-    width: 300px;
+    width: 320px;
   }
 
   .message-content {
