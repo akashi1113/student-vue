@@ -550,10 +550,10 @@ export default {
           throw new Error('未找到认证信息，请重新登录');
         }
 
-        // 检查监考状态
-        if (this.monitorEnabled && !this.monitorError) {
-          await this.checkMonitorStatus();
-        }
+        // // 检查监考状态
+        // if (this.monitorEnabled && !this.monitorError) {
+        //   await this.checkMonitorStatus();
+        // }
 
         const answers = this.prepareAnswersForSubmit();
         console.log('Submitting exam with answers:', answers);
@@ -797,7 +797,7 @@ export default {
 
         const recordData = this.extractData(recordResponse);
 
-        if (recordData && recordData.message === "您已经完成该考试，无法再次开始") {
+        if (recordResponse.status==="SUBMITTED") {
           this.$message.warning('您已经完成该考试，正在跳转到结果页面...');
           this.$router.push(`/exams/${this.examId}/result`);
           return;

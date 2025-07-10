@@ -161,15 +161,6 @@
         </template>
       </el-tab-pane>
 
-      <!-- 监考管理 - 仅管理员可见 -->
-      <el-tab-pane v-if="userRole === '管理员'" label="监考管理" name="monitor">
-        <template #label>
-          <span class="tab-label">
-            <el-icon><User /></el-icon>
-            监考管理
-          </span>
-        </template>
-      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -200,7 +191,6 @@ export default {
     Clock,
     Document,
     Search,
-    User
   },
   data() {
     return {

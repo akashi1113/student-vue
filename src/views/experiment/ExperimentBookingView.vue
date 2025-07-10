@@ -102,8 +102,9 @@ export default {
           timeSlotId: bookingData.timeSlotId
         });
 
+
         // 确保预约成功后再更新状态
-        if (booking?.id) {
+        if (booking) {
           // 显示成功提示
           ElMessage.success('预约成功！');
 

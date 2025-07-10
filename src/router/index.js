@@ -230,7 +230,7 @@ const routes = [
     meta: {
       title: '预约详情',
       requiresAuth: true,
-      roles: ['学生']
+      roles: ['学生','教师','管理员']
     }
   },
 

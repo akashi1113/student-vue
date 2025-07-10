@@ -181,17 +181,6 @@
 
               <div class="action-buttons">
                 <el-button
-                    v-if="booking.bookingStatus === 'BOOKED'"
-                    type="success"
-                    size="large"
-                    @click="confirmBooking"
-                    :loading="confirming"
-                >
-                  <el-icon><CircleCheck /></el-icon>
-                  确认预约
-                </el-button>
-
-                <el-button
                     v-if="['BOOKED', 'CONFIRMED'].includes(booking.bookingStatus)"
                     type="danger"
                     size="large"
@@ -199,16 +188,6 @@
                 >
                   <el-icon><CircleClose /></el-icon>
                   取消预约
-                </el-button>
-
-                <el-button
-                    v-if="booking.bookingStatus === 'CONFIRMED'"
-                    type="primary"
-                    size="large"
-                    @click="checkIn"
-                >
-                  <el-icon><Checked /></el-icon>
-                  签到
                 </el-button>
 
                 <el-button
