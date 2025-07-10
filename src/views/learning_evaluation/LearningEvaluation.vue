@@ -307,7 +307,7 @@ export default {
       studyRecordsTable: null,
       studyLoading: false,
       studyPageNum: 1,
-      studyPageSize: 10,
+      studyPageSize: 20, // 修改为每页20条
       chartType: 'radar',
       chartData: null,
       chartLoading: false,
@@ -1174,13 +1174,13 @@ export default {
       try {
         console.log('开始获取学习记录，参数:', {
           pageNum: this.studyPageNum,
-          pageSize: this.studyPageSize,
+          pageSize: this.studyPageSize, // 每页20条
           ...this.getQueryParams()
         });
         
         const res = await getMyStudyRecords({
           pageNum: this.studyPageNum,
-          pageSize: this.studyPageSize,
+          pageSize: this.studyPageSize, // 每页20条
           ...this.getQueryParams()
         })
         
