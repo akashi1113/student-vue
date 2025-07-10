@@ -200,6 +200,10 @@ export const forumAPI = {
     // 新增智学助手接口
     askTutor: (questionData) =>
         api.post('/ai/tutor/ask', questionData),
+
+    summarizePost: (postId) =>
+        api.get(`/post/${postId}/summary`)
+
 };
 
 // =====================================
