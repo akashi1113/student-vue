@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <div class="top-navbar">
       <div class="logo-container">
-        <h1>CSU学生管理系统</h1>
+        <h1>CSU智能化在线教学支持服务平台</h1>
       </div>
 
       <div class="user-profile" v-if="currentUser">
