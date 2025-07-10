@@ -129,10 +129,16 @@ export default {
       else if (approvalStatus.value === 0) {
         return '已预约'
       }
+      else if (approvalStatus.value === 3) {
+        return '已拒绝'
+      }
+      else if (props.experiment.status === 1) {
+        return '可预约'
+      }
     }
 
     const getApprovalStatusText = (status) => {
-      return approvalStatusTextMap[status] || '未知审批状态'
+      return approvalStatusTextMap[status] || '待预约'
     }
 
     const getSubjectName = (value) => {
