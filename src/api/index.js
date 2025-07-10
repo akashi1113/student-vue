@@ -202,7 +202,10 @@ export const forumAPI = {
         api.post('/ai/tutor/ask', questionData),
 
     summarizePost: (postId) =>
-        api.get(`/post/${postId}/summary`)
+        api.get(`/post/${postId}/summary`),
+
+    getAIReview: (postId) =>
+        api.get(`/post/admin/${postId}/ai-review`)
 
 };
 
