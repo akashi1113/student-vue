@@ -118,7 +118,13 @@ export const videoAPI = {
 
     // 管理员删除视频
     deleteVideo: (id) =>
-        api.delete(`/admin/videos/${id}`)
+        api.delete(`/admin/videos/${id}`),
+
+    // AI聊天
+    chatWithAI: (data) =>
+        api.post('/video/ai-chat', data)
+
+
 }
 
 // =====================================

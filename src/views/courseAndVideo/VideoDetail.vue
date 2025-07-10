@@ -21,6 +21,10 @@
             <!-- 番茄钟组件 -->
             <TomatoClock />
 
+            <!-- 新增：AI助手按钮 -->
+            <el-button class="ai-assistant-button" type="primary" :icon="ChatRound" circle
+                @click="showChatDialog = true" />
+
             <!-- 侧边栏：同课程的其他视频 -->
             <div class="sidebar" v-if="relatedVideos.length > 0">
                 <div class="sidebar-header">
@@ -67,10 +71,61 @@
             </template>
         </el-result>
     </div>
+
+    <!-- 新增：AI助手对话框 -->
+    <el-dialog v-model="showChatDialog" title="AI学习助手" width="500px" :close-on-click-modal="false">
+        <div class="ai-chat-container">
+            <div class="messages">
+                <div v-for="(msg, index) in chatMessages" :key="index" class="message" :class="msg.role">
+                    <div class="avatar">
+                        <el-icon v-if="msg.role === 'assistant'">
+                            <Avatar />
+                        </el-icon>
+                        <el-icon v-else>
+                            <User />
+                        </el-icon>
+                    </div>
+                    <div class="content">
+                        <div class="name">{{ msg.role === 'assistant' ? '小光球' : '我' }}</div>
+                        <div class="text">{{ msg.content }}</div>
+                    </div>
+                </div>
+                <div v-if="aiLoading" class="message assistant">
+                    <div class="avatar">
+                        <el-icon>
+                            <Avatar />
+                        </el-icon>
+                    </div>
+                    <div class="content">
+                        <div class="name">小光球</div>
+                        <div class="text">
+                            <el-icon class="loading-icon">
+                                <Loading />
+                            </el-icon> 思考中...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="input-area">
+                <el-input v-model="userInput" placeholder="有什么想提问的吗？" :disabled="aiLoading" @keyup.enter="sendMessage">
+                    <template #append>
+                        <el-button :icon="Promotion" @click="sendMessage" :disabled="aiLoading || !userInput.trim()" />
+                    </template>
+                </el-input>
+                <div class="suggestions">
+                    <el-tag v-for="(suggestion, idx) in quickSuggestions" :key="idx"
+                        @click="selectSuggestion(suggestion)" effect="plain">
+                        {{ suggestion }}
+                    </el-tag>
+                </div>
+            </div>
+        </div>
+    </el-dialog>
+
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { videoAPI, studyRecordAPI } from '../../api'
 import VideoPlayer from '../../components/VideoPlayer.vue'
@@ -79,6 +134,7 @@ import { ElMessage } from 'element-plus'
 import {
     ArrowLeft, List, Check, VideoPlay
 } from '@element-plus/icons-vue'
+import { MagicStick, ChatRound, Avatar, User, Promotion, Loading } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -87,6 +143,111 @@ const router = useRouter()
 const loading = ref(false)
 const video = ref(null)
 const relatedVideos = ref([])
+
+// 新增响应式数据
+const videoSummary = ref('')
+const summaryLoading = ref(false)
+const showFullSummary = ref(false)
+const showChatDialog = ref(false)
+const userInput = ref('')
+const chatMessages = ref([])
+const aiLoading = ref(false)
+const quickSuggestions = ref([
+    '你是谁',
+    '计算机网络怎么理解？'
+])
+
+// 计算摘要长度
+const summaryLength = computed(() => {
+    return videoSummary.value ? videoSummary.value.length : 0
+})
+
+// 获取视频摘要
+const fetchVideoSummary = async () => {
+    if (!video.value || !video.value.id) return
+
+    summaryLoading.value = true
+    try {
+        // 调用后端API获取视频摘要
+        const response = await videoAPI.getVideoSummary(video.value.id)
+        videoSummary.value = response.summary || '暂无总结内容'
+    } catch (error) {
+        console.error('获取视频摘要失败:', error)
+        videoSummary.value = '获取摘要失败，请稍后再试'
+    } finally {
+        summaryLoading.value = false
+    }
+}
+
+// 发送消息给AI
+const sendMessage = async () => {
+    if (!userInput.value.trim() || aiLoading.value) return
+
+    const message = userInput.value.trim()
+    userInput.value = ''
+
+    // 添加用户消息
+    chatMessages.value.push({
+        role: 'user',
+        content: message
+    })
+
+    // 滚动到底部
+    scrollToBottom()
+
+    aiLoading.value = true
+
+    try {
+        // 调用后端AI聊天API
+        const response = await videoAPI.chatWithAI({
+            videoId: video.value.id,
+            message: message
+        })
+
+        // 添加AI回复
+        chatMessages.value.push({
+            role: 'assistant',
+            content: response.reply
+        })
+    } catch (error) {
+        console.error('AI请求失败:', error)
+        chatMessages.value.push({
+            role: 'assistant',
+            content: '抱歉，暂时无法回答这个问题，请稍后再试。'
+        })
+    } finally {
+        aiLoading.value = false
+        scrollToBottom()
+    }
+}
+
+// 滚动到底部
+const scrollToBottom = () => {
+    nextTick(() => {
+        const container = document.querySelector('.messages')
+        if (container) {
+            container.scrollTop = container.scrollHeight
+        }
+    })
+}
+
+// 选择快捷建议
+const selectSuggestion = (suggestion) => {
+    userInput.value = suggestion
+    sendMessage()
+}
+
+// 监听视频变化
+watch(() => video.value, (newVideo) => {
+    if (newVideo) {
+        fetchVideoSummary()
+        // 重置聊天
+        chatMessages.value = [{
+            role: 'assistant',
+            content: `你好！我是你的学习助手小光球。关于《${newVideo.title}》有什么问题吗？`
+        }]
+    }
+}, { immediate: true, deep: true })
 
 // 计算属性
 const completedCount = computed(() => {
@@ -270,6 +431,181 @@ watch(() => route.params.id, (newId) => {
 </script>
 
 <style scoped>
+/* AI总结样式 */
+.ai-summary {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 24px;
+    border: 1px solid rgba(102, 126, 234, 0.15);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08);
+}
+
+.ai-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.ai-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+    flex-grow: 1;
+}
+
+.summary-content {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #555;
+    transition: max-height 0.3s ease;
+}
+
+.summary-collapsed {
+    max-height: 60px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.summary-footer {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #999;
+    text-align: right;
+}
+
+/* AI助手按钮 */
+.ai-assistant-button {
+    position: fixed;
+    right: 40px;
+    /* 调整位置避免遮挡 */
+    bottom: 40px;
+    /* 调整位置避免遮挡 */
+    width: 80px;
+    /* 从60px增加到80px */
+    height: 80px;
+    /* 从60px增加到80px */
+    font-size: 32px;
+    /* 从24px增加到32px */
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+    z-index: 1000;
+    transition: transform 0.3s ease;
+    /* 添加悬停动画 */
+}
+
+.ai-assistant-button:hover {
+    transform: scale(1.1);
+    /* 悬停时轻微放大 */
+}
+
+/* AI聊天对话框 */
+.ai-chat-container {
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+.messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.message {
+    display: flex;
+    margin-bottom: 20px;
+}
+
+.message.user {
+    flex-direction: row-reverse;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(102, 126, 234, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin: 0 12px;
+}
+
+.avatar .el-icon {
+    font-size: 18px;
+    color: #667eea;
+}
+
+.content {
+    max-width: 75%;
+}
+
+.message.user .content {
+    text-align: right;
+}
+
+.name {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 5px;
+}
+
+.text {
+    padding: 12px 16px;
+    border-radius: 18px;
+    background: #f5f7fa;
+    line-height: 1.5;
+    display: inline-block;
+}
+
+.message.user .text {
+    background: #667eea;
+    color: white;
+}
+
+.loading-icon {
+    animation: rotate 1s linear infinite;
+    margin-right: 5px;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.input-area {
+    position: relative;
+}
+
+.suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.suggestions .el-tag {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.suggestions .el-tag:hover {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
 .video-detail-container {
     max-width: 1400px;
     margin: 0 auto;
