@@ -9,7 +9,6 @@ const ExperimentService = {
     getExperiments() {
         return axios.get(`${API_URL}/projects`, {
             headers: {
-                'Content-Type': 'application/json',
                 ...this._buildAuthHeader(this.getToken())
             },
             transformResponse: [function (data) {
@@ -166,7 +165,8 @@ const ExperimentService = {
      * @returns {Object} 认证头
      */
     _buildAuthHeader(token) {
-        return { Authorization: token };
+        const cleanToken = token?.replace('Bearer ', '') || '';
+        return { Authorization: cleanToken };
     },
 
     /**

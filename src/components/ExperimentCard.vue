@@ -87,9 +87,9 @@ export default {
     const subjects = [
       { value: 'c++', label: 'C++' },
       { value: 'java', label: 'JAVA' },
-      { value: 'bianyi', label: '编译原理' },
+      { value: '数据结构', label: '数据结构' },
       { value: 'ssd1', label: 'SSD1' },
-      { value: 'database', label: '数据库' }
+      { value: 'web开发', label: 'web开发' }
     ]
 
     const statusTextMap = {
@@ -148,9 +148,9 @@ export default {
       const types = {
         'c++': '',
         'java': 'success',
-        'bianyi': 'warning',
+        '数据结构': 'warning',
         'ssd1': 'danger',
-        'database': 'info'
+        'web开发': 'info'
       }
       return types[props.experiment.subject] || ''
     })
