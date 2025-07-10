@@ -24,13 +24,43 @@
     </div>
 
     <!-- 违规警告 -->
+<!--    <transition name="fade">-->
+<!--      <div v-if="violationCount > 0" class="violation-warning">-->
+<!--        <i class="icon-warning"></i>-->
+<!--        <span>检测到违规行为! 违规次数: {{ violationCount }}/3</span>-->
+<!--        <span v-if="violationCount >= 2" class="warning-tip">(超过3次将自动提交)</span>-->
+<!--      </div>-->
+<!--    </transition>-->
+
+    <!-- 监考异常全屏警告 -->
+    <div v-if="monitorError" class="monitor-error-overlay">
+      <div class="error-content">
+        <h3>监考系统异常</h3>
+        <p>{{ monitorError }}</p>
+        <div class="error-actions">
+          <button @click="retryMonitor" class="btn btn-primary">重试</button>
+          <button @click="continueWithoutMonitor" class="btn btn-secondary">继续考试</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 违规警告 - 增强版 -->
     <transition name="fade">
-      <div v-if="violationCount > 0" class="violation-warning">
-        <i class="icon-warning"></i>
-        <span>检测到违规行为! 违规次数: {{ violationCount }}/3</span>
-        <span v-if="violationCount >= 2" class="warning-tip">(超过3次将自动提交)</span>
+      <div v-if="violationCount > 0 || monitorViolations > 0" class="violation-warning enhanced">
+        <div class="violation-left">
+          <i class="icon-warning"></i>
+          <span>检测到异常行为!</span>
+        </div>
+        <div class="violation-stats">
+          <span>违规次数: {{ violationCount }}/3</span>
+          <span>监考异常: {{ monitorViolations }}</span>
+        </div>
+        <div class="violation-tip" v-if="violationCount >= 2">
+          <span class="warning-text">超过3次将自动提交!</span>
+        </div>
       </div>
     </transition>
+
 
     <!-- 主内容区域 -->
     <div class="exam-main-content">
@@ -205,6 +235,25 @@
       </div>
     </div>
 
+    <!-- 监考组件 -->
+    <div class="monitor-container">
+      <ExamMonitor
+          :exam-id="examId"
+          :is-enabled="monitorEnabled"
+          :show-stats="true"
+          :capture-interval="monitorInterval"
+          :auto-start="true"
+          @camera-ready="onCameraReady"
+          @camera-error="onCameraError"
+          @monitor-started="onMonitorStarted"
+          @monitor-stopped="onMonitorStopped"
+          @upload-success="onUploadSuccess"
+          @upload-error="onUploadError"
+          @alert="onMonitorAlert"
+          @stats-updated="onStatsUpdated"
+      />
+    </div>
+
     <!-- 确认对话框 -->
     <div v-if="showConfirmDialog" class="confirm-dialog-mask">
       <div class="confirm-dialog">
@@ -252,11 +301,14 @@
 import examApi from '../../../api/exam';
 import questionApi from '../../../api/question';
 import ProgrammingQuestion from '@/components/Programming.vue';
+import ExamMonitor from '@/components/ExamMonitor.vue'; // 添加监考组件
+import monitorApi from '@/api/monitor'; // 添加监考API
 
 export default {
   name: 'ExamTaking',
   components: {
-    ProgrammingQuestion
+    ProgrammingQuestion,
+    ExamMonitor
   },
   props: {
     examId: {
@@ -282,7 +334,15 @@ export default {
       isSubmitting: false,
       isAiGrading: false,
       gradingProgress: '',
-      progressInterval: null
+      progressInterval: null,
+
+      // 监考相关数据
+      monitorEnabled: true,
+      monitorInterval: 5000,
+      monitorError: null,
+      monitorStats: {},
+      monitorViolations: 0,
+      monitorAlerts: []
     };
   },
   computed: {
@@ -373,6 +433,220 @@ export default {
     isOptionSelected(questionId, optionId) {
       const selectedOptions = this.answers[questionId];
       return Array.isArray(selectedOptions) && selectedOptions.includes(optionId);
+    },
+
+    // 监考相关事件处理方法
+    onCameraReady() {
+      console.log('监考摄像头准备就绪')
+      this.monitorError = null
+      this.addMonitorAlert('监考系统已启动', 'success')
+    },
+
+    onCameraError(error) {
+      console.error('监考摄像头错误:', error)
+      this.monitorError = '摄像头访问失败，请检查设备权限和浏览器设置'
+      this.addMonitorAlert('摄像头访问失败', 'error')
+    },
+
+    onMonitorStarted() {
+      console.log('监考已开始')
+      this.addMonitorAlert('监考已开始', 'info')
+    },
+
+    onMonitorStopped() {
+      console.log('监考已停止')
+      this.addMonitorAlert('监考已停止', 'warning')
+    },
+
+    onUploadSuccess(imagePath) {
+      console.log('监考图片上传成功:', imagePath)
+    },
+
+    onUploadError(error) {
+      console.error('监考图片上传失败:', error)
+      this.monitorError = '监考系统连接异常，请检查网络连接'
+      this.addMonitorAlert('监考图片上传失败', 'error')
+    },
+
+    onMonitorAlert(alert) {
+      console.log('监考警告:', alert)
+      this.addMonitorAlert(alert.message, alert.type)
+
+      // 根据警告类型处理
+      if (alert.type === 'error') {
+        this.monitorError = alert.message
+      }
+    },
+
+    onStatsUpdated(stats) {
+      this.monitorStats = stats
+      this.monitorViolations = stats.abnormalCount || 0
+
+      // 检查异常率
+      if (stats.totalCount > 0) {
+        const abnormalRate = stats.abnormalCount / stats.totalCount
+        if (abnormalRate > 0.3) {
+          this.addMonitorAlert('监考异常率过高，请注意行为规范', 'warning')
+        }
+      }
+    },
+
+    addMonitorAlert(message, type = 'info') {
+      const alert = {
+        id: Date.now() + Math.random(),
+        message: message,
+        type: type,
+        timestamp: new Date()
+      }
+
+      this.monitorAlerts.unshift(alert)
+
+      // 限制警告数量
+      if (this.monitorAlerts.length > 10) {
+        this.monitorAlerts = this.monitorAlerts.slice(0, 10)
+      }
+
+      // 显示系统通知
+      if (type === 'error') {
+        this.$message.error('监考异常: ' + message)
+      } else if (type === 'warning') {
+        this.$message.warning('监考警告: ' + message)
+      }
+
+      // 自动移除警告
+      setTimeout(() => {
+        this.monitorAlerts = this.monitorAlerts.filter(a => a.id !== alert.id)
+      }, 10000)
+    },
+
+    retryMonitor() {
+      this.monitorError = null
+      this.monitorViolations = 0
+      // 重新初始化监考组件
+      this.$nextTick(() => {
+        // 触发监考组件重新初始化
+        this.monitorEnabled = false
+        this.$nextTick(() => {
+          this.monitorEnabled = true
+        })
+      })
+    },
+
+    continueWithoutMonitor() {
+      this.monitorEnabled = false
+      this.monitorError = null
+      this.addMonitorAlert('已关闭监考系统，继续考试', 'warning')
+    },
+
+    // 修改现有的提交考试方法，加入监考检查
+    async submitExam() {
+      this.showConfirmDialog = false;
+      this.isSubmitting = true;
+      this.cleanupViolationDetection();
+
+      try {
+        const token = this.getToken();
+        if (!token) {
+          throw new Error('未找到认证信息，请重新登录');
+        }
+
+        // 检查监考状态
+        if (this.monitorEnabled && !this.monitorError) {
+          await this.checkMonitorStatus();
+        }
+
+        const answers = this.prepareAnswersForSubmit();
+        console.log('Submitting exam with answers:', answers);
+
+        const response = await examApi.submitExam(this.examId, answers, token);
+        console.log('Submit exam response:', response);
+
+        this.isSubmitting = false;
+        this.isAiGrading = true;
+        this.startProgressSimulation();
+
+        const result = this.extractData(response);
+        await this.waitForGradingCompletion(result.recordId || result.id);
+
+        this.$router.push(`/exams/${this.examId}/result`);
+      } catch (error) {
+        console.error('提交考试失败:', error);
+        this.isSubmitting = false;
+        this.isAiGrading = false;
+        this.$message.error('提交考试失败：' + (error.message || '请重试'));
+      }
+    },
+
+    // 检查监考状态
+    async checkMonitorStatus() {
+      // eslint-disable-next-line no-useless-catch
+      try {
+        const response = await monitorApi.getMonitorStatus(this.examId);
+        if (response.data.success) {
+          const { abnormalCount, totalCount } = response.data.data;
+
+          if (totalCount === 0) {
+            throw new Error('监考记录为空，请确保监考系统正常运行');
+          }
+
+          if (abnormalCount / totalCount > 0.5) {
+            throw new Error('监考异常率过高，无法提交考试');
+          }
+
+          // 更新监考统计
+          this.monitorStats = response.data.data;
+          this.monitorViolations = abnormalCount;
+        }
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // 修改现有的违规检测方法，集成监考数据
+    async recordViolation(type, description) {
+      try {
+        const now = Date.now();
+        if (now - this.lastViolationTime < this.violationDebounce) {
+          return console.warn('防抖：忽略短时间内重复违规');
+        }
+        this.lastViolationTime = now;
+
+        const token = this.getToken();
+        if (!token) {
+          console.warn('No token found for violation recording');
+          return;
+        }
+
+        const answers = this.prepareAnswersForSubmit();
+        const payload = {
+          type: type,
+          description: description,
+          answers: answers,
+          monitorStats: this.monitorStats // 添加监考统计信息
+        };
+
+        console.log('Recording violation:', payload);
+        const response = await examApi.recordViolation(
+            this.examId,
+            JSON.stringify(payload),
+            token
+        );
+        console.log('Violation response:', response);
+
+        const result = this.extractData(response);
+        this.violationCount = result?.violationCount || this.violationCount + 1;
+
+        // 记录监考违规
+        this.addMonitorAlert(`检测到违规行为: ${description}`, 'error');
+
+        // 自动提交逻辑
+        if (this.violationCount >= 3) {
+          alert('违规次数过多，系统将自动提交考试！');
+          await this.forceSubmitExam('VIOLATION');
+        }
+      } catch (error) {
+        console.error('记录违规失败:', error);
+      }
     },
 
     // 切换多选题选项
@@ -565,45 +839,6 @@ export default {
     // 显示确认对话框
     confirmSubmit() {
       this.showConfirmDialog = true;
-    },
-
-    async submitExam() {
-      this.showConfirmDialog = false;
-      this.isSubmitting = true;
-      this.cleanupViolationDetection();
-
-      try {
-        const token = this.getToken();
-        if (!token) {
-          throw new Error('未找到认证信息，请重新登录');
-        }
-
-        const answers = this.prepareAnswersForSubmit();
-        console.log('Submitting exam with answers:', answers);
-
-        // 直接发送答案数组，而不是包装在对象中
-        const response = await examApi.submitExam(this.examId, answers, token);
-        console.log('Submit exam response:', response);
-
-        // 开始显示AI判卷提示
-        this.isSubmitting = false;
-        this.isAiGrading = true;
-
-        // 模拟进度更新
-        this.startProgressSimulation();
-
-        // 这里假设API会返回一个可以轮询的状态
-        const result = this.extractData(response);
-        await this.waitForGradingCompletion(result.recordId || result.id);
-
-        // 判卷完成后跳转
-        this.$router.push(`/exams/${this.examId}/result`);
-      } catch (error) {
-        console.error('提交考试失败:', error);
-        this.isSubmitting = false;
-        this.isAiGrading = false;
-        this.$message.error('提交考试失败：' + (error.message || '请重试'));
-      }
     },
 
     startProgressSimulation() {
@@ -882,50 +1117,6 @@ export default {
 
       e.preventDefault();
       this.recordViolation('COPY_PASTE', '尝试复制内容');
-    },
-
-    async recordViolation(type, description) {
-      try {
-        // 防抖检查
-        const now = Date.now();
-        if (now - this.lastViolationTime < this.violationDebounce) {
-          return console.warn('防抖：忽略短时间内重复违规');
-        }
-        this.lastViolationTime = now;
-
-        const token = this.getToken();
-        if (!token) {
-          console.warn('No token found for violation recording');
-          return;
-        }
-
-        const answers = this.prepareAnswersForSubmit();
-        const payload = {
-          type: type,
-          description: description,
-          answers: answers
-        };
-
-        console.log('Recording violation:', payload);
-        const response = await examApi.recordViolation(
-            this.examId,
-            JSON.stringify(payload),
-            token
-        );
-        console.log('Violation response:', response);
-
-        // 从响应或重新获取最新状态
-        const result = this.extractData(response);
-        this.violationCount = result?.violationCount || this.violationCount + 1;
-
-        // 自动提交逻辑
-        if (this.violationCount >= 3) {
-          alert('违规次数过多，系统将自动提交考试！');
-          await this.forceSubmitExam('VIOLATION');
-        }
-      } catch (error) {
-        console.error('记录违规失败:', error);
-      }
     },
 
     async forceSubmitExam(reason) {
@@ -1814,5 +2005,73 @@ export default {
     height: 30px;
     font-size: 13px;
   }
+}
+
+/* 监考错误遮罩 */
+.monitor-error-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.error-content {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.error-content h3 {
+  color: #f5222d;
+  margin-bottom: 15px;
+}
+
+.error-content p {
+  color: #666;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.error-actions .btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.error-actions .btn-primary {
+  background: #409EFF;
+  color: white;
+}
+
+.error-actions .btn-secondary {
+  background: #f5f7fa;
+  color: #606266;
+  border: 1px solid #dcdfe6;
+}
+
+/* 增强版违规警告 */
+.violation-warning.enhanced {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px;
+  margin-bottom: 20px;
 }
 </style>

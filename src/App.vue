@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <div class="top-navbar">
       <div class="logo-container">
-        <h1>CSU学生管理系统</h1>
+        <h1>CSU智能化在线教学支持服务平台</h1>
       </div>
 
       <div class="user-profile" v-if="currentUser">
@@ -141,13 +141,12 @@
 
         <!-- 管理员导航项 -->
         <div v-if="isAdmin" class="nav-section">
-          <div class="nav-title">管理功能</div>
           <!-- 新增管理后台 -->
           <router-link to="/admin" class="nav-item">
             <el-icon>
               <Setting />
             </el-icon>
-            <span>管理后台</span>
+            <span>后台管理</span>
           </router-link>
           <router-link to="/teacher/exams" class="nav-item">
             <el-icon>
@@ -160,18 +159,6 @@
               <MagicStick />
             </el-icon>
             <span>实验管理</span>
-          </router-link>
-          <router-link to="/system/manage" class="nav-item">
-            <el-icon>
-              <Setting />
-            </el-icon>
-            <span>系统管理</span>
-          </router-link>
-          <router-link to="/user/manage" class="nav-item">
-            <el-icon>
-              <User />
-            </el-icon>
-            <span>用户管理</span>
           </router-link>
           <router-link to="/audit/report" class="nav-item">
             <el-icon>
@@ -246,7 +233,6 @@ export default {
     Monitor,
     List,
     Setting,
-    User,
     Bell,
     NotificationDrawer,
     ChatLineSquare,

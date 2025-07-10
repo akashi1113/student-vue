@@ -71,6 +71,7 @@ declare module 'vue' {
     ElTimePicker: typeof import('element-plus/es')['ElTimePicker']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ElUpload: typeof import('element-plus/es')['ElUpload']
+    ExamMonitor: typeof import('./src/components/ExamMonitor.vue')['default']
     ExperimentCard: typeof import('./src/components/ExperimentCard.vue')['default']
     ExperimentScheduler: typeof import('./src/components/ExperimentScheduler.vue')['default']
     FilterPanel: typeof import('./src/components/analytics/FilterPanel.vue')['default']

@@ -265,17 +265,16 @@ const routes = [
       roles: ['教师', '管理员']
     }
   },
-  // {
-  //   path: '/teacher/exams/:examId/edit',
-  //   name: 'ExamEdit',
-  //   component: () => import('@/views/exam/teacher/ExamEdit.vue'),
-  //   props: true,
-  //   meta: {
-  //     title: '编辑考试',
-  //     requiresAuth: true,
-  //     roles: ['教师', '管理员']
-  //   }
-  // },
+  {
+    path: '/teacher/exams/monitor',
+    name: 'MonitorManager',
+    component: () => import('@/views/exam/teacher/MonitorManager.vue'),
+    meta: {
+      title: '监考管理',
+      requiresAuth: true,
+      roles: ['管理员']
+    }
+  },
 
   // ============================== 原有路由继续 ==============================
 
