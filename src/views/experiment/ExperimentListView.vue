@@ -83,18 +83,18 @@ export default {
     const subjects = [
       { value: 'c++', label: 'C++' },
       { value: 'java', label: 'JAVA' },
-      { value: 'bianyi', label: '编译原理' },
+      { value: '数据结构', label: '数据结构' },
       { value: 'ssd1', label: 'SSD1' },
-      { value: 'database', label: '数据库' }
+      { value: 'web开发', label: 'web开发' }
     ]
 
     onMounted(async () => {
       console.log(experimentStore,'-----------------');
-      
+
       try {
         await experimentStore.fetchExperiments()
         console.log('Store数据加载完成:', toRaw(experimentStore.experiments))
-        
+
         if (route.query.booked) {
           const bookedExperimentId = route.params.id || experimentStore.currentBooking?.experimentId
           const index = experimentStore.experiments.findIndex(e => e.id === bookedExperimentId)
@@ -118,11 +118,11 @@ export default {
         ? (experiment.name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
            experiment.description?.toLowerCase().includes(searchQuery.value.toLowerCase()))
         : true
-      
+
       const matchesSubject = subjectFilter.value
         ? experiment.subject === subjectFilter.value
         : true
-      
+
       return matchesSearch && matchesSubject
     })
 })
@@ -145,7 +145,7 @@ export default {
         ElMessage.error(`预约失败: ${error.message}`)
       }
     }
-    
+
     return {
       searchQuery,
       subjectFilter,
@@ -213,15 +213,15 @@ export default {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .controls {
     width: 100%;
   }
-  
+
   .search-input {
     width: 100%;
   }
-  
+
   .experiment-grid {
     grid-template-columns: 1fr;
   }

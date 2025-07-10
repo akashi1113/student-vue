@@ -17,7 +17,8 @@ export const useExperimentStore = defineStore('experiment', {
   this.isLoading = true
   this.error = null
   try {
-    const response = await experimentApi.getExperiments(token)
+    const response = await experimentApi.getExperiments()
+    console.log(response)
     
     if (response.data && Array.isArray(response.data)) {
       this.experiments = response.data.map(exp => ({

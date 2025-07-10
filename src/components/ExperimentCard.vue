@@ -87,9 +87,9 @@ export default {
     const subjects = [
       { value: 'c++', label: 'C++' },
       { value: 'java', label: 'JAVA' },
-      { value: 'bianyi', label: '编译原理' },
+      { value: '数据结构', label: '数据结构' },
       { value: 'ssd1', label: 'SSD1' },
-      { value: 'database', label: '数据库' }
+      { value: 'web开发', label: 'web开发' }
     ]
 
     const statusTextMap = {
@@ -129,10 +129,16 @@ export default {
       else if (approvalStatus.value === 0) {
         return '已预约'
       }
+      else if (approvalStatus.value === 3) {
+        return '已拒绝'
+      }
+      else if (props.experiment.status === 1) {
+        return '可预约'
+      }
     }
 
     const getApprovalStatusText = (status) => {
-      return approvalStatusTextMap[status] || '未知审批状态'
+      return approvalStatusTextMap[status] || '待预约'
     }
 
     const getSubjectName = (value) => {
@@ -148,9 +154,9 @@ export default {
       const types = {
         'c++': '',
         'java': 'success',
-        'bianyi': 'warning',
+        '数据结构': 'warning',
         'ssd1': 'danger',
-        'database': 'info'
+        'web开发': 'info'
       }
       return types[props.experiment.subject] || ''
     })

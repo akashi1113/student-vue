@@ -56,10 +56,6 @@
                     <el-icon><Trophy /></el-icon>
                     <span>总分：{{ exam.totalScore }}</span>
                   </div>
-                  <div class="info-item">
-                    <el-icon><User /></el-icon>
-                    <span>剩余名额：{{ exam.remainingQuota || '不限' }}</span>
-                  </div>
                 </div>
 
                 <div class="card-footer">
@@ -801,6 +797,7 @@ export default {
     },
 
     canStartExam(exam) {
+      console.log(exam)
       if (exam.examBooking===null || exam.examMode !== 'ONLINE') return false
 
       const now = new Date()

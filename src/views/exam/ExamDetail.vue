@@ -171,7 +171,7 @@ export default {
 
     // 是否可以开始考试
     const canStartExam = computed(() => {
-      return exam.value.status === 'PUBLISHED'
+      return exam.value.status === 'PUBLISHED'&& exam.value.examBooking!==null && exam.value.examMode === 'ONLINE'
     })
 
     // 开始考试
