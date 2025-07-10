@@ -298,83 +298,85 @@
         </el-tab-pane>
       </el-tabs>
 
-      <!-- 时间段预约区域 -->
-      <div class="time-slots-section" v-if="selectedExam">
-        <div class="slots-header">
-          <h2 class="section-title">{{ selectedExam.title }} - 可预约时间段</h2>
-          <el-button size="small" @click="closeTimeSlots" plain round>
-            <el-icon><Close /></el-icon>
-            关闭
-          </el-button>
-        </div>
+      <!-- 时间段预约区域 - 修改为模态框形式 -->
+      <div v-if="selectedExam" class="time-slots-overlay">
+        <div class="time-slots-section">
+          <div class="slots-header">
+            <h2 class="section-title">{{ selectedExam.title }} - 可预约时间段</h2>
+            <el-button size="small" @click="closeTimeSlots" plain round>
+              <el-icon><Close /></el-icon>
+              关闭
+            </el-button>
+          </div>
 
-        <div v-if="loadingSlots" class="loading-slots" v-loading="loadingSlots">
-          <span>加载时间段...</span>
-        </div>
+          <div v-if="loadingSlots" class="loading-slots" v-loading="loadingSlots">
+            <span>加载时间段...</span>
+          </div>
 
-        <div v-else-if="timeSlotsError" class="error-message">
-          <el-alert
-              :title="timeSlotsError"
-              type="error"
-              show-icon
-              :closable="false"
-          />
-        </div>
+          <div v-else-if="timeSlotsError" class="error-message">
+            <el-alert
+                :title="timeSlotsError"
+                type="error"
+                show-icon
+                :closable="false"
+            />
+          </div>
 
-        <div v-else-if="timeSlots.length === 0" class="empty-slots">
-          <el-empty description="暂无可用时间段" image-size="150" />
-        </div>
+          <div v-else-if="timeSlots.length === 0" class="empty-slots">
+            <el-empty description="暂无可用时间段" image-size="150" />
+          </div>
 
-        <div v-else class="time-slots-grid">
-          <div
-              v-for="slot in timeSlots"
-              :key="slot.id"
-              class="time-slot-card"
-              :class="{
-              'available': slot.status === 'AVAILABLE',
-              'full': slot.status === 'FULL',
-              'selected': selectedTimeSlot?.id === slot.id
-            }"
-              @click="selectTimeSlot(slot)"
-          >
-            <div class="slot-header">
-              <div class="slot-time">
-                <div class="date">{{ formatDate(slot.slotDate) }}</div>
-                <div class="time">{{ slot.startTime }} - {{ slot.endTime }}</div>
+          <div v-else class="time-slots-grid">
+            <div
+                v-for="slot in timeSlots"
+                :key="slot.id"
+                class="time-slot-card"
+                :class="{
+                'available': slot.status === 'AVAILABLE',
+                'full': slot.status === 'FULL',
+                'selected': selectedTimeSlot?.id === slot.id
+              }"
+                @click="selectTimeSlot(slot)"
+            >
+              <div class="slot-header">
+                <div class="slot-time">
+                  <div class="date">{{ formatDate(slot.slotDate) }}</div>
+                  <div class="time">{{ slot.startTime }} - {{ slot.endTime }}</div>
+                </div>
+                <div class="slot-status">
+                  <el-tag
+                      :type="slot.status === 'AVAILABLE' ? 'success' : 'danger'"
+                      size="small"
+                      effect="dark"
+                  >
+                    {{ slot.status === 'AVAILABLE' ? '可预约' : '已满' }}
+                  </el-tag>
+                </div>
               </div>
-              <div class="slot-status">
-                <el-tag
-                    :type="slot.status === 'AVAILABLE' ? 'success' : 'danger'"
-                    size="small"
-                    effect="dark"
-                >
-                  {{ slot.status === 'AVAILABLE' ? '可预约' : '已满' }}
-                </el-tag>
-              </div>
-            </div>
 
-            <div class="slot-info">
-              <div class="info-row">
-                <el-icon><Location /></el-icon>
-                <span>{{ slot.examLocation }}</span>
+              <div class="slot-info">
+                <div class="info-row">
+                  <el-icon><Location /></el-icon>
+                  <span>{{ slot.examLocation }}</span>
+                </div>
+                <div class="info-row">
+                  <el-icon><User /></el-icon>
+                  <span>{{ slot.currentBookings }}/{{ slot.maxCapacity }}人</span>
+                </div>
+                <div class="info-row">
+                  <el-icon><Monitor /></el-icon>
+                  <span>{{ getExamModeText(slot.examMode) }}</span>
+                </div>
               </div>
-              <div class="info-row">
-                <el-icon><User /></el-icon>
-                <span>{{ slot.currentBookings }}/{{ slot.maxCapacity }}人</span>
-              </div>
-              <div class="info-row">
-                <el-icon><Monitor /></el-icon>
-                <span>{{ getExamModeText(slot.examMode) }}</span>
-              </div>
-            </div>
 
-            <div class="slot-progress">
-              <el-progress
-                  :percentage="(slot.currentBookings / slot.maxCapacity) * 100"
-                  :show-text="false"
-                  :stroke-width="6"
-                  :color="getProgressColor(slot.currentBookings / slot.maxCapacity)"
-              />
+              <div class="slot-progress">
+                <el-progress
+                    :percentage="(slot.currentBookings / slot.maxCapacity) * 100"
+                    :show-text="false"
+                    :stroke-width="6"
+                    :color="getProgressColor(slot.currentBookings / slot.maxCapacity)"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -856,8 +858,8 @@ export default {
 /* 全局容器 - 变窄且下移 */
 .exam-container {
   padding: 0;
-  max-width: 1300px; /* 整体宽度缩小 */
-  margin: 24px auto 0; /* 顶部增加外边距实现下移 */
+  max-width: 1300px;
+  margin: 24px auto 0;
   background-color: #f8fafc;
   min-height: calc(100vh - 24px);
 }
@@ -884,14 +886,14 @@ export default {
 
 .page-title .el-icon {
   font-size: 24px;
-  color: #60a5fa; /* 淡蓝色图标 */
+  color: #60a5fa;
 }
 
 /* 主内容区域 - 变窄 */
 .main-content {
   max-width: 1300px;
   margin: 0 auto;
-  padding: 16px 16px 40px; /* 左右内边距缩小 */
+  padding: 16px 16px 40px;
 }
 
 /* 标签页样式 */
@@ -900,7 +902,7 @@ export default {
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  margin-top: 8px; /* 下移间距 */
+  margin-top: 8px;
 }
 
 :deep(.el-tabs__header) {
@@ -909,7 +911,7 @@ export default {
 }
 
 :deep(.el-tabs__nav-wrap) {
-  padding: 0 16px; /* 内边距缩小 */
+  padding: 0 16px;
 }
 
 :deep(.el-tabs__item) {
@@ -921,7 +923,7 @@ export default {
 }
 
 :deep(.el-tabs__item:hover) {
-  color: #60a5fa; /* 淡蓝色悬停 */
+  color: #60a5fa;
 }
 
 :deep(.el-tabs__item.is-active) {
@@ -931,7 +933,7 @@ export default {
 
 :deep(.el-tabs__active-bar) {
   height: 3px;
-  background-color: #60a5fa; /* 淡蓝色激活条 */
+  background-color: #60a5fa;
 }
 
 .tab-label {
@@ -944,7 +946,7 @@ export default {
 .exam-grid {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); /* 卡片宽度缩小 */
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 20px;
   padding: 16px;
 }
@@ -968,7 +970,7 @@ export default {
   border-top-color: #f59e0b;
 }
 .online-card {
-  border-top-color: #60a5fa; /* 淡蓝色线上考试 */
+  border-top-color: #60a5fa;
 }
 .offline-card {
   border-top-color: #10b981;
@@ -1030,42 +1032,66 @@ export default {
   justify-content: flex-end;
 }
 
-/* 线上考试标题下移 */
-.online-section .section-header {
-  padding-top: 24px !important; /* 强制下移 */
-  margin-bottom: 20px;
+/* 时间段预约区域 - 修改为模态框形式 */
+.time-slots-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.section-header {
+.time-slots-section {
+  background: white;
+  border-radius: 12px;
+  width: 80%;
+  max-width: 900px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  animation: modal-fade-in 0.3s ease;
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slots-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 16px 16px 0;
+  align-items: center;
+  margin-bottom: 20px;
+  position: sticky;
+  top: 0;
+  background: white;
+  padding: 10px 0;
+  z-index: 1;
 }
 
 .section-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  font-size: 20px;
   color: #1e293b;
-}
-
-/* 时间段选择区域 */
-.time-slots-section {
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  margin-top: 24px;
 }
 
 .time-slots-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 16px;
+  padding: 10px 0;
 }
 
 .time-slot-card {
@@ -1073,6 +1099,7 @@ export default {
   border-radius: 8px;
   padding: 16px;
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .time-slot-card.available:hover {
@@ -1085,19 +1112,47 @@ export default {
   background-color: #f0f9ff;
 }
 
-/* 按钮样式 */
-.el-button {
-  border-radius: 8px;
-  font-weight: 500;
-  transition: all 0.3s ease;
+.time-slot-card.full {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
-.el-button--primary {
-  background-color: #60a5fa;
-  border-color: #60a5fa;
+
+.slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
-.el-button--primary:hover {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
+
+.slot-time {
+  line-height: 1.4;
+}
+
+.slot-time .date {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.slot-time .time {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.slot-info {
+  margin: 12px 0;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.slot-progress {
+  margin-top: 12px;
 }
 
 /* 响应式设计 */
@@ -1107,20 +1162,30 @@ export default {
     padding: 0 20px;
   }
 }
+
 @media (max-width: 768px) {
   .exam-grid {
     grid-template-columns: 1fr;
   }
-  .online-section .section-header {
-    padding-top: 20px !important;
+  .time-slots-section {
+    width: 90%;
+  }
+  .time-slots-grid {
+    grid-template-columns: 1fr;
   }
 }
+
 @media (max-width: 576px) {
   .page-title {
     font-size: 18px;
   }
   :deep(.el-tabs__item) {
     padding: 0 12px;
+  }
+  .slots-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
 }
 </style>
