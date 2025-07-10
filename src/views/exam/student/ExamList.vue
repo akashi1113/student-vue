@@ -802,7 +802,10 @@ export default {
 
       const now = new Date()
       const examStartTime = new Date(exam.examBooking.timeSlot.bookingStartTime)
+      console.log(examStartTime)
       const examEndTime = new Date(exam.examBooking.timeSlot.bookingEndTime)
+      console.log(examEndTime)
+      console.log(now)
 
       return now.getTime()>=examStartTime.getTime() && now.getTime()<=examEndTime.getTime()
     },
