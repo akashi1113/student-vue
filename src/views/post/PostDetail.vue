@@ -93,6 +93,36 @@
             </el-card>
         </transition>
 
+        <transition>
+            <!-- 修改AI总结区域的结构和样式 -->
+            <div class="summary-section">
+                <el-card class="summary-card" shadow="hover">
+                    <el-collapse v-model="activeCollapse">
+                        <el-collapse-item title="AI内容总结" name="summary">
+                            <div v-if="isSummarizing" class="summary-loading">
+                                <el-icon class="is-loading">
+                                    <Loading />
+                                </el-icon>
+                                正在生成总结...
+                            </div>
+                            <div v-else-if="summary" class="summary-content">
+                                {{ summary }}
+                            </div>
+                            <div v-else class="summary-empty">
+                                点击"生成总结"按钮获取AI总结
+                            </div>
+
+                            <el-button type="primary" size="small" @click="generateSummary" :disabled="isSummarizing"
+                                class="summary-btn">
+                                {{ summary ? '重新生成' : '生成总结' }}
+                            </el-button>
+                        </el-collapse-item>
+                    </el-collapse>
+                </el-card>
+            </div>
+        </transition>
+
+
         <!-- 评论区 -->
         <transition name="fade-slide" appear>
             <el-card class="comments-section" shadow="hover" v-if="post && !loading">
@@ -150,6 +180,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import CommentItem from '../../components/CommentItem.vue';
 
+// 新增状态
+const summary = ref('');
+const isSummarizing = ref(false);
 const route = useRoute();
 const router = useRouter();
 const postId = Number(route.params.id);
@@ -185,6 +218,22 @@ const getCategoryTagType = (category) => {
         '其他话题': 'info'
     };
     return types[category] || 'info';
+};
+
+const generateSummary = async () => {
+    if (!post.value || isSummarizing.value) return;
+
+    isSummarizing.value = true;
+    try {
+        const response = await forumAPI.summarizePost(post.value.id);
+        summary.value = response;
+    } catch (error) {
+        console.error('总结生成失败:', error);
+        ElMessage.error('总结生成失败，请稍后再试');
+        summary.value = '';
+    } finally {
+        isSummarizing.value = false;
+    }
 };
 
 // 添加点赞动画的ref
@@ -510,6 +559,87 @@ const closeWindow = () => {
 </script>
 
 <style scoped>
+/* 添加新的样式 */
+.summary-section {
+    margin-top: 30px;
+}
+
+.summary-card {
+    border: none;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(235, 245, 255, 0.8);
+}
+
+.summary-card:hover {
+    box-shadow: 0 15px 40px rgba(59, 130, 246, 0.2);
+    transform: translateY(-5px);
+}
+
+.summary-content {
+    line-height: 1.8;
+    padding: 15px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    color: #334155;
+    font-size: 1.1em;
+}
+
+.summary-loading {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    color: #64748b;
+    font-size: 1.1em;
+}
+
+.summary-empty {
+    padding: 15px;
+    color: #94a3b8;
+    font-style: italic;
+    font-size: 1.1em;
+}
+
+.summary-btn {
+    margin-top: 10px;
+    border-radius: 30px;
+    padding: 8px 20px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    border: none;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.summary-btn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
+}
+
+/* 修改折叠面板样式 */
+:deep(.el-collapse) {
+    border: none;
+}
+
+:deep(.el-collapse-item__header) {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #1e293b;
+    padding: 15px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+:deep(.el-collapse-item__content) {
+    padding: 20px;
+    background-color: transparent;
+}
+
 .post-detail-container {
     max-width: 900px;
     margin: 0 auto;

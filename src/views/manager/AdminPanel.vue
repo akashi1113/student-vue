@@ -146,6 +146,24 @@
                                                 @click="rejectPost(scope.row.id)">拒绝</el-button>
                                         </template>
                                     </el-table-column>
+                                    <!-- 在待审核帖子的表格中添加新列 -->
+                                    <el-table-column label="AI审核" width="140" align="center">
+                                        <template #default="scope">
+                                            <div v-if="scope.row.aiReviewLoading">
+                                                <el-icon class="is-loading">
+                                                    <Loading />
+                                                </el-icon>
+                                            </div>
+                                            <template v-else>
+                                                <el-tag v-if="scope.row.aiReviewStatus"
+                                                    :type="getReviewTagType(scope.row.aiReviewStatus)" effect="dark">
+                                                    {{ getReviewStatusText(scope.row.aiReviewStatus) }}
+                                                </el-tag>
+                                                <el-button v-else size="small"
+                                                    @click="triggerAIReview(scope.row)">AI审核</el-button>
+                                            </template>
+                                        </template>
+                                    </el-table-column>
                                 </el-table>
                                 <el-pagination v-if="postTotal > 0" style="margin-top: 20px;" background
                                     layout="prev, pager, next, jumper, ->, total" :total="postTotal"
@@ -756,6 +774,52 @@ const reportTotal = ref(0);
 const reportCurrentPage = ref(1);
 const reportPageSize = ref(10);
 
+// 新增方法
+const triggerAIReview = async (post) => {
+    post.aiReviewLoading = true;
+    try {
+        const result = await forumAPI.getAIReview(post.id);
+        post.aiReviewResult = result;
+
+        // 解析审核结果
+        if (result.includes("【审核结果】通过")) {
+            post.aiReviewStatus = "pass";
+        } else if (result.includes("【审核结果】不通过")) {
+            post.aiReviewStatus = "reject";
+        } else {
+            post.aiReviewStatus = "manual";
+        }
+
+        // 显示审核详情提示
+        ElMessage.info({
+            message: result,
+            duration: 5000,
+            showClose: true
+        });
+    } catch (error) {
+        ElMessage.error("AI审核失败");
+    } finally {
+        post.aiReviewLoading = false;
+    }
+};
+
+// 状态转换方法
+const getReviewTagType = (status) => {
+    return {
+        'pass': 'success',
+        'reject': 'danger',
+        'manual': 'warning'
+    }[status];
+};
+
+const getReviewStatusText = (status) => {
+    return {
+        'pass': '通过',
+        'reject': '不通过',
+        'manual': '人工审核'
+    }[status];
+};
+
 const formatDateTime = (time) => {
     if (!time) return '';
     return format(new Date(time), 'yyyy-MM-dd HH:mm:ss');
@@ -769,7 +833,15 @@ const fetchPendingPosts = async () => {
             size: postPageSize.value,
         };
         const result = await forumAPI.getPendingPosts(params);
-        pendingPosts.value = result.list || [];
+
+        // 这里添加属性扩展
+        pendingPosts.value = (result.list || []).map(post => ({
+            ...post,
+            aiReviewStatus: null,
+            aiReviewLoading: false,
+            aiReviewResult: ""
+        }));
+
         postTotal.value = result.total || 0;
     } catch (error) {
         console.error("获取待审核帖子失败:", error);
@@ -898,6 +970,20 @@ onMounted(() => {
 </script>
 
 <style scoped>
+:deep(.el-table__row) {
+    &.ai-pass {
+        --el-table-tr-bg-color: rgba(103, 194, 58, 0.08);
+    }
+
+    &.ai-reject {
+        --el-table-tr-bg-color: rgba(245, 108, 108, 0.08);
+    }
+
+    &.ai-manual {
+        --el-table-tr-bg-color: rgba(230, 162, 60, 0.08);
+    }
+}
+
 .tab-content {
     padding: 10px;
 }
