@@ -30,14 +30,14 @@
         <el-table-column label="审核状态" width="120">
           <template #default="{row}">
             <el-tag :type="row.approvalStatus === 0 ? 'warning' : row.approvalStatus === 1 ? 'success' : 'danger'">
-        {{ row.approvalStatus === 0 ? '待审批' : row.approvalStatus === 1 ? '已通过' : '已拒绝' }}
+        {{ row.approvalStatus === 0 ? '待审批' : row.approvalStatus === 1 ? '已通过' : '待通过' }}
       </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180">
           <template #default="{row}">
-            <el-button type="success" size="small" @click="approveBookingAction(row.id, 1)" :disabled="row.approvalStatus !== 0">通过</el-button>
-            <el-button type="danger" size="small" @click="approveBookingAction(row.id, 2)" :disabled="row.approvalStatus !== 0">拒绝</el-button>
+            <el-button type="success" size="small" @click="approveBookingAction(row.id, 1)" :disabled="row.approvalStatus ===1">通过</el-button>
+            <el-button type="danger" size="small" @click="approveBookingAction(row.id, 2)" :disabled="row.approvalStatus ===1">拒绝</el-button>
           </template>
         </el-table-column>
       </el-table>

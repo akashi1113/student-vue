@@ -201,6 +201,9 @@ export default {
     };
   },
   methods: {
+    getToken(){
+      return localStorage.getItem('token');
+    },
     async loadBookings() {
       this.loading = true;
       try {
@@ -255,7 +258,8 @@ export default {
             { type: 'warning' }
         );
 
-        await examBookingApi.confirmBooking(booking.bookingId);
+        console.log(booking)
+        await examBookingApi.confirmBooking(booking.bookingId,this.getToken());
         booking.bookingStatus = 'CONFIRMED';
         this.$message.success('预约确认成功');
         this.loadStats();

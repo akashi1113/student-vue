@@ -29,8 +29,8 @@ import { useExperimentStore } from '@/store/experiment'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import ExperimentScheduler from '@/components/ExperimentScheduler.vue'
 import { ElMessage } from 'element-plus'
-// import { getAvailableTimeSlots } from '@/api/experiment'
 import experimentApi from '@/api/experiment'
+
 
 export default {
   components: {
@@ -83,50 +83,50 @@ export default {
     }
 
     const handleSubmit = async (bookingData) => {
-  try {
-    if (!bookingData.timeSlotId) {
-      throw new Error('请选择时间段');
-    }
-
-    // 确保实验ID存在且有效
-    if (!experiment.value?.id) {
-      throw new Error('无效的实验ID');
-    }
-
-    const tempUserId = 1; // 测试用，实际应从store获取
-    
-    // 先预约
-    const booking = await experimentStore.bookExperiment({
-      experimentId: Number(experiment.value.id),
-      userId: tempUserId,
-      timeSlotId: bookingData.timeSlotId
-    });
-
-    // 确保预约成功后再更新状态
-    if (booking?.id) {
-      // 明确传递数字类型的ID
-      // await experimentStore.updateExperimentStatus({
-      //   id: Number(experiment.value.id), // 确保转换为数字
-      //   status: 0
-      // });
-
-      // 刷新数据
-      await experimentStore.fetchExperiments();
-
-      router.push({
-        path: '/experimentList',
-        query: { 
-          booked: true,
-          id: experiment.value.id,
-          bookingId: booking.id
+      try {
+        if (!bookingData.timeSlotId) {
+          throw new Error('请选择时间段');
         }
-      });
+
+        // 确保实验ID存在且有效
+        if (!experiment.value?.id) {
+          throw new Error('无效的实验ID');
+        }
+
+        const tempUserId = 1; // 测试用，实际应从store获取
+
+        // 先预约
+        const booking = await experimentStore.bookExperiment({
+          experimentId: Number(experiment.value.id),
+          userId: tempUserId,
+          timeSlotId: bookingData.timeSlotId
+        });
+
+        // 确保预约成功后再更新状态
+        if (booking?.id) {
+          // 显示成功提示
+          ElMessage.success('预约成功！');
+
+          // 刷新数据
+          await experimentStore.fetchExperiments();
+
+          // 延迟跳转，让用户看到提示
+          setTimeout(() => {
+            router.push({
+              path: '/experimentList',
+              query: {
+                booked: true,
+                id: experiment.value.id,
+                bookingId: booking.id
+              }
+            });
+          }, 1000); // 1秒后跳转
+        }
+      } catch (error) {
+        console.error('预约提交失败:', error);
+        ElMessage.error(`预约失败: ${error.message}`);
+      }
     }
-  } catch (error) {
-    console.error('预约提交失败:', error);
-    ElMessage.error(`预约失败: ${error.message}`);
-  }
-}
 
     return {
       experiment,

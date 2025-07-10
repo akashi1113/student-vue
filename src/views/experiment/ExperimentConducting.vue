@@ -282,10 +282,12 @@ export default {
       try {
         // 开始实验
         const recordResponse = await experimentApi.startExperiment(this.experimentId);
+        console.log(recordResponse)
         this.experimentRecord = recordResponse.data.data;
 
         // 获取实验详情
         const detailResponse = await experimentApi.getExperimentRecord(this.experimentRecord.id);
+        console.log(detailResponse)
         const detail = detailResponse.data.data;
 
         this.experiment = detail.experiment;
