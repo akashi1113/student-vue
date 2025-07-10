@@ -128,6 +128,16 @@
             </el-table-column>
           </el-table>
 
+          <div class="pagination-container" v-if="filteredExams.length > 0">
+            <el-pagination
+                v-model:current-page="currentPage"
+                v-model:page-size="pageSize"
+                :total="totalExams"
+                layout="total, sizes, prev, pager, next, jumper"
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+            />
+          </div>
         </div>
       </el-tab-pane>
 
@@ -150,6 +160,16 @@
           </span>
         </template>
       </el-tab-pane>
+
+      <!-- 监考管理 - 仅管理员可见 -->
+      <el-tab-pane v-if="userRole === '管理员'" label="监考管理" name="monitor">
+        <template #label>
+          <span class="tab-label">
+            <el-icon><User /></el-icon>
+            监考管理
+          </span>
+        </template>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -164,7 +184,8 @@ import {
   List,
   Clock,
   Document,
-  Search
+  Search,
+  User
 } from '@element-plus/icons-vue'
 import { formatDate, formatTime, formatDateTime } from '@/utils/dateUtils'
 import examApi from '@/api/exam'
@@ -178,7 +199,8 @@ export default {
     List,
     Clock,
     Document,
-    Search
+    Search,
+    User
   },
   data() {
     return {
@@ -192,7 +214,8 @@ export default {
       pageSize: 10,
       totalExams: 0,
       sortField: '',
-      sortOrder: ''
+      sortOrder: '',
+      userRole: localStorage.getItem('role') || ''
     }
   },
   computed: {
@@ -209,6 +232,8 @@ export default {
         this.goToTimeSlotManagement()
       } else if (tab.paneName === 'bookings') {
         this.goToBookingManagement()
+      } else if (tab.paneName === 'monitor') {
+        this.goToMonitorManagement()
       }
     },
 
@@ -337,6 +362,10 @@ export default {
 
     goToBookingManagement() {
       this.$router.push('/exam-booking/booking-management')
+    },
+
+    goToMonitorManagement() {
+      this.$router.push('/teacher/exams/monitor')
     },
 
     getExamModeText(mode) {

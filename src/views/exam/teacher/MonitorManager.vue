@@ -67,6 +67,7 @@
 </template>
 
 <script>
+import examApi from  '@/api/exam'
 import monitorApi from '@/api/monitor'
 
 export default {
@@ -90,7 +91,7 @@ export default {
   methods: {
     async loadExams() {
       // 加载考试列表
-      // this.exams = await examApi.getExams()
+      this.exams = await examApi.getAllExams()
     },
 
     async loadData() {
@@ -98,8 +99,8 @@ export default {
 
       try {
         const response = await monitorApi.getMonitorSummary(this.selectedExam)
-        if (response.success) {
-          this.students = response.data
+        if (response.data.success) {
+          this.students = response.data.data
           this.calculateStats()
         }
       } catch (error) {
